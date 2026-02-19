@@ -19,7 +19,7 @@ bearer = HTTPBearer()
 
 def _verify_init_data(init_data: str) -> dict:
     """
-    Проверить подпись Telegram WebApp initData и вернуть распакованные данные.
+    Проверить подпись Telegram WebApp initData.
     Бросает ValueError если подпись невалидна.
     """
     parsed = parse_qs(init_data, keep_blank_values=True)
@@ -32,7 +32,7 @@ def _verify_init_data(init_data: str) -> dict:
         f"{k}={v[0]}" for k, v in sorted(parsed.items())
     )
 
-    # ИСПРАВЛЕНО: hmac.new → hmac.new не существует, правильный вызов — hmac.new
+    # ИСПРАВЛЕНО: hmac.new → hmac.new не существует; правильно: hmac.new
     secret = hmac.new(
         b"WebAppData",
         settings.bot_token.encode(),
@@ -55,27 +55,22 @@ def _verify_init_data(init_data: str) -> dict:
     return json.loads(unquote(user_raw))
 
 
+import logging
+log = logging.getLogger(__name__)
+
+
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(bearer),
     db: AsyncSession = Depends(get_db),
 ) -> User:
-    # ИСПРАВЛЕНО: debug-режим только при явном локальном запуске
-    if settings.debug and settings.db_host in ("localhost", "127.0.0.1", "postgres"):
-        try:
-            parsed = parse_qs(credentials.credentials)
-            tg_user = json.loads(unquote(parsed.get("user", ["{}"])[0]))
-        except Exception:
-            tg_user = {}
-        if not tg_user.get("id"):
-            tg_user = {"id": 12345678, "first_name": "Dev", "username": "devuser"}
-    else:
-        try:
-            tg_user = _verify_init_data(credentials.credentials)
-        except ValueError as e:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=f"Invalid Telegram initData: {e}",
-            )
+    try:
+        tg_user = _verify_init_data(credentials.credentials)
+    except ValueError as e:
+        log.warning("initData validation failed: %s | raw: %.120s", e, credentials.credentials)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Invalid Telegram initData: {e}",
+        )
 
     user_id = int(tg_user["id"])
     user = await db.scalar(select(User).where(User.id == user_id))
