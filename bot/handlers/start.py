@@ -12,7 +12,6 @@ router = Router()
 
 
 async def _get_or_create_user(tg_user) -> None:
-    """Сохранить пользователя в БД при первом контакте."""
     async with AsyncSessionLocal() as db:
         user = await db.scalar(select(User).where(User.id == tg_user.id))
         if not user:
@@ -26,9 +25,7 @@ async def _get_or_create_user(tg_user) -> None:
 
 @router.message(CommandStart(deep_link=False))
 async def cmd_start(msg: Message) -> None:
-    """Обычный /start без параметров."""
     await _get_or_create_user(msg.from_user)
-
     await msg.answer(
         f"Привет, <b>{msg.from_user.first_name}</b>! 🐾\n\n"
         "Здесь ты можешь завести виртуального питомца вместе с другом.\n\n"
@@ -39,10 +36,6 @@ async def cmd_start(msg: Message) -> None:
 
 @router.message(CommandStart(deep_link=True, deep_link_encoded=False))
 async def cmd_start_invite(msg: Message, command: CommandObject) -> None:
-    """
-    /start inv_TOKEN — обработка инвайт-ссылки.
-    Telegram передаёт параметр после ?start= как command.args.
-    """
     await _get_or_create_user(msg.from_user)
 
     args = command.args or ""
@@ -50,7 +43,7 @@ async def cmd_start_invite(msg: Message, command: CommandObject) -> None:
         await cmd_start(msg)
         return
 
-    token = args[4:]  # убираем префикс inv_
+    token = args[4:]
 
     async with AsyncSessionLocal() as db:
         invite = await db.scalar(select(Invite).where(Invite.token == token))
@@ -69,7 +62,6 @@ async def cmd_start_invite(msg: Message, command: CommandObject) -> None:
             await msg.answer("😅 Это твоя собственная ссылка — отправь её другу!")
             return
 
-        # Уже владелец?
         already = await db.scalar(
             select(PetOwnership).where(
                 PetOwnership.pet_id == invite.pet_id,
@@ -100,3 +92,14 @@ async def cmd_start_invite(msg: Message, command: CommandObject) -> None:
 async def copy_invite_link(call: CallbackQuery) -> None:
     link = call.data.split(":", 1)[1]
     await call.answer(f"Ссылка: {link}", show_alert=True)
+
+
+@router.callback_query(F.data == "dev_app_stub")
+async def dev_app_stub(call: CallbackQuery) -> None:
+    """Заглушка для dev-режима без туннеля."""
+    await call.answer(
+        "🛠 Mini App работает локально.\n"
+        "Открой http://localhost:5173 в браузере для разработки.\n\n"
+        "Для полного теста используй Cloudflare Tunnel (см. README).",
+        show_alert=True,
+    )

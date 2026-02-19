@@ -24,29 +24,30 @@ def _verify_init_data(init_data: str) -> dict:
     """
     parsed = parse_qs(init_data, keep_blank_values=True)
 
-    # Извлекаем hash из данных
     hash_val = parsed.pop("hash", [None])[0]
     if not hash_val:
         raise ValueError("hash missing")
 
-    # Строим data-check-string: отсортированные пары key=value через \n
     data_check = "\n".join(
         f"{k}={v[0]}" for k, v in sorted(parsed.items())
     )
 
-    # Секретный ключ = HMAC-SHA256(bot_token, "WebAppData")
+    # ИСПРАВЛЕНО: правильный порядок аргументов hmac.new(key, msg, digestmod)
     secret = hmac.new(
-        b"WebAppData",
-        settings.bot_token.encode(),
-        hashlib.sha256,
+        key=b"WebAppData",
+        msg=settings.bot_token.encode(),
+        digestmod=hashlib.sha256,
     ).digest()
 
-    # Проверяем подпись
-    expected = hmac.new(secret, data_check.encode(), hashlib.sha256).hexdigest()
+    expected = hmac.new(
+        key=secret,
+        msg=data_check.encode(),
+        digestmod=hashlib.sha256,
+    ).hexdigest()
+
     if not hmac.compare_digest(expected, hash_val):
         raise ValueError("invalid hash")
 
-    # Парсим user из initData
     user_raw = parsed.get("user", [None])[0]
     if not user_raw:
         raise ValueError("user missing")
@@ -60,8 +61,6 @@ async def get_current_user(
 ) -> User:
     if settings.debug:
         # Dev-режим: берём user из initData без проверки подписи
-        from urllib.parse import parse_qs, unquote
-        import json
         try:
             parsed = parse_qs(credentials.credentials)
             tg_user = json.loads(unquote(parsed.get("user", ["{}"])[0]))

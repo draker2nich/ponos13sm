@@ -2,16 +2,21 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 from core.config import settings
 
 
-def open_app_keyboard(pet_id: int) -> InlineKeyboardMarkup | None:
-    """Кнопка 'Открыть' которая запускает Mini App на нужном питомце."""
-    mini_app_url = settings.mini_app_url
-    if not mini_app_url or "localhost" in mini_app_url:
-        # В dev-режиме без ngrok просто не показываем кнопку
-        return None
+def open_app_keyboard(pet_id: int) -> InlineKeyboardMarkup:
+    """Кнопка 'Открыть' — WebApp если есть HTTPS URL, иначе dev-заглушка."""
+    url = settings.mini_app_url
+    if url and "localhost" not in url and "127.0.0.1" not in url:
+        return InlineKeyboardMarkup(inline_keyboard=[[
+            InlineKeyboardButton(
+                text="🐾 Открыть питомца",
+                web_app=WebAppInfo(url=f"{url}?pet_id={pet_id}"),
+            )
+        ]])
+    # Dev-режим без туннеля
     return InlineKeyboardMarkup(inline_keyboard=[[
         InlineKeyboardButton(
-            text="🐾 Открыть питомца",
-            web_app=WebAppInfo(url=f"{mini_app_url}?pet_id={pet_id}"),
+            text="🐾 Mini App (dev-режим)",
+            callback_data="dev_app_stub",
         )
     ]])
 
@@ -28,10 +33,19 @@ def invite_keyboard(invite_link: str) -> InlineKeyboardMarkup:
 
 def accept_pet_keyboard(pet_id: int) -> InlineKeyboardMarkup:
     """Кнопка принятия питомца для получателя инвайта."""
-    mini_app_url = f"https://{settings.bot_username}.t.me/app?pet_id={pet_id}&action=accept"
+    url = settings.mini_app_url
+    if url and "localhost" not in url and "127.0.0.1" not in url:
+        # ИСПРАВЛЕНО: используем mini_app_url из настроек вместо жёсткого URL
+        accept_url = f"{url}?pet_id={pet_id}&action=accept"
+        return InlineKeyboardMarkup(inline_keyboard=[[
+            InlineKeyboardButton(
+                text="🐾 Принять питомца",
+                web_app=WebAppInfo(url=accept_url),
+            )
+        ]])
     return InlineKeyboardMarkup(inline_keyboard=[[
         InlineKeyboardButton(
-            text="🐾 Принять питомца",
-            web_app=WebAppInfo(url=mini_app_url),
+            text="🐾 Принять питомца (dev)",
+            callback_data="dev_app_stub",
         )
     ]])
