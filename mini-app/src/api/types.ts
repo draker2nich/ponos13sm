@@ -32,6 +32,7 @@ export interface Pet {
 
 export interface FeedEntry {
   user_id: number;
+  user_name: string | null; // ДОБАВЛЕНО: имя пользователя
   action: ActionType;
   hunger_delta: number;
   happiness_delta: number;

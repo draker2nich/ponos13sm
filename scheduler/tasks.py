@@ -14,10 +14,7 @@ log = logging.getLogger(__name__)
 scheduler = AsyncIOScheduler(timezone="UTC")
 
 
-# ─── Helpers ──────────────────────────────────────────────────────────────────
-
 async def _get_bot():
-    """Ленивый импорт бота чтобы избежать circular imports."""
     from bot.main import bot
     return bot
 
@@ -34,20 +31,19 @@ async def _send(user_id: int, text: str, reply_markup=None) -> None:
 
 @scheduler.scheduled_job("interval", hours=1, id="decay_pets")
 async def decay_all_pets() -> None:
-    """Уменьшить параметры всех питомцев за прошедший час."""
     async with AsyncSessionLocal() as db:
         pets = (await db.scalars(select(Pet))).all()
         for pet in pets:
             apply_decay(pet, hours_passed=1.0)
         await db.commit()
-    log.info(f"Decay applied to {len(pets)} pets")
+        # ИСПРАВЛЕНО: log внутри async with, пока pets ещё в скоупе
+        log.info(f"Decay applied to {len(pets)} pets")
 
 
 # ─── Task: уведомления о голоде (каждые 2 часа) ───────────────────────────────
 
 @scheduler.scheduled_job("interval", hours=2, id="notify_hunger")
 async def notify_hunger() -> None:
-    """Уведомить владельцев если питомец голоден (hunger < 30)."""
     from bot.keyboards import open_app_keyboard
 
     async with AsyncSessionLocal() as db:
@@ -73,7 +69,6 @@ async def notify_hunger() -> None:
 
 @scheduler.scheduled_job("cron", hour=20, minute=0, id="notify_streak")
 async def notify_streak_danger() -> None:
-    """Уведомить если один из владельцев не был активен сегодня."""
     from bot.keyboards import open_app_keyboard
 
     today = utcnow().date()
@@ -95,14 +90,11 @@ async def notify_streak_danger() -> None:
             ]
 
             if not inactive:
-                continue  # оба активны — всё хорошо
+                continue
 
-            # Получаем имена
             active_owner = next((o for o in owners if o not in inactive), None)
 
             for o in inactive:
-                user = await db.scalar(select(User).where(User.id == o.user_id))
-                name = user.first_name or "Ты"
                 text = (
                     f"🔥 Streak <b>{pet.streak} дней</b> под угрозой!\n\n"
                     f"<b>{pet.name}</b> ждёт тебя сегодня.\n"
@@ -110,7 +102,6 @@ async def notify_streak_danger() -> None:
                 )
                 await _send(o.user_id, text, reply_markup=open_app_keyboard(pet.id))
 
-            # Уведомляем активного владельца что партнёр ещё не заходил
             if active_owner:
                 partner = await db.scalar(
                     select(User).where(User.id == inactive[0].user_id)
@@ -131,7 +122,8 @@ async def update_all_streaks() -> None:
         pets = (await db.scalars(select(Pet))).all()
         for pet in pets:
             await update_streak(db, pet)
-    log.info("Streaks updated")
+        # ИСПРАВЛЕНО: log внутри async with
+        log.info(f"Streaks updated for {len(pets)} pets")
 
 
 # ─── Task: обновление возраста питомца (каждый день в полночь) ────────────────
@@ -143,19 +135,8 @@ async def age_all_pets() -> None:
         for pet in pets:
             pet.age_days += 1
         await db.commit()
-    log.info(f"Aged {len(pets)} pets")
-
-
-# ─── Task: уведомление о росте уровня (проверка каждый час) ───────────────────
-
-@scheduler.scheduled_job("interval", hours=1, id="notify_levelup")
-async def notify_level_changes() -> None:
-    """
-    Отправить поздравление если питомец вырос.
-    Используем простой флаг: level_notified хранится в кэше между вызовами.
-    В проде лучше хранить last_notified_level в БД.
-    """
-    pass  # реализуем после добавления поля last_notified_level в модель
+        # ИСПРАВЛЕНО: log внутри async with
+        log.info(f"Aged {len(pets)} pets")
 
 
 def start_scheduler() -> None:

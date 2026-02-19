@@ -2,7 +2,8 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from sqlalchemy import select, func
+from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import (
@@ -19,7 +20,6 @@ def utcnow() -> datetime:
 # ─── Mood ─────────────────────────────────────────────────────────────────────
 
 def calc_mood(pet: Pet) -> PetMood:
-    """Вычислить настроение по текущим параметрам."""
     hour = datetime.utcnow().hour
     if 0 <= hour < 7:
         return PetMood.SLEEPY
@@ -35,11 +35,10 @@ def calc_mood(pet: Pet) -> PetMood:
 # ─── Decay ────────────────────────────────────────────────────────────────────
 
 def apply_decay(pet: Pet, hours_passed: float) -> None:
-    """Уменьшить параметры питомца за прошедшее время."""
-    pet.hunger     = max(0.0, pet.hunger     - settings.hunger_decay_per_hour    * hours_passed)
-    pet.happiness  = max(0.0, pet.happiness  - settings.happiness_decay_per_hour * hours_passed)
-    pet.health     = max(0.0, pet.health     - settings.health_decay_per_hour    * hours_passed)
-    pet.mood       = calc_mood(pet)
+    pet.hunger    = max(0.0, pet.hunger    - settings.hunger_decay_per_hour    * hours_passed)
+    pet.happiness = max(0.0, pet.happiness - settings.happiness_decay_per_hour * hours_passed)
+    pet.health    = max(0.0, pet.health    - settings.health_decay_per_hour    * hours_passed)
+    pet.mood      = calc_mood(pet)
     pet.updated_at = utcnow()
 
 
@@ -64,7 +63,6 @@ ACTION_CONFIG = {
 async def get_cooldown(
     db: AsyncSession, user_id: int, pet_id: int, action: ActionType
 ) -> Optional[datetime]:
-    """Вернуть время когда действие снова доступно, или None если доступно сейчас."""
     row = await db.scalar(
         select(ActionCooldown).where(
             ActionCooldown.user_id == user_id,
@@ -82,14 +80,41 @@ async def perform_action(
 ) -> dict:
     """
     Выполнить действие пользователя с питомцем.
-    Возвращает {"ok": True, "deltas": {...}} или {"ok": False, "available_at": datetime}.
+    ИСПРАВЛЕНО: используем upsert (INSERT ON CONFLICT DO UPDATE) для
+    атомарного обновления кулдауна — защита от race condition.
     """
     cfg = ACTION_CONFIG[action]
+    available_at = utcnow() + timedelta(hours=cfg["cooldown_hours"])
 
-    # Проверка кулдауна
-    cooldown_until = await get_cooldown(db, user.id, pet.id, action)
-    if cooldown_until:
-        return {"ok": False, "available_at": cooldown_until}
+    # Атомарный upsert кулдауна: если запись уже есть и available_at в будущем — возвращаем ошибку
+    # Сначала пробуем вставить новый кулдаун только если старый истёк
+    stmt = (
+        pg_insert(ActionCooldown)
+        .values(
+            user_id=user.id,
+            pet_id=pet.id,
+            action_type=action,
+            available_at=available_at,
+        )
+        .on_conflict_do_update(
+            index_elements=["user_id", "pet_id", "action_type"],
+            # Обновляем только если кулдаун уже прошёл
+            set_={"available_at": available_at},
+            where=(ActionCooldown.available_at <= utcnow()),
+        )
+    )
+    result = await db.execute(stmt)
+
+    # Если rowcount == 0 — кулдаун ещё активен (conflict, но условие WHERE не выполнилось)
+    if result.rowcount == 0:
+        current = await db.scalar(
+            select(ActionCooldown).where(
+                ActionCooldown.user_id == user.id,
+                ActionCooldown.pet_id == pet.id,
+                ActionCooldown.action_type == action,
+            )
+        )
+        return {"ok": False, "available_at": current.available_at}
 
     # Применяем дельты
     d = cfg["deltas"]
@@ -105,35 +130,17 @@ async def perform_action(
         pet.experience = 0
         pet.level += 1
 
-    # Логируем действие
+    # Логируем действие (сохраняем имя для ленты без доп. JOIN)
     log = PetAction(
         pet_id=pet.id,
         user_id=user.id,
+        user_name=user.first_name or user.username,
         action_type=action,
         hunger_delta=d["hunger"],
         happiness_delta=d["happiness"],
         health_delta=d["health"],
     )
     db.add(log)
-
-    # Обновляем / создаём кулдаун
-    cooldown_row = await db.scalar(
-        select(ActionCooldown).where(
-            ActionCooldown.user_id == user.id,
-            ActionCooldown.pet_id == pet.id,
-            ActionCooldown.action_type == action,
-        )
-    )
-    available_at = utcnow() + timedelta(hours=cfg["cooldown_hours"])
-    if cooldown_row:
-        cooldown_row.available_at = available_at
-    else:
-        db.add(ActionCooldown(
-            user_id=user.id,
-            pet_id=pet.id,
-            action_type=action,
-            available_at=available_at,
-        ))
 
     # Обновляем last_active_at владельца
     ownership = await db.scalar(
@@ -154,10 +161,6 @@ async def perform_action(
 # ─── Streak ───────────────────────────────────────────────────────────────────
 
 async def update_streak(db: AsyncSession, pet: Pet) -> None:
-    """
-    Проверить и обновить streak.
-    Streak растёт только если ОБА владельца были активны сегодня.
-    """
     today = utcnow().date()
     owners = (await db.scalars(
         select(PetOwnership).where(PetOwnership.pet_id == pet.id)
@@ -176,13 +179,13 @@ async def update_streak(db: AsyncSession, pet: Pet) -> None:
 
     last = pet.last_streak_date
     if last and last.date() == today:
-        return  # уже засчитали сегодня
+        return
 
     yesterday = today - timedelta(days=1)
     if last and last.date() == yesterday:
         pet.streak += 1
     else:
-        pet.streak = 1  # streak сломан — начинаем заново
+        pet.streak = 1
 
     pet.last_streak_date = utcnow()
     await db.commit()

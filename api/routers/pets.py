@@ -6,8 +6,8 @@ from pydantic import BaseModel, Field
 
 from api.auth import get_current_user
 from core.database import get_db
-from core.pet_logic import calc_mood, utcnow
-from models import ActionCooldown, ActionType, Pet, PetMood, PetOwnership, PetType, User
+from core.pet_logic import utcnow
+from models import ActionCooldown, ActionType, Pet, PetOwnership, PetType, User
 
 router = APIRouter(prefix="/pets", tags=["pets"])
 
@@ -21,7 +21,7 @@ class PetCreate(BaseModel):
 
 class CooldownInfo(BaseModel):
     action: str
-    available_at: str | None  # ISO строка или null если доступно
+    available_at: str | None
 
 
 class PetResponse(BaseModel):
@@ -75,20 +75,27 @@ async def _build_response(pet: Pet, user: User, db: AsyncSession) -> PetResponse
         for o in ownerships
     ]
 
-    # Кулдауны текущего пользователя
-    cooldowns = []
-    for action in ActionType:
-        row = await db.scalar(
-            select(ActionCooldown).where(
-                ActionCooldown.user_id == user.id,
-                ActionCooldown.pet_id == pet.id,
-                ActionCooldown.action_type == action,
-            )
+    # ИСПРАВЛЕНО: один запрос вместо N+1 (по одному на каждый ActionType)
+    cooldown_rows = (await db.scalars(
+        select(ActionCooldown).where(
+            ActionCooldown.user_id == user.id,
+            ActionCooldown.pet_id == pet.id,
         )
-        available_at = None
-        if row and row.available_at > utcnow():
-            available_at = row.available_at.isoformat()
-        cooldowns.append(CooldownInfo(action=action.value, available_at=available_at))
+    )).all()
+    cd_map = {r.action_type: r for r in cooldown_rows}
+
+    now = utcnow()
+    cooldowns = [
+        CooldownInfo(
+            action=action.value,
+            available_at=(
+                cd_map[action].available_at.isoformat()
+                if action in cd_map and cd_map[action].available_at > now
+                else None
+            ),
+        )
+        for action in ActionType
+    ]
 
     return PetResponse(
         id=pet.id,
@@ -116,7 +123,6 @@ async def create_pet(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Создать нового питомца. Один пользователь — максимум 1 питомец (free tier)."""
     existing = await db.scalar(
         select(PetOwnership).where(PetOwnership.user_id == user.id)
     )
@@ -128,7 +134,7 @@ async def create_pet(
 
     pet = Pet(name=body.name, pet_type=body.pet_type)
     db.add(pet)
-    await db.flush()  # получаем pet.id
+    await db.flush()
 
     ownership = PetOwnership(pet_id=pet.id, user_id=user.id, is_creator=True)
     db.add(ownership)
@@ -147,5 +153,3 @@ async def get_pet(
     pet = await _get_pet_or_404(pet_id, db)
     await _assert_owner(pet, user, db)
     return await _build_response(pet, user, db)
-
-

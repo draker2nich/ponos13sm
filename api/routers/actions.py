@@ -18,6 +18,7 @@ class ActionRequest(BaseModel):
 
 class ActionFeedEntry(BaseModel):
     user_id: int
+    user_name: str | None  # ИСПРАВЛЕНО: добавлено имя пользователя
     action: str
     hunger_delta: float
     happiness_delta: float
@@ -32,7 +33,6 @@ async def do_action(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Выполнить действие с питомцем."""
     pet = await _get_pet_or_404(pet_id, db)
     await _assert_owner(pet, user, db)
 
@@ -61,7 +61,6 @@ async def get_action_feed(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Лента последних действий с питомцем (для обоих владельцев)."""
     pet = await _get_pet_or_404(pet_id, db)
     await _assert_owner(pet, user, db)
 
@@ -75,6 +74,7 @@ async def get_action_feed(
     return [
         ActionFeedEntry(
             user_id=r.user_id,
+            user_name=r.user_name,  # берём из сохранённого поля, без JOIN
             action=r.action_type.value,
             hunger_delta=r.hunger_delta,
             happiness_delta=r.happiness_delta,

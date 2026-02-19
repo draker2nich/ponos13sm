@@ -28,7 +28,7 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: "pointer", display: "flex", flexDirection: "column",
     alignItems: "center", gap: 4, transition: "all 0.15s", minWidth: 68,
   },
-  inviteBtn: {
+  createBtn: {
     width: "100%", padding: "14px", borderRadius: 18,
     border: "none", background: "#a8d8a8",
     color: "#fff", fontWeight: 600, fontSize: 16, cursor: "pointer",
@@ -38,10 +38,11 @@ const styles: Record<string, React.CSSProperties> = {
 interface Props { onCreated: (petId: number) => void }
 
 export function CreatePetPage({ onCreated }: Props) {
-  const [name, setName] = useState("");
-  const [type, setType] = useState<PetType>("cat");
+  const [name, setName]       = useState("");
+  const [type, setType]       = useState<PetType>("cat");
   const [loading, setLoading] = useState(false);
-  const setPet = usePetStore((s: { setPet: (p: any) => void }) => s.setPet);
+  // ИСПРАВЛЕНО: убрана явная типизация через any
+  const setPet = usePetStore((s) => s.setPet);
 
   const handleCreate = async () => {
     if (!name.trim()) return;
@@ -91,7 +92,7 @@ export function CreatePetPage({ onCreated }: Props) {
       <button
         onClick={handleCreate}
         disabled={!name.trim() || loading}
-        style={{ ...styles.inviteBtn, opacity: !name.trim() || loading ? 0.5 : 1 }}
+        style={{ ...styles.createBtn, opacity: !name.trim() || loading ? 0.5 : 1 }}
       >
         {loading ? "Создаём..." : "Создать питомца 🐾"}
       </button>

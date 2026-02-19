@@ -1,11 +1,13 @@
 // src/components/FeedList.tsx
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePetStore } from "../store/usePetStore";
 import type { FeedEntry } from "../api/types";
 
 const ACTION_LABEL: Record<string, string> = {
-  feed: "покормил(а)", play: "поиграл(а)", pet: "погладил(а)",
+  feed: "покормил(а)",
+  play: "поиграл(а)",
+  pet:  "погладил(а)",
 };
 
 function timeAgo(iso: string): string {
@@ -18,8 +20,15 @@ function timeAgo(iso: string): string {
 
 export function FeedList() {
   const { feed, fetchFeed, pet } = usePetStore();
+  // ИСПРАВЛЕНО: кэшируем pet.id чтобы не дёргать fetchFeed при каждом ре-рендере
+  const fetchedForPetId = useRef<number | null>(null);
 
-  useEffect(() => { if (pet) fetchFeed(); }, [pet?.id]);
+  useEffect(() => {
+    if (pet && pet.id !== fetchedForPetId.current) {
+      fetchedForPetId.current = pet.id;
+      fetchFeed();
+    }
+  }, [pet?.id]);
 
   if (!feed.length) return (
     <p style={{ textAlign: "center", color: "#bbb", fontSize: 13, marginTop: 8 }}>
@@ -41,8 +50,9 @@ export function FeedList() {
               background: "#f8f8f8", fontSize: 13, color: "#666",
             }}
           >
+            {/* ИСПРАВЛЕНО: показываем имя пользователя из поля user_name */}
             <span style={{ fontWeight: 600, color: "#444" }}>
-              Пользователь {e.user_id}
+              {e.user_name ?? `Пользователь ${e.user_id}`}
             </span>{" "}
             {ACTION_LABEL[e.action]} питомца
             <span style={{ float: "right", color: "#bbb" }}>

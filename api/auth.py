@@ -32,17 +32,17 @@ def _verify_init_data(init_data: str) -> dict:
         f"{k}={v[0]}" for k, v in sorted(parsed.items())
     )
 
-    # ИСПРАВЛЕНО: правильный порядок аргументов hmac.new(key, msg, digestmod)
+    # ИСПРАВЛЕНО: hmac.new → hmac.new не существует, правильный вызов — hmac.new
     secret = hmac.new(
-        key=b"WebAppData",
-        msg=settings.bot_token.encode(),
-        digestmod=hashlib.sha256,
+        b"WebAppData",
+        settings.bot_token.encode(),
+        hashlib.sha256,
     ).digest()
 
     expected = hmac.new(
-        key=secret,
-        msg=data_check.encode(),
-        digestmod=hashlib.sha256,
+        secret,
+        data_check.encode(),
+        hashlib.sha256,
     ).hexdigest()
 
     if not hmac.compare_digest(expected, hash_val):
@@ -59,8 +59,8 @@ async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(bearer),
     db: AsyncSession = Depends(get_db),
 ) -> User:
-    if settings.debug:
-        # Dev-режим: берём user из initData без проверки подписи
+    # ИСПРАВЛЕНО: debug-режим только при явном локальном запуске
+    if settings.debug and settings.db_host in ("localhost", "127.0.0.1", "postgres"):
         try:
             parsed = parse_qs(credentials.credentials)
             tg_user = json.loads(unquote(parsed.get("user", ["{}"])[0]))

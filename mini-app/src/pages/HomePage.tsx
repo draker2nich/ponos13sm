@@ -1,5 +1,5 @@
 // src/pages/HomePage.tsx
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import { usePetStore } from "../store/usePetStore";
 import { PetAvatar } from "../components/PetAvatar";
 import { StatBar } from "../components/StatBar";
@@ -11,8 +11,11 @@ import { createInvite } from "../api/pets";
 const tg = window.Telegram?.WebApp;
 
 const MOOD_LABELS: Record<string, string> = {
-  happy: "😄 Счастлив", content: "😊 Доволен",
-  sad: "😔 Грустит", hungry: "😋 Голоден", sleepy: "😴 Спит",
+  happy:   "😄 Счастлив",
+  content: "😊 Доволен",
+  sad:     "😔 Грустит",
+  hungry:  "😋 Голоден",
+  sleepy:  "😴 Спит",
 };
 
 function MoodLabel({ mood }: { mood: string }) {
@@ -33,10 +36,10 @@ function PartnerStatus({ owners }: {
     ? Math.floor((Date.now() - new Date(partner.last_active_at).getTime()) / 60000)
     : null;
 
-  const statusText = lastActive === null
-    ? "Ещё не заходил"
-    : lastActive < 5   ? "🟢 Только что был"
-    : lastActive < 60  ? `🟡 ${lastActive} мин назад`
+  const statusText =
+    lastActive === null  ? "Ещё не заходил"
+    : lastActive < 5    ? "🟢 Только что был"
+    : lastActive < 60   ? `🟡 ${lastActive} мин назад`
     : `⚪ ${Math.floor(lastActive / 60)} ч назад`;
 
   return (
@@ -60,24 +63,15 @@ function Loader() {
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  page: {
-    maxWidth: 420, margin: "0 auto", padding: "20px 16px 40px",
-    display: "flex", flexDirection: "column", gap: 16,
-    minHeight: "100vh", background: "#fafafa",
-    fontFamily: "'Inter', system-ui, sans-serif",
-  },
+  page:        { maxWidth: 420, margin: "0 auto", padding: "20px 16px 40px", display: "flex", flexDirection: "column", gap: 16, minHeight: "100vh", background: "#fafafa", fontFamily: "'Inter', system-ui, sans-serif" },
   header:      { display: "flex", justifyContent: "space-between", alignItems: "center" },
   petName:     { margin: 0, fontSize: 22, fontWeight: 700, color: "#333" },
   levelBadge:  { fontSize: 12, color: "#aaa" },
   avatarWrap:  { display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "24px 0" },
   card:        { background: "#fff", borderRadius: 20, padding: "16px 18px", boxShadow: "0 2px 16px #0000000a" },
   actions:     { display: "flex", gap: 10 },
-  inviteBtn: {
-    width: "100%", padding: "14px", borderRadius: 18,
-    border: "2px dashed #c5e8c5", background: "transparent",
-    color: "#5a9e5a", fontWeight: 600, fontSize: 14, cursor: "pointer",
-  },
-  sectionTitle: { margin: "0 0 12px", fontSize: 14, color: "#888", fontWeight: 600 },
+  inviteBtn:   { width: "100%", padding: "14px", borderRadius: 18, border: "2px dashed #c5e8c5", background: "transparent", color: "#5a9e5a", fontWeight: 600, fontSize: 14, cursor: "pointer" },
+  sectionTitle:{ margin: "0 0 12px", fontSize: 14, color: "#888", fontWeight: 600 },
 };
 
 interface Props { petId: number }
@@ -85,11 +79,24 @@ interface Props { petId: number }
 export function HomePage({ petId }: Props) {
   const { pet, fetchPet, loading } = usePetStore();
 
-  useEffect(() => { fetchPet(petId); }, [petId]);
+  const refresh = useCallback(() => fetchPet(petId), [petId]);
+
+  useEffect(() => { refresh(); }, [petId]);
+
+  // Polling каждые 60 секунд
   useEffect(() => {
-    const id = setInterval(() => fetchPet(petId), 30_000);
+    const id = setInterval(refresh, 60_000);
     return () => clearInterval(id);
-  }, [petId]);
+  }, [refresh]);
+
+  // ДОБАВЛЕНО: обновление при возврате в приложение (вкладка снова активна)
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (!document.hidden) refresh();
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [refresh]);
 
   if (loading && !pet) return <Loader />;
   if (!pet) return null;
