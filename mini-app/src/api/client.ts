@@ -2,11 +2,10 @@ import axios from "axios";
 
 const tg = window.Telegram?.WebApp;
 
-// В dev-режиме (vite proxy) используем относительный путь,
-// в проде — абсолютный URL из переменной окружения
-const BASE_URL = import.meta.env.VITE_API_URL ?? "https://demon-and-android.me";
-
-console.log("[API] baseURL:", BASE_URL);
+// Пустой baseURL = запросы идут на тот же домен где открыт фронт.
+// На Heroku фронт и API на одном домене (demon-and-android.me),
+// поэтому /pets/... будет резолвиться в https://demon-and-android.me/pets/...
+const BASE_URL = "";
 
 export const api = axios.create({
   baseURL: BASE_URL,
