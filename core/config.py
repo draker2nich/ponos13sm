@@ -1,17 +1,19 @@
+import re
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     # Telegram
     bot_token: str
-    bot_username: str  # без @, нужен для генерации инвайт-ссылок
+    bot_username: str
 
-    # Database
+    # Database — локально используем отдельные поля, на Heroku придёт DATABASE_URL
+    database_url: str = ""
     db_host: str = "localhost"
     db_port: int = 5432
     db_name: str = "pet_together"
     db_user: str = "postgres"
-    db_password: str
+    db_password: str = ""
 
     # API
     api_host: str = "0.0.0.0"
@@ -23,7 +25,7 @@ class Settings(BaseSettings):
     mini_app_url: str = "http://localhost:5173"
 
     # Pet mechanics
-    hunger_decay_per_hour: float = 8.0    # -8 hunger каждый час
+    hunger_decay_per_hour: float = 8.0
     happiness_decay_per_hour: float = 5.0
     health_decay_per_hour: float = 2.0
 
@@ -42,6 +44,10 @@ class Settings(BaseSettings):
 
     @property
     def db_url(self) -> str:
+        if self.database_url:
+            # Heroku даёт postgres://..., asyncpg нужен postgresql+asyncpg://
+            return re.sub(r"^postgres://", "postgresql+asyncpg://", self.database_url)
+        # Локальная разработка — как раньше
         return (
             f"postgresql+asyncpg://{self.db_user}:{self.db_password}"
             f"@{self.db_host}:{self.db_port}/{self.db_name}"
@@ -52,4 +58,4 @@ class Settings(BaseSettings):
         return f"https://t.me/{self.bot_username}?start=inv_"
 
 
-settings = Settings()   
+settings = Settings()
