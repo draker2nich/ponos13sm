@@ -11,9 +11,9 @@ from api.routers import pets, actions, invites
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # ИСПРАВЛЕНО: init_db только в debug/dev режиме, в проде — Alembic
-    if settings.debug:
-        await init_db()
+    # init_db безопасен — использует CREATE TABLE IF NOT EXISTS
+    # После настройки Alembic заменить на: if settings.debug: await init_db()
+    await init_db()
     yield
 
 
