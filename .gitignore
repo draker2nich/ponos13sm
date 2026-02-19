@@ -1,12 +1,3 @@
 .env
-Dockerfile
 *__pycache__/
-alembic/
-api/
-bot/
-core/
-docker-compose.yml
-mini-app/
-models.py
-requirements.txt
-scheduler/
+*node_modules
