@@ -3,7 +3,7 @@ import axios from "axios";
 const tg = window.Telegram?.WebApp;
 
 export const api = axios.create({
-  baseURL: "http://localhost:8000",
+  baseURL: "https://demon-and-android.me",
   headers: { "Content-Type": "application/json" },
 });
 
