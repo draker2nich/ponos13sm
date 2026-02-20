@@ -40,12 +40,12 @@ export function PetSVG({ mood, petType, evolution = 1, size = 160, isReacting = 
       }}
     >
       <img
-        src={`/pets/${petType}.svg`}
+        src={`/sprites/${petType}.svg`}
         width={sz}
         height={sz}
         style={{ display: "block" }}
       />
-      {evolution >= 5 && (
+      {evolution >= 5 && (  
         <div style={{
           position: "absolute", top: -8, left: "50%",
           transform: "translateX(-50%)",

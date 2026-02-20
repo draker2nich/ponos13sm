@@ -50,19 +50,13 @@ async def health():
 DIST = Path(__file__).parent.parent / "mini-app" / "dist"
 
 if DIST.exists():
-    # Монтируем /assets и /pets как статику
     if (DIST / "assets").exists():
         app.mount("/assets", StaticFiles(directory=DIST / "assets"), name="assets")
 
-    if (DIST / "pets").exists():
-        app.mount("/pets-files", StaticFiles(directory=DIST / "pets"), name="pets-files")
+    # Переименуй папку public/pets → public/sprites (или любое другое имя)
+    if (DIST / "sprites").exists():
+        app.mount("/sprites", StaticFiles(directory=DIST / "sprites"), name="sprites")
 
-    # SPA fallback — отдаём index.html для всех остальных путей
     @app.get("/{full_path:path}")
     async def spa_fallback(request: Request, full_path: str):
-        # Если запрос к /pets/... — отдаём файл напрямую
-        if full_path.startswith("pets/"):
-            file = DIST / full_path
-            if file.exists():
-                return FileResponse(file)
         return FileResponse(DIST / "index.html")
