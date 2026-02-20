@@ -35,6 +35,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ─── Статика монтируется ДО роутеров чтобы /pets/... не перехватывался API ───
+DIST = Path(__file__).parent.parent / "mini-app" / "dist"
+
+if DIST.exists():
+    if (DIST / "assets").exists():
+        app.mount("/assets", StaticFiles(directory=DIST / "assets"), name="assets")
+
+    if (DIST / "pets").exists():
+        app.mount("/pets", StaticFiles(directory=DIST / "pets"), name="pets-static")
+
 app.include_router(pets.router)
 app.include_router(actions.router)
 app.include_router(invites.router)
@@ -45,16 +55,7 @@ async def health():
     return {"status": "ok"}
 
 
-# ─── Раздача собранного React фронта ─────────────────────────────────────────
-DIST = Path(__file__).parent.parent / "mini-app" / "dist"
-
 if DIST.exists():
-    if (DIST / "assets").exists():
-        app.mount("/assets", StaticFiles(directory=DIST / "assets"), name="assets")
-
-    if (DIST / "pets").exists():
-        app.mount("/pets", StaticFiles(directory=DIST / "pets"), name="pets")
-
     @app.get("/{full_path:path}")
     async def spa_fallback(full_path: str):
         return FileResponse(DIST / "index.html")
