@@ -62,7 +62,6 @@ async def _assert_owner(pet: Pet, user: User, db: AsyncSession) -> None:
 
 
 async def _build_response(pet: Pet, user: User, db: AsyncSession) -> PetResponse:
-    # Владельцы
     ownerships = (await db.scalars(
         select(PetOwnership).where(PetOwnership.pet_id == pet.id)
     )).all()
@@ -75,7 +74,6 @@ async def _build_response(pet: Pet, user: User, db: AsyncSession) -> PetResponse
         for o in ownerships
     ]
 
-    # ИСПРАВЛЕНО: один запрос вместо N+1 (по одному на каждый ActionType)
     cooldown_rows = (await db.scalars(
         select(ActionCooldown).where(
             ActionCooldown.user_id == user.id,
@@ -116,6 +114,25 @@ async def _build_response(pet: Pet, user: User, db: AsyncSession) -> PetResponse
 
 
 # ─── Endpoints ────────────────────────────────────────────────────────────────
+
+@router.get("/my", response_model=list[PetResponse])
+async def get_my_pets(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Вернуть всех питомцев текущего пользователя."""
+    ownerships = (await db.scalars(
+        select(PetOwnership).where(PetOwnership.user_id == user.id)
+    )).all()
+
+    pets = []
+    for own in ownerships:
+        pet = await db.scalar(select(Pet).where(Pet.id == own.pet_id))
+        if pet:
+            pets.append(await _build_response(pet, user, db))
+
+    return pets
+
 
 @router.post("", status_code=status.HTTP_201_CREATED, response_model=PetResponse)
 async def create_pet(

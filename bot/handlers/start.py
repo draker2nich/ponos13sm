@@ -23,15 +23,35 @@ async def _get_or_create_user(tg_user) -> None:
             await db.commit()
 
 
+async def _get_user_pet_id(user_id: int) -> int | None:
+    """Вернуть pet_id первого питомца пользователя, или None."""
+    async with AsyncSessionLocal() as db:
+        own = await db.scalar(
+            select(PetOwnership).where(PetOwnership.user_id == user_id)
+        )
+        return own.pet_id if own else None
+
+
 @router.message(CommandStart(deep_link=False))
 async def cmd_start(msg: Message) -> None:
     await _get_or_create_user(msg.from_user)
-    await msg.answer(
-        f"Привет, <b>{msg.from_user.first_name}</b>! 🐾\n\n"
-        "Здесь ты можешь завести виртуального питомца вместе с другом.\n\n"
-        "Нажми кнопку ниже чтобы начать 👇",
-        reply_markup=open_app_keyboard(0),
-    )
+
+    # Ищем существующего питомца — если есть, кидаем прямо к нему
+    pet_id = await _get_user_pet_id(msg.from_user.id)
+
+    if pet_id:
+        await msg.answer(
+            f"С возвращением, <b>{msg.from_user.first_name}</b>! 🐾\n\n"
+            "Твой питомец скучал по тебе. Открывай!",
+            reply_markup=open_app_keyboard(pet_id),
+        )
+    else:
+        await msg.answer(
+            f"Привет, <b>{msg.from_user.first_name}</b>! 🐾\n\n"
+            "Здесь ты можешь завести виртуального питомца вместе с другом.\n\n"
+            "Нажми кнопку ниже чтобы начать 👇",
+            reply_markup=open_app_keyboard(0),
+        )
 
 
 @router.message(CommandStart(deep_link=True, deep_link_encoded=False))
@@ -40,6 +60,7 @@ async def cmd_start_invite(msg: Message, command: CommandObject) -> None:
 
     args = command.args or ""
     if not args.startswith("inv_"):
+        # Не инвайт-ссылка — обычный /start
         await cmd_start(msg)
         return
 
@@ -96,7 +117,6 @@ async def copy_invite_link(call: CallbackQuery) -> None:
 
 @router.callback_query(F.data == "dev_app_stub")
 async def dev_app_stub(call: CallbackQuery) -> None:
-    """Заглушка для dev-режима без туннеля."""
     await call.answer(
         "🛠 Mini App работает локально.\n"
         "Открой http://localhost:5173 в браузере для разработки.\n\n"

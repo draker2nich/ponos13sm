@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { HomePage } from "./pages/HomePage";
 import { CreatePetPage } from "./pages/CreatePetPage";
-import { acceptInvite } from "./api/pets";
+import { acceptInvite, getMyPets } from "./api/pets";
 import "./index.css";
 
 const tg = window.Telegram?.WebApp;
@@ -42,16 +42,33 @@ export default function App() {
 
     const init = async () => {
       try {
+        // 1. Если пришли по инвайту — принять его
         if (invToken) {
           try {
             const res = await acceptInvite(invToken);
             setPetId(res.pet_id);
+            return;
           } catch {
-            if (urlPetId && Number(urlPetId) > 0) setPetId(Number(urlPetId));
+            // инвайт невалидный — идём дальше
           }
-        } else if (urlPetId && Number(urlPetId) > 0) {
-          setPetId(Number(urlPetId));
         }
+
+        // 2. Если pet_id явно передан в URL — используем его
+        if (urlPetId && Number(urlPetId) > 0) {
+          setPetId(Number(urlPetId));
+          return;
+        }
+
+        // 3. Ищем существующих питомцев пользователя
+        //    (срабатывает при повторном /start без параметров)
+        const myPets = await getMyPets();
+        if (myPets.length > 0) {
+          setPetId(myPets[0].id);
+          return;
+        }
+
+        // 4. Питомца нет — показываем создание
+        setPetId(null);
       } catch {
         setError("Что-то пошло не так. Попробуй перезапустить.");
       } finally {

@@ -1,6 +1,9 @@
 import { api } from "./client";
 import type { Pet, FeedEntry, InviteResponse, ActionType } from "./types";
 
+export const getMyPets = () =>
+  api.get<Pet[]>("/pets/my").then((r) => r.data);
+
 export const getPet = (id: number) =>
   api.get<Pet>(`/pets/${id}`).then((r) => r.data);
 
