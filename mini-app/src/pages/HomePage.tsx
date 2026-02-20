@@ -302,7 +302,7 @@ export function HomePage({ petId }: Props) {
     }
   };
 
-  const petSize = "clamp(140px,42vw,200px)";
+  const petSize = "clamp(140px,42vw,200px)" as const;
   const sleepVal = pet.mood === "sleepy" ? 100 : 55;
 
   return (
@@ -398,15 +398,15 @@ export function HomePage({ petId }: Props) {
               petType={pet.pet_type}
               evolution={evo}
               isReacting={floatShow}
-              size={parseInt(petSize)} // fallback — компонент принимает number
+              size={petSize}
             />
+            {/* тень внутри DraggablePet — следует вместе с питомцем */}
+            <div style={{
+              width: "clamp(55px,18vw,85px)", height: 9,
+              background: "rgba(0,0,0,0.38)", filter: "blur(7px)",
+              borderRadius: "50%", margin: "-6px auto 0", pointerEvents: "none",
+            }} />
           </DraggablePet>
-          {/* shadow — не драгается */}
-          <div style={{
-            width: "clamp(60px,20vw,90px)", height: 10,
-            background: "rgba(0,0,0,0.4)", filter: "blur(7px)",
-            borderRadius: "50%", margin: "-8px auto 0", pointerEvents: "none",
-          }} />
         </div>
 
         {/* Partner tag */}
