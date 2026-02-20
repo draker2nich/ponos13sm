@@ -47,11 +47,13 @@ async def health():
 
 # ─── Раздача собранного React фронта ─────────────────────────────────────────
 DIST = Path(__file__).parent.parent / "mini-app" / "dist"
-# На Heroku путь тот же — mini-app/dist создаётся buildpack'ом
 
 if DIST.exists():
-    app.mount("/assets", StaticFiles(directory=DIST / "assets"), name="assets")
-    app.mount("/pets", StaticFiles(directory=DIST / "pets"), name="pets")
+    if (DIST / "assets").exists():
+        app.mount("/assets", StaticFiles(directory=DIST / "assets"), name="assets")
+
+    if (DIST / "pets").exists():
+        app.mount("/pets", StaticFiles(directory=DIST / "pets"), name="pets")
 
     @app.get("/{full_path:path}")
     async def spa_fallback(full_path: str):
