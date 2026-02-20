@@ -51,6 +51,7 @@ DIST = Path(__file__).parent.parent / "mini-app" / "dist"
 
 if DIST.exists():
     app.mount("/assets", StaticFiles(directory=DIST / "assets"), name="assets")
+    app.mount("/pets", StaticFiles(directory=DIST / "pets"), name="pets")
 
     @app.get("/{full_path:path}")
     async def spa_fallback(full_path: str):
