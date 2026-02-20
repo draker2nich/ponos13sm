@@ -2,7 +2,7 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -35,16 +35,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ─── Статика монтируется ДО роутеров чтобы /pets/... не перехватывался API ───
-DIST = Path(__file__).parent.parent / "mini-app" / "dist"
-
-if DIST.exists():
-    if (DIST / "assets").exists():
-        app.mount("/assets", StaticFiles(directory=DIST / "assets"), name="assets")
-
-    if (DIST / "pets").exists():
-        app.mount("/pets", StaticFiles(directory=DIST / "pets"), name="pets-static")
-
+# ─── API роутеры ──────────────────────────────────────────────────────────────
 app.include_router(pets.router)
 app.include_router(actions.router)
 app.include_router(invites.router)
@@ -55,7 +46,23 @@ async def health():
     return {"status": "ok"}
 
 
+# ─── Статика и SPA ───────────────────────────────────────────────────────────
+DIST = Path(__file__).parent.parent / "mini-app" / "dist"
+
 if DIST.exists():
+    # Монтируем /assets и /pets как статику
+    if (DIST / "assets").exists():
+        app.mount("/assets", StaticFiles(directory=DIST / "assets"), name="assets")
+
+    if (DIST / "pets").exists():
+        app.mount("/pets-files", StaticFiles(directory=DIST / "pets"), name="pets-files")
+
+    # SPA fallback — отдаём index.html для всех остальных путей
     @app.get("/{full_path:path}")
-    async def spa_fallback(full_path: str):
+    async def spa_fallback(request: Request, full_path: str):
+        # Если запрос к /pets/... — отдаём файл напрямую
+        if full_path.startswith("pets/"):
+            file = DIST / full_path
+            if file.exists():
+                return FileResponse(file)
         return FileResponse(DIST / "index.html")
