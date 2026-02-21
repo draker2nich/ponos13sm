@@ -66,17 +66,15 @@ function fmtCd(iso: string | null): string {
 const cdActive = (iso: string | null) => !!iso && new Date(iso).getTime() > Date.now();
 const toDeg    = (v: number) => Math.round(Math.max(0, Math.min(100, v)) / 100 * 360);
 
-// ─── Layout constants ─────────────────────────────────────────────────────────
-const PILL_H    = 50;
-const RING_SIZE = 34;
-const NAV_PAD   = 8;
-const BTN_W     = PILL_H;
-const BTN_GAP   = 5;
-const VISIBLE   = 4;
+const PILL_H     = 50;
+const RING_SIZE  = 34;
+const NAV_PAD    = 8;
+const BTN_W      = PILL_H;
+const BTN_GAP    = 5;
+const VISIBLE    = 4;
 const VIEWPORT_W = VISIBLE * BTN_W + (VISIBLE - 1) * BTN_GAP;
-const WIDGET_H  = NAV_PAD * 2 + BTN_W;
-// Glove circle: same height as carousel pill
-const GLOVE_SIZE = WIDGET_H;
+const WIDGET_H   = NAV_PAD * 2 + BTN_W;  // total pill height
+const GLOVE_SIZE = WIDGET_H;              // circle same height as pill
 
 // ─── StatusRing ───────────────────────────────────────────────────────────────
 function StatusRing({ value, icon }: { value: number; icon: React.ReactNode }) {
@@ -87,23 +85,20 @@ function StatusRing({ value, icon }: { value: number; icon: React.ReactNode }) {
   const dash = deg / 360 * circ;
   const col  = low ? "rgba(220,60,60,0.80)" : "rgba(80,80,100,0.50)";
   return (
-    <div style={{ position: "relative", width: RING_SIZE, height: RING_SIZE, flexShrink: 0 }}>
-      <svg width={RING_SIZE} height={RING_SIZE} style={{ position: "absolute", inset: 0, transform: "rotate(-90deg)" }}>
+    <div style={{ position:"relative", width:RING_SIZE, height:RING_SIZE, flexShrink:0 }}>
+      <svg width={RING_SIZE} height={RING_SIZE} style={{ position:"absolute", inset:0, transform:"rotate(-90deg)" }}>
         <circle cx={RING_SIZE/2} cy={RING_SIZE/2} r={R} fill="none" stroke="rgba(0,0,0,0.06)" strokeWidth={2}/>
         <circle cx={RING_SIZE/2} cy={RING_SIZE/2} r={R} fill="none" stroke={col} strokeWidth={2}
           strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"/>
       </svg>
-      <div style={{
-        position: "absolute", inset: 5, borderRadius: "50%",
-        background: "rgba(255,255,255,0.5)",
-        display: "flex", alignItems: "center", justifyContent: "center", padding: 5,
-        color: low ? "rgba(200,50,50,0.85)" : "rgba(60,60,80,0.55)",
-      }}>{icon}</div>
+      <div style={{ position:"absolute", inset:5, borderRadius:"50%", background:"rgba(255,255,255,0.5)",
+        display:"flex", alignItems:"center", justifyContent:"center", padding:5,
+        color:low?"rgba(200,50,50,0.85)":"rgba(60,60,80,0.55)" }}>{icon}</div>
     </div>
   );
 }
 
-// ─── Carousel (drag-scroll) ───────────────────────────────────────────────────
+// ─── Carousel ─────────────────────────────────────────────────────────────────
 function Carousel({ children }: { children: React.ReactNode }) {
   const ref  = useRef<HTMLDivElement>(null);
   const down = useRef(false);
@@ -115,23 +110,24 @@ function Carousel({ children }: { children: React.ReactNode }) {
       onMouseUp={()   => { down.current=false; if(ref.current) ref.current.style.cursor="grab"; }}
       onMouseLeave={() => { down.current=false; if(ref.current) ref.current.style.cursor="grab"; }}
       onMouseMove={e  => { if(!down.current) return; ref.current!.scrollLeft=sl.current-(e.pageX-ref.current!.offsetLeft-sx.current)*1.2; }}
-      style={{ display:"flex", gap:BTN_GAP, width:VIEWPORT_W, overflowX:"auto", scrollbarWidth:"none", WebkitOverflowScrolling:"touch", cursor:"grab", userSelect:"none" }}
+      style={{ display:"flex", gap:BTN_GAP, width:VIEWPORT_W, overflowX:"auto", scrollbarWidth:"none",
+        WebkitOverflowScrolling:"touch", cursor:"grab", userSelect:"none" }}
     >{children}</div>
   );
 }
 
-// ─── CarouselBtn ──────────────────────────────────────────────────────────────
 type TabId = ActionType | "shop" | "sleep" | "partner" | "settings";
 
 function CarouselBtn({ icon, active, disabled, cdLabel, onClick }: {
   icon: React.ReactNode; active?: boolean; disabled?: boolean; cdLabel?: string; onClick?: () => void;
 }) {
   return (
-    <motion.button whileTap={disabled ? {} : { scale: 0.84 }} onClick={disabled ? undefined : onClick}
+    <motion.button whileTap={disabled ? {} : { scale:0.84 }} onClick={disabled ? undefined : onClick}
       style={{
         flexShrink:0, width:BTN_W, height:BTN_W, borderRadius:"50%",
         ...(active
-          ? { background:"rgba(255,255,255,0.82)", backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)", border:"1.5px solid rgba(255,255,255,0.95)", boxShadow:"0 4px 14px 2px rgba(100,100,150,0.18), inset 0 1px 0 rgba(255,255,255,1)" }
+          ? { background:"rgba(255,255,255,0.82)", backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)",
+              border:"1.5px solid rgba(255,255,255,0.95)", boxShadow:"0 4px 14px 2px rgba(100,100,150,0.18), inset 0 1px 0 rgba(255,255,255,1)" }
           : { background:"rgba(255,255,255,0.30)", border:"1px solid rgba(255,255,255,0.50)", boxShadow:"0 2px 8px 1px rgba(100,100,150,0.07)" }),
         cursor:disabled?"not-allowed":"pointer",
         display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
@@ -139,14 +135,13 @@ function CarouselBtn({ icon, active, disabled, cdLabel, onClick }: {
       }}
     >
       <div style={{ width:22, height:22, display:"flex", alignItems:"center", justifyContent:"center",
-        color: disabled?"rgba(0,0,0,0.18)": active?"rgba(0,0,0,0.68)":"rgba(0,0,0,0.38)",
+        color:disabled?"rgba(0,0,0,0.18)":active?"rgba(0,0,0,0.68)":"rgba(0,0,0,0.38)",
         filter:disabled?"opacity(0.35)":"none", transition:"color 0.15s" }}>{icon}</div>
       {disabled && cdLabel && <span style={{ fontSize:7, fontWeight:800, color:"rgba(0,0,0,0.30)", lineHeight:1 }}>{cdLabel}</span>}
     </motion.button>
   );
 }
 
-// ─── FloatAnim ────────────────────────────────────────────────────────────────
 function FloatAnim({ show, text }: { show: boolean; text: string }) {
   return (
     <AnimatePresence>
@@ -160,24 +155,21 @@ function FloatAnim({ show, text }: { show: boolean; text: string }) {
   );
 }
 
-// ─── Types ────────────────────────────────────────────────────────────────────
 interface HeartFx { id: number; x: number; y: number; angle: number; dist: number }
 
 // ─── DraggablePet ─────────────────────────────────────────────────────────────
-interface DraggablePetProps {
+function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, onScoreInc }: {
   children: React.ReactNode;
   constraintsRef: React.RefObject<HTMLElement | null>;
   isStroking: boolean;
   onHeartAt: (x: number, y: number) => void;
   onScoreInc: () => void;
-}
-
-function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, onScoreInc }: DraggablePetProps) {
+}) {
   const controls = useDragControls();
   const tickRef  = useRef<ReturnType<typeof setInterval> | null>(null);
   const petRef   = useRef<HTMLDivElement>(null);
 
-  const getPetCenter = useCallback((): { x: number; y: number } => {
+  const getPetCenter = useCallback(() => {
     const el = petRef.current;
     if (!el) return { x:0, y:0 };
     const r = el.getBoundingClientRect();
@@ -185,22 +177,21 @@ function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, onScore
   }, []);
 
   useEffect(() => {
+    // Hearts spawn ONLY when isStroking is true
     if (isStroking) {
       if (!tickRef.current) {
         tickRef.current = setInterval(() => {
           onScoreInc();
           const c = getPetCenter();
           const angle = Math.random() * Math.PI * 2;
-          const dist  = 30 + Math.random() * 40;
-          onHeartAt(c.x + Math.cos(angle) * dist, c.y + Math.sin(angle) * dist);
+          onHeartAt(c.x + Math.cos(angle) * 50, c.y + Math.sin(angle) * 50);
         }, 140);
       }
     } else {
       if (tickRef.current) { clearInterval(tickRef.current); tickRef.current = null; }
     }
+    return () => { if (tickRef.current) { clearInterval(tickRef.current); tickRef.current = null; } };
   }, [isStroking, getPetCenter, onHeartAt, onScoreInc]);
-
-  useEffect(() => () => { if (tickRef.current) clearInterval(tickRef.current); }, []);
 
   return (
     <motion.div drag dragControls={controls} dragConstraints={constraintsRef}
@@ -216,81 +207,74 @@ function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, onScore
 }
 
 // ─── PettingGlove ─────────────────────────────────────────────────────────────
-interface GloveState {
-  isDragging: boolean;
-  pos: { x: number; y: number } | null;
-  isStroking: boolean;
-}
-
-interface PettingGloveProps {
+// The glove circle is always visible when showGlove=true.
+// On mousedown/touchstart, a "flying clone" appears at the circle center and follows the pointer.
+// isStroking = dragging + pointer over pet + pointer is moving.
+function PettingGlove({ petRef, onStroking }: {
   petRef: React.RefObject<HTMLDivElement | null>;
-  onState: (s: GloveState) => void;
-}
-
-function PettingGlove({ petRef, onState }: PettingGloveProps) {
-  const circleRef  = useRef<HTMLDivElement>(null);
-  const dragging   = useRef(false);
-  const posRef     = useRef<{ x: number; y: number } | null>(null);
-  const prevPosRef = useRef<{ x: number; y: number } | null>(null);
-  // flyPos: current pointer position for flying glove
-  const [flyPos, setFlyPos] = useState<{ x: number; y: number } | null>(null);
+  onStroking: (v: boolean) => void;
+}) {
+  const circleRef     = useRef<HTMLDivElement>(null);
+  const draggingRef   = useRef(false);
+  const prevXY        = useRef<{ x: number; y: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  // circleCenter: captured once when drag starts, stays fixed
-  const circleCenterRef = useRef<{ x: number; y: number } | null>(null);
+  // flyPos: current pointer world position
+  const [flyPos,  setFlyPos]  = useState<{ x: number; y: number } | null>(null);
+  // origin: position of circle center at the moment drag started
+  const [origin,  setOrigin]  = useState<{ x: number; y: number } | null>(null);
 
-  const isOverPet = useCallback((cx: number, cy: number): boolean => {
+  const isOverPet = useCallback((cx: number, cy: number) => {
     const el = petRef.current;
     if (!el) return false;
     const r = el.getBoundingClientRect();
     return cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom;
   }, [petRef]);
 
-  const isMoving = useCallback((cx: number, cy: number): boolean => {
-    const prev = prevPosRef.current;
-    if (!prev) return false;
-    const dx = cx - prev.x, dy = cy - prev.y;
-    return Math.sqrt(dx*dx + dy*dy) > 1.5;
-  }, []);
-
-  const startDrag = useCallback((startX: number, startY: number) => {
-    // Capture the circle center at drag start — the flying glove originates from here
+  const getCircleCenter = () => {
     const el = circleRef.current;
-    if (el) {
-      const r = el.getBoundingClientRect();
-      circleCenterRef.current = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-    }
-    dragging.current = true;
-    posRef.current = { x: startX, y: startY };
-    prevPosRef.current = null;
-    setFlyPos({ x: startX, y: startY });
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  };
+
+  const startDrag = useCallback(() => {
+    const cc = getCircleCenter();
+    if (!cc) return;
+    draggingRef.current = true;
+    prevXY.current = null;
+    setOrigin(cc);
+    setFlyPos(cc);
     setIsDragging(true);
-    onState({ isDragging: true, pos: { x: startX, y: startY }, isStroking: false });
-  }, [onState]);
+    onStroking(false);
+  }, [onStroking]);
 
   const moveDrag = useCallback((cx: number, cy: number) => {
-    if (!dragging.current) return;
-    const stroking = isOverPet(cx, cy) && isMoving(cx, cy);
-    prevPosRef.current = posRef.current;
-    posRef.current = { x: cx, y: cy };
+    if (!draggingRef.current) return;
+    // Check movement (> 2px from prev position)
+    const moving = prevXY.current
+      ? Math.hypot(cx - prevXY.current.x, cy - prevXY.current.y) > 2
+      : false;
+    prevXY.current = { x: cx, y: cy };
     setFlyPos({ x: cx, y: cy });
-    onState({ isDragging: true, pos: { x: cx, y: cy }, isStroking: stroking });
-  }, [onState, isOverPet, isMoving]);
+    // Stroking = over pet AND moving
+    onStroking(isOverPet(cx, cy) && moving);
+  }, [isOverPet, onStroking]);
 
   const stopDrag = useCallback(() => {
-    dragging.current = false;
-    posRef.current = null;
-    prevPosRef.current = null;
-    circleCenterRef.current = null;
-    setFlyPos(null);
+    draggingRef.current = false;
+    prevXY.current = null;
     setIsDragging(false);
-    onState({ isDragging: false, pos: null, isStroking: false });
-  }, [onState]);
+    setFlyPos(null);
+    setOrigin(null);
+    onStroking(false);
+  }, [onStroking]);
 
+  // Global up/cancel listeners
   useEffect(() => {
-    const up = () => { if (dragging.current) stopDrag(); };
-    window.addEventListener("mouseup",     up);
-    window.addEventListener("touchend",    up);
-    window.addEventListener("touchcancel", up);
+    const up = () => { if (draggingRef.current) stopDrag(); };
+    window.addEventListener("mouseup",      up);
+    window.addEventListener("touchend",     up);
+    window.addEventListener("touchcancel",  up);
     return () => {
       window.removeEventListener("mouseup",     up);
       window.removeEventListener("touchend",    up);
@@ -298,64 +282,51 @@ function PettingGlove({ petRef, onState }: PettingGloveProps) {
     };
   }, [stopDrag]);
 
-  const cc = circleCenterRef.current;
-
   return (
     <>
-      {/* ── Static circle — always visible when showGlove is true ── */}
+      {/* ── Static glove circle ── always visible, dims slightly while flying clone is active */}
       <div
         ref={circleRef}
-        onMouseDown={e => {
-          e.preventDefault();
-          const el = circleRef.current!;
-          const r  = el.getBoundingClientRect();
-          // Start drag from the center of the circle
-          startDrag(r.left + r.width / 2, r.top + r.height / 2);
-        }}
-        onTouchStart={e => {
-          e.preventDefault();
-          const el = circleRef.current!;
-          const r  = el.getBoundingClientRect();
-          startDrag(r.left + r.width / 2, r.top + r.height / 2);
-        }}
+        onMouseDown={e => { e.preventDefault(); startDrag(); }}
+        onTouchStart={e => { e.preventDefault(); startDrag(); }}
         style={{
-          width: GLOVE_SIZE, height: GLOVE_SIZE, borderRadius: "50%", flexShrink: 0,
+          width:GLOVE_SIZE, height:GLOVE_SIZE, borderRadius:"50%", flexShrink:0,
           ...G.carousel,
-          display: "flex", alignItems: "center", justifyContent: "center",
+          display:"flex", alignItems:"center", justifyContent:"center",
           cursor: isDragging ? "grabbing" : "grab",
-          userSelect: "none", touchAction: "none",
+          userSelect:"none", touchAction:"none",
         }}
       >
-        {/* Glove icon always visible; dims when flying clone is out */}
-        <img src="/sprites/glove.svg" draggable={false}
+        <img
+          src="/sprites/glove.svg"
+          draggable={false}
           style={{
-            width: 64, height: 64, objectFit: "contain", pointerEvents: "none",
-            opacity: isDragging ? 0.35 : 1,
+            width:32, height:32, objectFit:"contain", pointerEvents:"none",
+            // Always show glove; just dim it slightly when the clone is flying
+            opacity: isDragging ? 0.4 : 1,
             transition: "opacity 0.15s",
           }}
         />
       </div>
 
-      {/* ── Flying glove — appears at circle center, follows pointer ── */}
-      {isDragging && cc && (
+      {/* ── Flying glove clone ── only rendered while dragging */}
+      {isDragging && origin && (
+        // Full-screen transparent overlay that captures mouse/touch move events
         <div
           onMouseMove={e  => moveDrag(e.clientX, e.clientY)}
           onTouchMove={e  => { e.preventDefault(); const t = e.touches[0]; moveDrag(t.clientX, t.clientY); }}
-          style={{
-            position: "fixed", inset: 0, zIndex: 999,
-            cursor: "grabbing", touchAction: "none", pointerEvents: "all",
-          }}
+          style={{ position:"fixed", inset:0, zIndex:999, cursor:"grabbing", touchAction:"none", pointerEvents:"all" }}
         >
           <motion.div
-            // Start exactly at the circle centre so there's no teleport
-            initial={{ x: cc.x - 24, y: cc.y - 24 }}
-            animate={{ x: (flyPos?.x ?? cc.x) - 24, y: (flyPos?.y ?? cc.y) - 24 }}
-            transition={{ type: "spring", stiffness: 700, damping: 32, mass: 0.35 }}
-            style={{ position: "absolute", top: 0, left: 0, width: 48, height: 48, pointerEvents: "none" }}
+            // Always start at the circle center — no teleport
+            initial={{ x: origin.x - 24, y: origin.y - 24 }}
+            animate={{ x: (flyPos?.x ?? origin.x) - 24, y: (flyPos?.y ?? origin.y) - 24 }}
+            transition={{ type:"spring", stiffness:700, damping:32, mass:0.35 }}
+            style={{ position:"absolute", top:0, left:0, width:48, height:48, pointerEvents:"none" }}
           >
             <img src="/sprites/glove.svg" draggable={false}
-              style={{ width: 48, height: 48, objectFit: "contain",
-                filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.14))" }}
+              style={{ width:48, height:48, objectFit:"contain",
+                filter:"drop-shadow(0 4px 12px rgba(0,0,0,0.14))" }}
             />
           </motion.div>
         </div>
@@ -364,7 +335,7 @@ function PettingGlove({ petRef, onState }: PettingGloveProps) {
   );
 }
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
+// ─── HomePage ─────────────────────────────────────────────────────────────────
 interface Props { petId: number }
 
 export function HomePage({ petId }: Props) {
@@ -373,11 +344,13 @@ export function HomePage({ petId }: Props) {
   const [floatText, setFloatText] = useState("");
   const [floatShow, setFloatShow] = useState(false);
   const [isStroking, setIsStroking] = useState(false);
-  const [hearts, setHearts]         = useState<HeartFx[]>([]);
+  const [hearts,     setHearts]     = useState<HeartFx[]>([]);
   const nextHeart = useRef(0);
 
   const mainRef   = useRef<HTMLDivElement>(null);
   const petDomRef = useRef<HTMLDivElement>(null);
+  // Ref to the carousel pill DOM node — used to place the glove circle absolutely
+  const pillRef   = useRef<HTMLDivElement>(null);
 
   const refresh = useCallback(() => fetchPet(petId), [petId, fetchPet]);
   useEffect(() => { refresh(); }, [petId]);
@@ -388,9 +361,7 @@ export function HomePage({ petId }: Props) {
     return () => document.removeEventListener("visibilitychange", h);
   }, [refresh]);
 
-  const handleGloveState = useCallback((s: GloveState) => {
-    setIsStroking(s.isStroking);
-  }, []);
+  const handleStroking = useCallback((v: boolean) => setIsStroking(v), []);
 
   const spawnHeart = useCallback((x: number, y: number) => {
     const id    = nextHeart.current++;
@@ -476,18 +447,22 @@ export function HomePage({ petId }: Props) {
         display:"flex", alignItems:"center", gap:8,
       }}>
         <div style={{ display:"flex", alignItems:"center", gap:7, ...G.heavy, borderRadius:999, height:PILL_H, padding:"0 12px 0 7px", flexShrink:0 }}>
-          <div style={{ width:RING_SIZE, height:RING_SIZE, borderRadius:"50%", flexShrink:0, background:"rgba(255,255,255,0.55)", display:"flex", alignItems:"center", justifyContent:"center", padding:6, color:"rgba(0,0,0,0.42)" }}>{IC.petIcon}</div>
+          <div style={{ width:RING_SIZE, height:RING_SIZE, borderRadius:"50%", flexShrink:0, background:"rgba(255,255,255,0.55)",
+            display:"flex", alignItems:"center", justifyContent:"center", padding:6, color:"rgba(0,0,0,0.42)" }}>{IC.petIcon}</div>
           <div style={{ display:"flex", flexDirection:"column", minWidth:0 }}>
-            <div style={{ fontSize:"clamp(11px,3vw,13px)", fontWeight:700, color:"rgba(0,0,0,0.70)", lineHeight:1.2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:"clamp(60px,18vw,110px)" }}>{pet.name}</div>
+            <div style={{ fontSize:"clamp(11px,3vw,13px)", fontWeight:700, color:"rgba(0,0,0,0.70)", lineHeight:1.2,
+              overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:"clamp(60px,18vw,110px)" }}>{pet.name}</div>
             <div style={{ display:"flex", alignItems:"center", gap:4, marginTop:2 }}>
               <span style={{ fontSize:9, fontWeight:700, color:"rgba(0,0,0,0.28)", letterSpacing:"0.06em" }}>LV.{pet.level}</span>
               <div style={{ width:"clamp(24px,7vw,44px)", height:2.5, background:"rgba(0,0,0,0.08)", borderRadius:2, overflow:"hidden" }}>
-                <motion.div animate={{ width:`${xpPct}%` }} transition={{ duration:0.6 }} style={{ height:"100%", background:"rgba(0,0,0,0.32)", borderRadius:2 }}/>
+                <motion.div animate={{ width:`${xpPct}%` }} transition={{ duration:0.6 }}
+                  style={{ height:"100%", background:"rgba(0,0,0,0.32)", borderRadius:2 }}/>
               </div>
             </div>
           </div>
           {pet.streak > 0 && (
-            <div style={{ display:"flex", alignItems:"center", gap:3, background:"rgba(255,255,255,0.40)", border:"1px solid rgba(255,255,255,0.60)", borderRadius:999, padding:"3px 8px", marginLeft:1 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:3, background:"rgba(255,255,255,0.40)",
+              border:"1px solid rgba(255,255,255,0.60)", borderRadius:999, padding:"3px 8px", marginLeft:1 }}>
               <div style={{ width:11, height:11, color:"rgba(220,80,30,0.80)" }}>{IC.fire}</div>
               <span style={{ fontSize:11, fontWeight:800, color:"rgba(180,60,20,0.80)" }}>{pet.streak}</span>
             </div>
@@ -503,7 +478,8 @@ export function HomePage({ petId }: Props) {
       </header>
 
       {/* ── PET AREA ── */}
-      <main ref={mainRef} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", position:"relative", overflow:"hidden", zIndex:5 }}>
+      <main ref={mainRef} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center",
+        justifyContent:"center", position:"relative", overflow:"hidden", zIndex:5 }}>
         <div style={{ position:"relative" }}>
           <FloatAnim show={floatShow} text={floatText}/>
           <div ref={petDomRef}>
@@ -513,20 +489,23 @@ export function HomePage({ petId }: Props) {
               onHeartAt={spawnHeart}
               onScoreInc={incPetScore}
             >
-              <PetSVG mood={pet.mood} petType={pet.pet_type} evolution={evo} isReacting={floatShow} size="clamp(140px,38vw,200px)"/>
-              <div style={{ width:"clamp(44px,12vw,68px)", height:6, background:"rgba(0,0,0,0.07)", filter:"blur(5px)", borderRadius:"50%", marginTop:-2, pointerEvents:"none" }}/>
+              <PetSVG mood={pet.mood} petType={pet.pet_type} evolution={evo}
+                isReacting={floatShow} size="clamp(140px,38vw,200px)"/>
+              <div style={{ width:"clamp(44px,12vw,68px)", height:6, background:"rgba(0,0,0,0.07)",
+                filter:"blur(5px)", borderRadius:"50%", marginTop:-2, pointerEvents:"none" }}/>
             </DraggablePet>
           </div>
         </div>
       </main>
 
-      {/* ── Hearts — only when isStroking (rendered from DraggablePet interval) ── */}
+      {/* Hearts — only emitted by DraggablePet when isStroking is true */}
       {hearts.map(h => (
         <motion.div key={h.id}
           initial={{ opacity:1, scale:0.5, x:h.x-9, y:h.y-9 }}
           animate={{ opacity:0, scale:1.1, x:h.x-9+Math.cos(h.angle)*h.dist, y:h.y-9+Math.sin(h.angle)*h.dist }}
           transition={{ duration:0.8, ease:"easeOut" }}
-          style={{ position:"fixed", top:0, left:0, fontSize:18, pointerEvents:"none", zIndex:1000, color:"#f9a8d4", filter:"drop-shadow(0 1px 4px rgba(249,168,212,0.5))" }}
+          style={{ position:"fixed", top:0, left:0, fontSize:18, pointerEvents:"none", zIndex:1000,
+            color:"#f9a8d4", filter:"drop-shadow(0 1px 4px rgba(249,168,212,0.5))" }}
         >🩷</motion.div>
       ))}
 
@@ -534,14 +513,19 @@ export function HomePage({ petId }: Props) {
       <div style={{ zIndex:10, position:"relative", display:"flex", justifyContent:"center", paddingBottom:6 }}>
         {partner ? (
           <div style={{ display:"inline-flex", alignItems:"center", gap:6, ...G.pill, borderRadius:999, padding:"5px 14px" }}>
-            <div style={{ width:6, height:6, flexShrink:0, color:pOnline?"#22c55e":"rgba(0,0,0,0.20)", filter:pOnline?"drop-shadow(0 0 4px #22c55e)":"none" }}>{IC.dot}</div>
+            <div style={{ width:6, height:6, flexShrink:0,
+              color:pOnline?"#22c55e":"rgba(0,0,0,0.20)",
+              filter:pOnline?"drop-shadow(0 0 4px #22c55e)":"none" }}>{IC.dot}</div>
             <span style={{ fontSize:"clamp(10px,2.8vw,12px)", color:"rgba(0,0,0,0.42)", fontWeight:500 }}>
               {pMins===null?"Партнёр не заходил":pMins<5?"Партнёр онлайн":pMins<60?`Партнёр ${pMins} мин назад`:`Партнёр ${Math.floor(pMins/60)} ч назад`}
             </span>
           </div>
         ) : (
           <motion.button whileTap={{ scale:0.96 }} onClick={handleInvite}
-            style={{ display:"inline-flex", alignItems:"center", gap:6, ...G.pill, border:"1px dashed rgba(0,0,0,0.13)", borderRadius:999, padding:"6px 16px", cursor:"pointer", fontFamily:"inherit", fontSize:"clamp(11px,3vw,12px)", color:"rgba(0,0,0,0.42)", fontWeight:600 }}
+            style={{ display:"inline-flex", alignItems:"center", gap:6, ...G.pill,
+              border:"1px dashed rgba(0,0,0,0.13)", borderRadius:999, padding:"6px 16px",
+              cursor:"pointer", fontFamily:"inherit", fontSize:"clamp(11px,3vw,12px)",
+              color:"rgba(0,0,0,0.42)", fontWeight:600 }}
           >
             <div style={{ width:13, height:13, color:"rgba(0,0,0,0.32)" }}>{IC.users}</div>
             Пригласить партнёра
@@ -551,66 +535,66 @@ export function HomePage({ petId }: Props) {
 
       {/* ── CAROUSEL NAV ── */}
       {/*
-        Layout:
-          - Outer wrapper: inline-flex so it only takes its natural width, centred via justify-content.
-          - Carousel pill: normal flow element.
-          - Glove circle: absolute, right of pill, vertically centred, does NOT push pill.
-        This ensures the carousel pill position is always static/unchanged.
+        Key layout decisions:
+        1. nav uses position:relative so we can absolutely place the glove circle.
+        2. The carousel pill is centred with margin:auto — its position NEVER changes.
+        3. The glove circle is position:absolute, right of centre, vertically centred.
+           It does NOT participate in flow and cannot shift the pill.
       */}
-      <nav style={{
-        padding:`0 16px clamp(24px,6.5vw,38px)`,
-        zIndex:10, position:"relative",
-        display:"flex", justifyContent:"center", alignItems:"center",
-      }}>
-        {/* Outer wrapper — inline so it wraps tightly around the pill */}
-        <div style={{ position:"relative", display:"inline-flex", alignItems:"center" }}>
-
-          {/* Carousel pill — never moves */}
-          <div style={{
+      <nav style={{ padding:`0 16px clamp(24px,6.5vw,38px)`, zIndex:10, position:"relative" }}>
+        {/* Centred pill — static, never moves */}
+        <div
+          ref={pillRef}
+          style={{
             ...G.carousel,
             borderRadius:999,
             padding:`${NAV_PAD}px ${NAV_PAD+2}px`,
-            display:"inline-flex",
+            display:"flex",
             height:WIDGET_H,
             alignItems:"center",
-          }}>
-            <Carousel>
-              <CarouselBtn icon={IC.food}     active={activeTab==="feed"}     disabled={isCd("feed")} cdLabel={fmtCd(getCd("feed"))} onClick={() => handleTab("feed")}/>
-              <CarouselBtn icon={IC.game}     active={activeTab==="play"}     disabled={isCd("play")} cdLabel={fmtCd(getCd("play"))} onClick={() => handleTab("play")}/>
-              <CarouselBtn icon={IC.heart}    active={activeTab==="pet"}      disabled={isCd("pet")}  cdLabel={fmtCd(getCd("pet"))}  onClick={() => handleTab("pet")}/>
-              <CarouselBtn icon={IC.shop}     active={activeTab==="shop"}     onClick={() => handleTab("shop")}/>
-              <CarouselBtn icon={IC.moon}     active={activeTab==="sleep"}    onClick={() => handleTab("sleep")}/>
-              <CarouselBtn icon={IC.users}    active={activeTab==="partner"}  onClick={() => handleTab("partner")}/>
-              <CarouselBtn icon={IC.settings} active={activeTab==="settings"} onClick={() => handleTab("settings")}/>
-            </Carousel>
-          </div>
-
-          {/* Glove circle — absolute right of pill, same vertical centre, does not affect layout */}
-          <AnimatePresence>
-            {showGlove && (
-              <motion.div
-                initial={{ opacity:0, scale:0.7 }}
-                animate={{ opacity:1, scale:1 }}
-                exit={{ opacity:0, scale:0.7 }}
-                transition={{ type:"spring", stiffness:400, damping:28 }}
-                style={{
-                  position:"absolute",
-                  left:`calc(100% + 10px)`,
-                  top:"50%",
-                  transform:"translateY(-50%)",
-                  // prevent the absolutely-positioned element from affecting layout width
-                  pointerEvents:"auto",
-                }}
-              >
-                <PettingGlove petRef={petDomRef} onState={handleGloveState}/>
-              </motion.div>
-            )}
-          </AnimatePresence>
+            width:"fit-content",
+            margin:"0 auto",   // ← centred via margin, not flex justify
+          }}
+        >
+          <Carousel>
+            <CarouselBtn icon={IC.food}     active={activeTab==="feed"}     disabled={isCd("feed")} cdLabel={fmtCd(getCd("feed"))} onClick={() => handleTab("feed")}/>
+            <CarouselBtn icon={IC.game}     active={activeTab==="play"}     disabled={isCd("play")} cdLabel={fmtCd(getCd("play"))} onClick={() => handleTab("play")}/>
+            <CarouselBtn icon={IC.heart}    active={activeTab==="pet"}      disabled={isCd("pet")}  cdLabel={fmtCd(getCd("pet"))}  onClick={() => handleTab("pet")}/>
+            <CarouselBtn icon={IC.shop}     active={activeTab==="shop"}     onClick={() => handleTab("shop")}/>
+            <CarouselBtn icon={IC.moon}     active={activeTab==="sleep"}    onClick={() => handleTab("sleep")}/>
+            <CarouselBtn icon={IC.users}    active={activeTab==="partner"}  onClick={() => handleTab("partner")}/>
+            <CarouselBtn icon={IC.settings} active={activeTab==="settings"} onClick={() => handleTab("settings")}/>
+          </Carousel>
         </div>
+
+        {/* Glove circle — absolutely positioned to the RIGHT of the pill, same vertical centre.
+            Because it's absolute it has zero effect on the pill's position. */}
+        <AnimatePresence>
+          {showGlove && (
+            <motion.div
+              initial={{ opacity:0, scale:0.7 }}
+              animate={{ opacity:1, scale:1 }}
+              exit={{ opacity:0, scale:0.7 }}
+              transition={{ type:"spring", stiffness:400, damping:28 }}
+              style={{
+                position:"absolute",
+                // vertically centred within nav (pill sits at top:0 within nav padding area)
+                top:"50%",
+                transform:"translateY(-50%)",
+                // Push it to the right side; adjust the value if your pill width + padding leaves space
+                right:16,
+              }}
+            >
+              <PettingGlove petRef={petDomRef} onStroking={handleStroking}/>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </nav>
 
       {/* iOS home indicator */}
-      <div style={{ position:"absolute", bottom:"clamp(5px,1.5vw,8px)", left:"50%", transform:"translateX(-50%)", width:100, height:4, background:"rgba(0,0,0,0.10)", borderRadius:4, zIndex:20 }}/>
+      <div style={{ position:"absolute", bottom:"clamp(5px,1.5vw,8px)", left:"50%",
+        transform:"translateX(-50%)", width:100, height:4,
+        background:"rgba(0,0,0,0.10)", borderRadius:4, zIndex:20 }}/>
     </div>
   );
 }
