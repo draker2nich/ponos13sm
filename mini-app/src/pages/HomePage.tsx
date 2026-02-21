@@ -329,7 +329,7 @@ function PettingGlove({ petRef, onState }: PettingGloveProps) {
         {/* Glove icon always visible; dims when flying clone is out */}
         <img src="/sprites/glove.svg" draggable={false}
           style={{
-            width: 32, height: 32, objectFit: "contain", pointerEvents: "none",
+            width: 64, height: 64, objectFit: "contain", pointerEvents: "none",
             opacity: isDragging ? 0.35 : 1,
             transition: "opacity 0.15s",
           }}
