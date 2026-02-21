@@ -310,7 +310,7 @@ function PettingGlove({ onGloveState }: PettingGloveProps) {
         {/* Always show glove icon in the circle — it disappears only when flying */}
         {!active && (
           <img src="/sprites/glove.svg" draggable={false}
-            style={{ width: 32, height: 32, objectFit: "contain", pointerEvents: "none" }}
+            style={{ width: 64, height: 64, objectFit: "contain", pointerEvents: "none" }}
           />
         )}
       </div>
@@ -334,7 +334,7 @@ function PettingGlove({ onGloveState }: PettingGloveProps) {
               transition={{ repeat: Infinity, duration: 0.22, ease: "easeInOut" }}
             >
               <img src="/sprites/glove.svg" draggable={false}
-                style={{ width: 48, height: 48, objectFit: "contain", filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.14))" }}
+                style={{ width: 96, height: 96, objectFit: "contain", filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.14))" }}
               />
             </motion.div>
           </motion.div>
