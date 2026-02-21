@@ -70,11 +70,13 @@ const toDeg    = (v: number) => Math.round(Math.max(0, Math.min(100, v)) / 100 *
 const PILL_H    = 50;
 const RING_SIZE = 34;
 const NAV_PAD   = 8;
-const BTN_W     = PILL_H;   // button diameter = pill inner height
+const BTN_W     = PILL_H;
 const BTN_GAP   = 5;
 const VISIBLE   = 4;
 const VIEWPORT_W = VISIBLE * BTN_W + (VISIBLE - 1) * BTN_GAP;
-const WIDGET_H  = NAV_PAD * 2 + BTN_W;  // total pill height incl. padding
+const WIDGET_H  = NAV_PAD * 2 + BTN_W;
+// Glove circle: same height as carousel pill
+const GLOVE_SIZE = WIDGET_H;
 
 // ─── StatusRing ───────────────────────────────────────────────────────────────
 function StatusRing({ value, icon }: { value: number; icon: React.ReactNode }) {
@@ -165,7 +167,6 @@ interface HeartFx { id: number; x: number; y: number; angle: number; dist: numbe
 interface DraggablePetProps {
   children: React.ReactNode;
   constraintsRef: React.RefObject<HTMLElement | null>;
-  // isStroking = glove is held down AND moving AND over the pet
   isStroking: boolean;
   onHeartAt: (x: number, y: number) => void;
   onScoreInc: () => void;
@@ -215,11 +216,10 @@ function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, onScore
 }
 
 // ─── PettingGlove ─────────────────────────────────────────────────────────────
-// Reports: isDragging + position + isStroking (dragging + moving + over pet)
 interface GloveState {
   isDragging: boolean;
   pos: { x: number; y: number } | null;
-  isStroking: boolean; // moving over pet
+  isStroking: boolean;
 }
 
 interface PettingGloveProps {
@@ -232,9 +232,11 @@ function PettingGlove({ petRef, onState }: PettingGloveProps) {
   const dragging   = useRef(false);
   const posRef     = useRef<{ x: number; y: number } | null>(null);
   const prevPosRef = useRef<{ x: number; y: number } | null>(null);
-  // Displayed position for the flying glove (state for re-render)
+  // flyPos: current pointer position for flying glove
   const [flyPos, setFlyPos] = useState<{ x: number; y: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  // circleCenter: captured once when drag starts, stays fixed
+  const circleCenterRef = useRef<{ x: number; y: number } | null>(null);
 
   const isOverPet = useCallback((cx: number, cy: number): boolean => {
     const el = petRef.current;
@@ -247,38 +249,38 @@ function PettingGlove({ petRef, onState }: PettingGloveProps) {
     const prev = prevPosRef.current;
     if (!prev) return false;
     const dx = cx - prev.x, dy = cy - prev.y;
-    return Math.sqrt(dx*dx + dy*dy) > 1.5; // threshold px
+    return Math.sqrt(dx*dx + dy*dy) > 1.5;
   }, []);
 
-  const getCircleCenter = (): { x: number; y: number } | null => {
+  const startDrag = useCallback((startX: number, startY: number) => {
+    // Capture the circle center at drag start — the flying glove originates from here
     const el = circleRef.current;
-    if (!el) return null;
-    const r = el.getBoundingClientRect();
-    return { x: r.left + r.width/2, y: r.top + r.height/2 };
-  };
-
-  const startDrag = useCallback((cx: number, cy: number) => {
+    if (el) {
+      const r = el.getBoundingClientRect();
+      circleCenterRef.current = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    }
     dragging.current = true;
-    posRef.current = { x: cx, y: cy };
+    posRef.current = { x: startX, y: startY };
     prevPosRef.current = null;
-    setFlyPos({ x: cx, y: cy });
+    setFlyPos({ x: startX, y: startY });
     setIsDragging(true);
-    onState({ isDragging: true, pos: { x:cx, y:cy }, isStroking: false });
+    onState({ isDragging: true, pos: { x: startX, y: startY }, isStroking: false });
   }, [onState]);
 
   const moveDrag = useCallback((cx: number, cy: number) => {
     if (!dragging.current) return;
     const stroking = isOverPet(cx, cy) && isMoving(cx, cy);
     prevPosRef.current = posRef.current;
-    posRef.current = { x:cx, y:cy };
-    setFlyPos({ x:cx, y:cy });
-    onState({ isDragging: true, pos: { x:cx, y:cy }, isStroking: stroking });
+    posRef.current = { x: cx, y: cy };
+    setFlyPos({ x: cx, y: cy });
+    onState({ isDragging: true, pos: { x: cx, y: cy }, isStroking: stroking });
   }, [onState, isOverPet, isMoving]);
 
   const stopDrag = useCallback(() => {
     dragging.current = false;
     posRef.current = null;
     prevPosRef.current = null;
+    circleCenterRef.current = null;
     setFlyPos(null);
     setIsDragging(false);
     onState({ isDragging: false, pos: null, isStroking: false });
@@ -286,57 +288,74 @@ function PettingGlove({ petRef, onState }: PettingGloveProps) {
 
   useEffect(() => {
     const up = () => { if (dragging.current) stopDrag(); };
-    window.addEventListener("mouseup",   up);
-    window.addEventListener("touchend",  up);
+    window.addEventListener("mouseup",     up);
+    window.addEventListener("touchend",    up);
     window.addEventListener("touchcancel", up);
     return () => {
-      window.removeEventListener("mouseup",   up);
-      window.removeEventListener("touchend",  up);
+      window.removeEventListener("mouseup",     up);
+      window.removeEventListener("touchend",    up);
       window.removeEventListener("touchcancel", up);
     };
   }, [stopDrag]);
 
-  const circleCenter = getCircleCenter();
+  const cc = circleCenterRef.current;
 
   return (
     <>
-      {/* ── Static circle — always shows glove icon, diameter = WIDGET_H ── */}
+      {/* ── Static circle — always visible when showGlove is true ── */}
       <div
         ref={circleRef}
-        onMouseDown={e => { e.preventDefault(); const c = getCircleCenter(); if (c) startDrag(c.x, c.y); }}
-        onTouchStart={e => { e.preventDefault(); const c = getCircleCenter(); if (c) startDrag(c.x, c.y); }}
+        onMouseDown={e => {
+          e.preventDefault();
+          const el = circleRef.current!;
+          const r  = el.getBoundingClientRect();
+          // Start drag from the center of the circle
+          startDrag(r.left + r.width / 2, r.top + r.height / 2);
+        }}
+        onTouchStart={e => {
+          e.preventDefault();
+          const el = circleRef.current!;
+          const r  = el.getBoundingClientRect();
+          startDrag(r.left + r.width / 2, r.top + r.height / 2);
+        }}
         style={{
-          width: WIDGET_H, height: WIDGET_H, borderRadius: "50%", flexShrink: 0,
-          // same style as carousel pill so it visually matches
+          width: GLOVE_SIZE, height: GLOVE_SIZE, borderRadius: "50%", flexShrink: 0,
           ...G.carousel,
           display: "flex", alignItems: "center", justifyContent: "center",
           cursor: isDragging ? "grabbing" : "grab",
           userSelect: "none", touchAction: "none",
         }}
       >
-        {/* Glove icon always visible in the circle */}
+        {/* Glove icon always visible; dims when flying clone is out */}
         <img src="/sprites/glove.svg" draggable={false}
-          style={{ width: 32, height: 32, objectFit: "contain", pointerEvents: "none",
-            opacity: isDragging ? 0.35 : 1, transition: "opacity 0.15s" }}
+          style={{
+            width: 32, height: 32, objectFit: "contain", pointerEvents: "none",
+            opacity: isDragging ? 0.35 : 1,
+            transition: "opacity 0.15s",
+          }}
         />
       </div>
 
-      {/* ── Flying glove — rendered fixed, spawns from circle center ── */}
-      {isDragging && circleCenter && (
+      {/* ── Flying glove — appears at circle center, follows pointer ── */}
+      {isDragging && cc && (
         <div
           onMouseMove={e  => moveDrag(e.clientX, e.clientY)}
           onTouchMove={e  => { e.preventDefault(); const t = e.touches[0]; moveDrag(t.clientX, t.clientY); }}
-          style={{ position:"fixed", inset:0, zIndex:999, cursor:"grabbing", touchAction:"none", pointerEvents:"all" }}
+          style={{
+            position: "fixed", inset: 0, zIndex: 999,
+            cursor: "grabbing", touchAction: "none", pointerEvents: "all",
+          }}
         >
           <motion.div
-            initial={{ x: circleCenter.x - 24, y: circleCenter.y - 24 }}
-            animate={{ x: (flyPos?.x ?? circleCenter.x) - 24, y: (flyPos?.y ?? circleCenter.y) - 24 }}
-            transition={{ type:"spring", stiffness:700, damping:32, mass:0.35 }}
-            style={{ position:"absolute", top:0, left:0, width:48, height:48, pointerEvents:"none" }}
+            // Start exactly at the circle centre so there's no teleport
+            initial={{ x: cc.x - 24, y: cc.y - 24 }}
+            animate={{ x: (flyPos?.x ?? cc.x) - 24, y: (flyPos?.y ?? cc.y) - 24 }}
+            transition={{ type: "spring", stiffness: 700, damping: 32, mass: 0.35 }}
+            style={{ position: "absolute", top: 0, left: 0, width: 48, height: 48, pointerEvents: "none" }}
           >
             <img src="/sprites/glove.svg" draggable={false}
-              style={{ width:48, height:48, objectFit:"contain",
-                filter:"drop-shadow(0 4px 12px rgba(0,0,0,0.14))" }}
+              style={{ width: 48, height: 48, objectFit: "contain",
+                filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.14))" }}
             />
           </motion.div>
         </div>
@@ -358,7 +377,6 @@ export function HomePage({ petId }: Props) {
   const nextHeart = useRef(0);
 
   const mainRef   = useRef<HTMLDivElement>(null);
-  // ref to the pet's DOM node — passed to PettingGlove for hit-testing
   const petDomRef = useRef<HTMLDivElement>(null);
 
   const refresh = useCallback(() => fetchPet(petId), [petId, fetchPet]);
@@ -488,7 +506,6 @@ export function HomePage({ petId }: Props) {
       <main ref={mainRef} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", position:"relative", overflow:"hidden", zIndex:5 }}>
         <div style={{ position:"relative" }}>
           <FloatAnim show={floatShow} text={floatText}/>
-          {/* Wrapper div gives PettingGlove a concrete hit-test target */}
           <div ref={petDomRef}>
             <DraggablePet
               constraintsRef={mainRef}
@@ -503,7 +520,7 @@ export function HomePage({ petId }: Props) {
         </div>
       </main>
 
-      {/* ── Hearts — only emitted when isStroking ── */}
+      {/* ── Hearts — only when isStroking (rendered from DraggablePet interval) ── */}
       {hearts.map(h => (
         <motion.div key={h.id}
           initial={{ opacity:1, scale:0.5, x:h.x-9, y:h.y-9 }}
@@ -533,15 +550,30 @@ export function HomePage({ petId }: Props) {
       </div>
 
       {/* ── CAROUSEL NAV ── */}
-      <nav style={{ padding:`0 16px clamp(24px,6.5vw,38px)`, zIndex:10, position:"relative", display:"flex", justifyContent:"center", alignItems:"center" }}>
-        {/*
-          Carousel pill stays absolutely centred at all times.
-          Glove circle is positioned absolute to the right — it does NOT shift the pill.
-        */}
+      {/*
+        Layout:
+          - Outer wrapper: inline-flex so it only takes its natural width, centred via justify-content.
+          - Carousel pill: normal flow element.
+          - Glove circle: absolute, right of pill, vertically centred, does NOT push pill.
+        This ensures the carousel pill position is always static/unchanged.
+      */}
+      <nav style={{
+        padding:`0 16px clamp(24px,6.5vw,38px)`,
+        zIndex:10, position:"relative",
+        display:"flex", justifyContent:"center", alignItems:"center",
+      }}>
+        {/* Outer wrapper — inline so it wraps tightly around the pill */}
         <div style={{ position:"relative", display:"inline-flex", alignItems:"center" }}>
 
-          {/* Carousel pill — static, always in the same place */}
-          <div style={{ ...G.carousel, borderRadius:999, padding:`${NAV_PAD}px ${NAV_PAD+2}px`, display:"inline-flex", height:WIDGET_H, alignItems:"center" }}>
+          {/* Carousel pill — never moves */}
+          <div style={{
+            ...G.carousel,
+            borderRadius:999,
+            padding:`${NAV_PAD}px ${NAV_PAD+2}px`,
+            display:"inline-flex",
+            height:WIDGET_H,
+            alignItems:"center",
+          }}>
             <Carousel>
               <CarouselBtn icon={IC.food}     active={activeTab==="feed"}     disabled={isCd("feed")} cdLabel={fmtCd(getCd("feed"))} onClick={() => handleTab("feed")}/>
               <CarouselBtn icon={IC.game}     active={activeTab==="play"}     disabled={isCd("play")} cdLabel={fmtCd(getCd("play"))} onClick={() => handleTab("play")}/>
@@ -553,7 +585,7 @@ export function HomePage({ petId }: Props) {
             </Carousel>
           </div>
 
-          {/* Glove circle — absolute, right side, same height as pill, doesn't affect layout */}
+          {/* Glove circle — absolute right of pill, same vertical centre, does not affect layout */}
           <AnimatePresence>
             {showGlove && (
               <motion.div
@@ -562,10 +594,12 @@ export function HomePage({ petId }: Props) {
                 exit={{ opacity:0, scale:0.7 }}
                 transition={{ type:"spring", stiffness:400, damping:28 }}
                 style={{
-                  position: "absolute",
-                  left: "calc(100% + 10px)",
-                  top: "50%",
-                  transform: "translateY(-50%)",
+                  position:"absolute",
+                  left:`calc(100% + 10px)`,
+                  top:"50%",
+                  transform:"translateY(-50%)",
+                  // prevent the absolutely-positioned element from affecting layout width
+                  pointerEvents:"auto",
                 }}
               >
                 <PettingGlove petRef={petDomRef} onState={handleGloveState}/>
