@@ -10,34 +10,41 @@ const tg = window.Telegram?.WebApp;
 
 type CSSProps = React.CSSProperties;
 
-// ─── Glassmorphism tokens (светлая/нейтральная тема) ────────────────────────
+// ─── Glassmorphism tokens ────────────────────────────────────────────────────
 const G = {
   base: {
     background:           "rgba(255,255,255,0.45)",
     backdropFilter:       "blur(18px) saturate(160%)",
     WebkitBackdropFilter: "blur(18px) saturate(160%)",
     border:               "1px solid rgba(255,255,255,0.65)",
-    boxShadow:            "0 4px 24px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.8)",
+    boxShadow:            "0 2px 12px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.8)",
   } as CSSProps,
   heavy: {
     background:           "rgba(255,255,255,0.55)",
     backdropFilter:       "blur(32px) saturate(180%)",
     WebkitBackdropFilter: "blur(32px) saturate(180%)",
     border:               "1px solid rgba(255,255,255,0.70)",
-    boxShadow:            "0 8px 32px rgba(0,0,0,0.08), inset 0 1.5px 0 rgba(255,255,255,0.9)",
+    boxShadow:            "0 6px 24px rgba(0,0,0,0.07), inset 0 1.5px 0 rgba(255,255,255,0.9)",
   } as CSSProps,
   pill: {
     background:           "rgba(255,255,255,0.38)",
     backdropFilter:       "blur(14px)",
     WebkitBackdropFilter: "blur(14px)",
     border:               "1px solid rgba(255,255,255,0.55)",
-    boxShadow:            "0 2px 12px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.7)",
+    boxShadow:            "0 2px 10px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.7)",
+  } as CSSProps,
+  // карусель — мягкая тень снизу, без жёсткой рамки сверху
+  carousel: {
+    background:           "rgba(255,255,255,0.60)",
+    backdropFilter:       "blur(32px) saturate(180%)",
+    WebkitBackdropFilter: "blur(32px) saturate(180%)",
+    border:               "1px solid rgba(255,255,255,0.72)",
+    boxShadow:            "0 8px 32px rgba(100,100,140,0.13), 0 2px 8px rgba(100,100,140,0.08), inset 0 1.5px 0 rgba(255,255,255,0.95)",
   } as CSSProps,
 } as const;
 
 // ─── SVG Icons ───────────────────────────────────────────────────────────────
 const IC: Record<string, React.ReactNode> = {
-  // Новая иконка питомца (лапки/животные)
   petIcon: (
     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
       <path d="M19.08 15.72C18.49 12.19 15.1 9.32 11.52 9.32C7.63 9.32 4.21 12.47 3.88 16.35C3.75 17.85 4.23 19.27 5.22 20.34C6.2 21.41 7.58 22 9.08 22H13.76C15.45 22 16.93 21.34 17.94 20.15C18.95 18.96 19.35 17.38 19.08 15.72Z" fill="currentColor"/>
@@ -51,7 +58,6 @@ const IC: Record<string, React.ReactNode> = {
   food: <svg viewBox="0 0 24 24" fill="currentColor" width="100%" height="100%"><path d="M18.06 22.99h1.66c.84 0 1.53-.64 1.63-1.46L23 5.05h-5V1h-1.97v4.05h-4.97l.3 2.34c1.71.47 3.31 1.32 4.27 2.26 1.44 1.42 2.43 2.89 2.43 5.29v8.05zM1 21.99V21h15.03v.99c0 .55-.45 1-1.01 1H2.01c-.56 0-1.01-.45-1.01-1zm15.03-7c0-8-15.03-8-15.03 0h15.03zM1.02 17h15v2h-15z"/></svg>,
   game: <svg viewBox="0 0 24 24" fill="currentColor" width="100%" height="100%"><path d="M15 7.5V2H9v5.5l3 3 3-3zM7.5 9H2v6h5.5l3-3-3-3zM9 16.5V22h6v-5.5l-3-3-3 3zM16.5 9l-3 3 3 3H22V9h-5.5z"/></svg>,
   moon: <svg viewBox="0 0 24 24" fill="currentColor" width="100%" height="100%"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/></svg>,
-  // Новая иконка чистоты (лоток)
   wash: (
     <svg viewBox="0 0 1024 1024" fill="currentColor" width="100%" height="100%">
       <path d="M899.1 869.6l-53-305.6H864c14.4 0 26-11.6 26-26V346c0-14.4-11.6-26-26-26H618V138c0-14.4-11.6-26-26-26H432c-14.4 0-26 11.6-26 26v182H160c-14.4 0-26 11.6-26 26v192c0 14.4 11.6 26 26 26h17.9l-53 305.6c-0.3 1.5-0.4 3-0.4 4.4 0 14.4 11.6 26 26 26h723c1.5 0 3-0.1 4.4-0.4 14.2-2.4 23.7-15.9 21.2-30zM204 390h272V182h72v208h272v104H204V390z m468 440V674c0-4.4-3.6-8-8-8h-48c-4.4 0-8 3.6-8 8v156H416V674c0-4.4-3.6-8-8-8h-48c-4.4 0-8 3.6-8 8v156H202.8l45.1-260H776l45.1 260H672z"/>
@@ -64,7 +70,7 @@ const IC: Record<string, React.ReactNode> = {
   heart:    <svg viewBox="0 0 24 24" fill="currentColor" width="100%" height="100%"><path d="M12 21.593c-5.63-5.539-11-10.297-11-14.402 0-3.791 3.068-5.191 5.281-5.191 1.312 0 4.151.501 5.719 4.457 1.59-3.968 4.464-4.447 5.726-4.447 2.54 0 5.274 1.621 5.274 5.181 0 4.069-5.136 8.625-11 14.402z"/></svg>,
 };
 
-// ─── helpers ────────────────────────────────────────────────────────────────
+// ─── helpers ─────────────────────────────────────────────────────────────────
 function fmtCd(iso: string | null): string {
   if (!iso) return "";
   const s = Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / 1000));
@@ -76,20 +82,20 @@ function fmtCd(iso: string | null): string {
 const cdActive = (iso: string | null) => !!iso && new Date(iso).getTime() > Date.now();
 const toDeg    = (v: number) => Math.round(Math.max(0, Math.min(100, v)) / 100 * 360);
 
-// ─── StatusRing (компактный, левый верхний угол) ─────────────────────────────
+// ─── StatusRing ───────────────────────────────────────────────────────────────
 function StatusRing({ value, icon }: { value: number; icon: React.ReactNode }) {
   const deg   = toDeg(value);
   const low   = value < 25;
-  const R     = 14;
+  const R     = 13;
   const circ  = 2 * Math.PI * R;
   const dash  = deg / 360 * circ;
-  const color = low ? "rgba(239,68,68,0.85)" : "rgba(80,80,80,0.65)";
+  const color = low ? "rgba(220,60,60,0.80)" : "rgba(80,80,100,0.50)";
 
   return (
-    <div style={{ position: "relative", width: 36, height: 36, flexShrink: 0 }}>
-      <svg width={36} height={36} style={{ position: "absolute", inset: 0, transform: "rotate(-90deg)" }}>
-        <circle cx={18} cy={18} r={R} fill="none" stroke="rgba(0,0,0,0.07)" strokeWidth={2}/>
-        <circle cx={18} cy={18} r={R} fill="none"
+    <div style={{ position: "relative", width: 34, height: 34, flexShrink: 0 }}>
+      <svg width={34} height={34} style={{ position: "absolute", inset: 0, transform: "rotate(-90deg)" }}>
+        <circle cx={17} cy={17} r={R} fill="none" stroke="rgba(0,0,0,0.06)" strokeWidth={2}/>
+        <circle cx={17} cy={17} r={R} fill="none"
           stroke={color} strokeWidth={2}
           strokeDasharray={`${dash} ${circ}`}
           strokeLinecap="round"
@@ -97,16 +103,16 @@ function StatusRing({ value, icon }: { value: number; icon: React.ReactNode }) {
       </svg>
       <div style={{
         position: "absolute", inset: 5, borderRadius: "50%",
-        ...G.base,
+        background: "rgba(255,255,255,0.5)",
         display: "flex", alignItems: "center", justifyContent: "center",
         padding: 5,
-        color: low ? "rgba(220,50,50,0.9)" : "rgba(60,60,60,0.6)",
+        color: low ? "rgba(200,50,50,0.85)" : "rgba(60,60,80,0.55)",
       }}>{icon}</div>
     </div>
   );
 }
 
-// ─── Carousel ────────────────────────────────────────────────────────────────
+// ─── Carousel ─────────────────────────────────────────────────────────────────
 const BTN_W   = 52;
 const BTN_GAP = 5;
 const VISIBLE = 4;
@@ -127,9 +133,9 @@ function Carousel({ children }: { children: React.ReactNode }) {
         sl.current   = ref.current!.scrollLeft;
         ref.current!.style.cursor = "grabbing";
       }}
-      onMouseUp={()    => { down.current = false; if (ref.current) ref.current.style.cursor = "grab"; }}
-      onMouseLeave={()  => { down.current = false; if (ref.current) ref.current.style.cursor = "grab"; }}
-      onMouseMove={e => {
+      onMouseUp={()   => { down.current = false; if (ref.current) ref.current.style.cursor = "grab"; }}
+      onMouseLeave={() => { down.current = false; if (ref.current) ref.current.style.cursor = "grab"; }}
+      onMouseMove={e  => {
         if (!down.current) return;
         ref.current!.scrollLeft = sl.current - (e.pageX - ref.current!.offsetLeft - sx.current) * 1.2;
       }}
@@ -148,7 +154,7 @@ function Carousel({ children }: { children: React.ReactNode }) {
   );
 }
 
-// ─── CarouselBtn (без подписи, только иконка в круге) ────────────────────────
+// ─── CarouselBtn ──────────────────────────────────────────────────────────────
 type TabId = ActionType | "shop" | "sleep" | "partner" | "settings";
 
 function CarouselBtn({ icon, active, disabled, cdLabel, onClick }: {
@@ -163,23 +169,25 @@ function CarouselBtn({ icon, active, disabled, cdLabel, onClick }: {
         flexShrink: 0,
         width: BTN_W, height: BTN_W,
         borderRadius: "50%",
-        ...(active ? {
-          background: "rgba(255,255,255,0.75)",
-          backdropFilter: "blur(16px)",
-          WebkitBackdropFilter: "blur(16px)",
-          border: "1.5px solid rgba(255,255,255,0.9)",
-          boxShadow: "0 4px 16px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,1)",
-        } : {
-          ...G.base,
-          borderRadius: "50%",
-        }),
+        ...(active
+          ? {
+              background: "rgba(255,255,255,0.82)",
+              backdropFilter: "blur(16px)",
+              WebkitBackdropFilter: "blur(16px)",
+              border: "1.5px solid rgba(255,255,255,0.95)",
+              boxShadow: "0 4px 16px rgba(100,100,150,0.14), inset 0 1px 0 rgba(255,255,255,1)",
+            }
+          : {
+              background: "rgba(255,255,255,0.30)",
+              border: "1px solid rgba(255,255,255,0.50)",
+              boxShadow: "none",
+            }),
         cursor: disabled ? "not-allowed" : "pointer",
-        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+        display: "flex", flexDirection: "column",
+        alignItems: "center", justifyContent: "center",
         gap: 2,
         transition: "all 0.15s",
         fontFamily: "inherit",
-        position: "relative",
-        overflow: "hidden",
       }}
     >
       <div style={{
@@ -187,36 +195,35 @@ function CarouselBtn({ icon, active, disabled, cdLabel, onClick }: {
         color: disabled
           ? "rgba(0,0,0,0.18)"
           : active
-            ? "rgba(0,0,0,0.70)"
-            : "rgba(0,0,0,0.42)",
+            ? "rgba(0,0,0,0.68)"
+            : "rgba(0,0,0,0.38)",
         display: "flex", alignItems: "center", justifyContent: "center",
         filter: disabled ? "opacity(0.35)" : "none",
-        transition: "all 0.15s",
+        transition: "color 0.15s",
       }}>{icon}</div>
       {disabled && cdLabel && (
-        <span style={{
-          fontSize: 7, fontWeight: 800, letterSpacing: "0.04em",
-          color: "rgba(0,0,0,0.32)", lineHeight: 1,
-        }}>{cdLabel}</span>
+        <span style={{ fontSize: 7, fontWeight: 800, color: "rgba(0,0,0,0.30)", lineHeight: 1 }}>
+          {cdLabel}
+        </span>
       )}
     </motion.button>
   );
 }
 
-// ─── FloatAnim ───────────────────────────────────────────────────────────────
+// ─── FloatAnim ────────────────────────────────────────────────────────────────
 function FloatAnim({ show, text }: { show: boolean; text: string }) {
   return (
     <AnimatePresence>
       {show && (
         <motion.div
-          initial={{ opacity: 1, y: 0 }} animate={{ opacity: 0, y: -56 }}
+          initial={{ opacity: 1, y: 0 }} animate={{ opacity: 0, y: -60 }}
           transition={{ duration: 0.85, ease: "easeOut" }}
           style={{
             position: "absolute", top: 0, left: "50%",
             transform: "translateX(-50%)",
             fontSize: 20, fontWeight: 800,
-            color: "rgba(0,0,0,0.65)",
-            textShadow: "0 2px 8px rgba(255,255,255,0.5)",
+            color: "rgba(0,0,0,0.60)",
+            textShadow: "0 2px 8px rgba(255,255,255,0.6)",
             pointerEvents: "none", whiteSpace: "nowrap", zIndex: 20,
           }}
         >{text}</motion.div>
@@ -225,20 +232,17 @@ function FloatAnim({ show, text }: { show: boolean; text: string }) {
   );
 }
 
-// ─── DraggablePet ────────────────────────────────────────────────────────────
-function DraggablePet({ children, constraintsRef }: {
-  children: React.ReactNode;
-  constraintsRef: React.RefObject<HTMLElement | null>;
-}) {
+// ─── DraggablePet — без ограничений, весь экран ───────────────────────────────
+function DraggablePet({ children }: { children: React.ReactNode }) {
   const controls = useDragControls();
   return (
     <motion.div
       drag
       dragControls={controls}
-      dragConstraints={constraintsRef}
-      dragElastic={0.14}
-      dragMomentum={false}
-      whileDrag={{ scale: 1.04 }}
+      // Без dragConstraints — питомец свободно гуляет по всему экрану
+      dragElastic={0.08}
+      dragMomentum={true}
+      whileDrag={{ scale: 1.06, filter: "drop-shadow(0 8px 24px rgba(0,0,0,0.12))" }}
       style={{ cursor: "grab", touchAction: "none", display: "inline-block" }}
       onPointerDown={e => controls.start(e)}
     >
@@ -247,7 +251,7 @@ function DraggablePet({ children, constraintsRef }: {
   );
 }
 
-// ─── Main ────────────────────────────────────────────────────────────────────
+// ─── Main ─────────────────────────────────────────────────────────────────────
 interface Props { petId: number }
 
 export function HomePage({ petId }: Props) {
@@ -289,6 +293,9 @@ export function HomePage({ petId }: Props) {
   const pOnline = pMins !== null && pMins < 5;
   const sleepVal = pet.mood === "sleepy" ? 100 : 55;
 
+  // Высота хедер-пилюль — фиксированная, чтобы оба виджета были одинаковы
+  const PILL_H = 50;
+
   const showFloat = (t: string) => {
     setFloatText(t); setFloatShow(true);
     setTimeout(() => setFloatShow(false), 1400);
@@ -325,7 +332,6 @@ export function HomePage({ petId }: Props) {
       margin: "0 auto",
       height: "100dvh",
       minHeight: 560,
-      // Нежный пастельный градиент — лёгкий и «воздушный»
       background: "linear-gradient(150deg, #eef2ff 0%, #fce7f3 45%, #ecfdf5 100%)",
       fontFamily: "'Inter', system-ui, sans-serif",
       position: "relative", overflow: "hidden",
@@ -333,24 +339,80 @@ export function HomePage({ petId }: Props) {
       color: "rgba(0,0,0,0.75)",
     }}>
 
-      {/* ── Фоновые декоративные кружки (subtle) ── */}
+      {/* ── Декоративные блюры фона ── */}
       <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 0 }}>
-        <div style={{ position: "absolute", top: "-10%", left: "-15%", width: "55%", paddingBottom: "55%", borderRadius: "50%", background: "radial-gradient(circle, rgba(196,181,253,0.25) 0%, transparent 70%)" }}/>
-        <div style={{ position: "absolute", top: "20%", right: "-18%", width: "50%", paddingBottom: "50%", borderRadius: "50%", background: "radial-gradient(circle, rgba(251,207,232,0.25) 0%, transparent 70%)" }}/>
-        <div style={{ position: "absolute", bottom: "5%", left: "10%", width: "45%", paddingBottom: "45%", borderRadius: "50%", background: "radial-gradient(circle, rgba(167,243,208,0.20) 0%, transparent 70%)" }}/>
+        <div style={{ position: "absolute", top: "-12%", left: "-18%", width: "55%", paddingBottom: "55%", borderRadius: "50%", background: "radial-gradient(circle, rgba(196,181,253,0.22) 0%, transparent 70%)" }}/>
+        <div style={{ position: "absolute", top: "15%", right: "-20%", width: "52%", paddingBottom: "52%", borderRadius: "50%", background: "radial-gradient(circle, rgba(251,207,232,0.22) 0%, transparent 70%)" }}/>
+        <div style={{ position: "absolute", bottom: "8%", left: "8%", width: "46%", paddingBottom: "46%", borderRadius: "50%", background: "radial-gradient(circle, rgba(167,243,208,0.18) 0%, transparent 70%)" }}/>
       </div>
 
-      {/* ── HEADER ─────────────────────────────────────────────────── */}
+      {/* ── HEADER ─────────────────────────────────────────────────────── */}
       <header style={{
         padding: "clamp(12px,3.5vw,20px) clamp(12px,4vw,18px) 6px",
         zIndex: 10, position: "relative",
         display: "flex", alignItems: "center", gap: 8,
       }}>
-        {/* Status rings — левый верхний угол, компактно */}
+
+        {/* 1. Name pill (слева) */}
         <div style={{
-          ...G.heavy, borderRadius: 20,
-          padding: "6px 8px",
-          display: "flex", gap: 5, alignItems: "center",
+          display: "flex", alignItems: "center", gap: 7,
+          ...G.heavy,
+          borderRadius: 999,
+          height: PILL_H,
+          padding: "0 12px 0 7px",
+          flexShrink: 0,
+        }}>
+          {/* Pet icon circle */}
+          <div style={{
+            width: 34, height: 34, borderRadius: "50%", flexShrink: 0,
+            background: "rgba(255,255,255,0.55)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: 6, color: "rgba(0,0,0,0.42)",
+          }}>{IC.petIcon}</div>
+
+          {/* Name + level */}
+          <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+            <div style={{
+              fontSize: "clamp(11px,3vw,13px)", fontWeight: 700,
+              color: "rgba(0,0,0,0.70)", lineHeight: 1.2,
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              maxWidth: "clamp(60px,18vw,110px)",
+            }}>{pet.name}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
+              <span style={{ fontSize: 9, fontWeight: 700, color: "rgba(0,0,0,0.28)", letterSpacing: "0.06em" }}>
+                LV.{pet.level}
+              </span>
+              <div style={{ width: "clamp(24px,7vw,44px)", height: 2.5, background: "rgba(0,0,0,0.08)", borderRadius: 2, overflow: "hidden" }}>
+                <motion.div animate={{ width: `${xpPct}%` }} transition={{ duration: 0.6 }}
+                  style={{ height: "100%", background: "rgba(0,0,0,0.32)", borderRadius: 2 }}/>
+              </div>
+            </div>
+          </div>
+
+          {/* Streak */}
+          {pet.streak > 0 && (
+            <div style={{
+              display: "flex", alignItems: "center", gap: 3,
+              background: "rgba(255,255,255,0.40)",
+              border: "1px solid rgba(255,255,255,0.60)",
+              borderRadius: 999, padding: "3px 8px", marginLeft: 1,
+            }}>
+              <div style={{ width: 11, height: 11, color: "rgba(220,80,30,0.80)" }}>{IC.fire}</div>
+              <span style={{ fontSize: 11, fontWeight: 800, color: "rgba(180,60,20,0.80)" }}>{pet.streak}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Spacer */}
+        <div style={{ flex: 1 }}/>
+
+        {/* 2. Status rings pill (справа) */}
+        <div style={{
+          ...G.heavy,
+          borderRadius: 999,
+          height: PILL_H,
+          padding: "0 10px",
+          display: "flex", gap: 4, alignItems: "center",
           flexShrink: 0,
         }}>
           <StatusRing value={pet.hunger}    icon={IC.food} />
@@ -358,65 +420,18 @@ export function HomePage({ petId }: Props) {
           <StatusRing value={sleepVal}      icon={IC.moon} />
           <StatusRing value={pet.health}    icon={IC.wash} />
         </div>
-
-        {/* Spacer */}
-        <div style={{ flex: 1 }}/>
-
-        {/* Name pill + streak */}
-        <div style={{
-          display: "flex", alignItems: "center", gap: 7,
-          ...G.heavy, borderRadius: 999,
-          padding: "6px 12px 6px 6px",
-          flexShrink: 0,
-        }}>
-          {/* Pet icon */}
-          <div style={{
-            width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
-            ...G.base, display: "flex", alignItems: "center", justifyContent: "center",
-            padding: 5, color: "rgba(0,0,0,0.45)",
-          }}>{IC.petIcon}</div>
-
-          {/* Name + level */}
-          <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-            <div style={{
-              fontSize: "clamp(11px,3vw,13px)", fontWeight: 700,
-              color: "rgba(0,0,0,0.72)", lineHeight: 1.2,
-              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-              maxWidth: "clamp(60px,18vw,100px)",
-            }}>{pet.name}</div>
-            <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
-              <span style={{ fontSize: 9, fontWeight: 700, color: "rgba(0,0,0,0.3)", letterSpacing: "0.06em" }}>
-                LV.{pet.level}
-              </span>
-              <div style={{ width: "clamp(24px,6vw,40px)", height: 2.5, background: "rgba(0,0,0,0.08)", borderRadius: 2, overflow: "hidden" }}>
-                <motion.div animate={{ width: `${xpPct}%` }} transition={{ duration: 0.6 }}
-                  style={{ height: "100%", background: "rgba(0,0,0,0.35)", borderRadius: 2 }}/>
-              </div>
-            </div>
-          </div>
-
-          {/* Streak (перенесён сюда) */}
-          {pet.streak > 0 && (
-            <div style={{
-              display: "flex", alignItems: "center", gap: 3,
-              ...G.pill, borderRadius: 999, padding: "3px 8px", marginLeft: 2,
-            }}>
-              <div style={{ width: 11, height: 11, color: "rgba(220,80,30,0.8)" }}>{IC.fire}</div>
-              <span style={{ fontSize: 11, fontWeight: 800, color: "rgba(180,60,20,0.85)" }}>{pet.streak}</span>
-            </div>
-          )}
-        </div>
       </header>
 
-      {/* ── PET AREA ─────────────────────────────────────────────────── */}
+      {/* ── PET AREA (весь flex-grow, питомец перетаскивается свободно) ── */}
       <main ref={mainRef} style={{
-        flex: 1, display: "flex", flexDirection: "column",
+        flex: 1,
+        display: "flex", flexDirection: "column",
         alignItems: "center", justifyContent: "center",
         position: "relative", overflow: "hidden", zIndex: 5,
       }}>
         <div style={{ position: "relative" }}>
           <FloatAnim show={floatShow} text={floatText}/>
-          <DraggablePet constraintsRef={mainRef}>
+          <DraggablePet>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
               <PetSVG
                 mood={pet.mood} petType={pet.pet_type}
@@ -425,7 +440,7 @@ export function HomePage({ petId }: Props) {
               />
               <div style={{
                 width: "clamp(44px,12vw,68px)", height: 6,
-                background: "rgba(0,0,0,0.08)", filter: "blur(5px)",
+                background: "rgba(0,0,0,0.07)", filter: "blur(5px)",
                 borderRadius: "50%", marginTop: -2, pointerEvents: "none",
               }}/>
             </div>
@@ -433,11 +448,11 @@ export function HomePage({ petId }: Props) {
         </div>
       </main>
 
-      {/* ── PARTNER / INVITE — приклеен над каруселью ──────────────── */}
+      {/* ── PARTNER / INVITE — прилипает над каруселью ──────────────── */}
       <div style={{
         zIndex: 10, position: "relative",
         display: "flex", justifyContent: "center",
-        paddingBottom: 8,
+        paddingBottom: 6,
       }}>
         {partner ? (
           <div style={{
@@ -446,10 +461,10 @@ export function HomePage({ petId }: Props) {
           }}>
             <div style={{
               width: 6, height: 6, flexShrink: 0,
-              color: pOnline ? "#22c55e" : "rgba(0,0,0,0.22)",
+              color: pOnline ? "#22c55e" : "rgba(0,0,0,0.20)",
               filter: pOnline ? "drop-shadow(0 0 4px #22c55e)" : "none",
             }}>{IC.dot}</div>
-            <span style={{ fontSize: "clamp(10px,2.8vw,12px)", color: "rgba(0,0,0,0.45)", fontWeight: 500 }}>
+            <span style={{ fontSize: "clamp(10px,2.8vw,12px)", color: "rgba(0,0,0,0.42)", fontWeight: 500 }}>
               {pMins === null  ? "Партнёр не заходил"
                 : pMins < 5   ? "Партнёр онлайн"
                 : pMins < 60  ? `Партнёр ${pMins} мин назад`
@@ -462,14 +477,14 @@ export function HomePage({ petId }: Props) {
             style={{
               display: "inline-flex", alignItems: "center", gap: 6,
               ...G.pill,
-              border: "1px dashed rgba(0,0,0,0.15)",
+              border: "1px dashed rgba(0,0,0,0.13)",
               borderRadius: 999, padding: "6px 16px",
               cursor: "pointer", fontFamily: "inherit",
               fontSize: "clamp(11px,3vw,12px)",
-              color: "rgba(0,0,0,0.45)", fontWeight: 600,
+              color: "rgba(0,0,0,0.42)", fontWeight: 600,
             }}
           >
-            <div style={{ width: 13, height: 13, color: "rgba(0,0,0,0.35)" }}>{IC.users}</div>
+            <div style={{ width: 13, height: 13, color: "rgba(0,0,0,0.32)" }}>{IC.users}</div>
             Пригласить партнёра
           </motion.button>
         )}
@@ -482,8 +497,8 @@ export function HomePage({ petId }: Props) {
         display: "flex", justifyContent: "center",
       }}>
         <div style={{
-          ...G.heavy,
-          borderRadius: 999, // максимально круглый
+          ...G.carousel,
+          borderRadius: 999,
           padding: "8px 10px",
           display: "inline-flex",
         }}>
@@ -504,7 +519,7 @@ export function HomePage({ petId }: Props) {
         position: "absolute", bottom: "clamp(5px,1.5vw,8px)", left: "50%",
         transform: "translateX(-50%)",
         width: 100, height: 4,
-        background: "rgba(0,0,0,0.12)", borderRadius: 4, zIndex: 20,
+        background: "rgba(0,0,0,0.10)", borderRadius: 4, zIndex: 20,
       }}/>
     </div>
   );
