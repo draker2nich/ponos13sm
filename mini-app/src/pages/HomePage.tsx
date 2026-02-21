@@ -100,6 +100,9 @@ function Carousel({ children }: { children: React.ReactNode }) {
       style={{
         display: "flex", gap: BTN_GAP, width: VIEWPORT_W, overflowX: "auto", scrollbarWidth: "none",
         WebkitOverflowScrolling: "touch", cursor: "grab", userSelect: "none",
+        // Extra padding so drop-shadow on buttons is not clipped by overflow
+        padding: "8px 0",
+        margin: "-8px 0",
       }}
     >{children}</div>
   );
@@ -217,6 +220,16 @@ function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, petDomR
   );
 }
 
+/* ── PettingGlove ──────────────────────────────────────────────────────────── 
+   Key fixes:
+   - Glove spawns exactly at circle center (no offset drift)
+   - Movement detection uses accumulated distance over a time window,
+     so any direction (vertical, horizontal, circular) triggers stroking
+   - Mobile: uses pointer events (unified mouse+touch), no separate
+     mouse/touch handlers. The overlay captures pointermove globally.
+   - The flying glove is positioned so its CENTER tracks the pointer,
+     eliminating visual offset.
+*/
 function PettingGlove({ petRef, onStroking, isStroking }: {
   petRef: React.RefObject<HTMLDivElement | null>;
   onStroking: (v: boolean) => void;
@@ -231,11 +244,12 @@ function PettingGlove({ petRef, onStroking, isStroking }: {
   const history = useRef<Array<{ x: number; y: number; t: number }>>([]);
 
   // Spring-driven glove position (top-left of the GLOVE_FLY box)
-  const rawX = useMotionValue(0);
-  const rawY = useMotionValue(0);
+  const rawX = useMotionValue(-9999);
+  const rawY = useMotionValue(-9999);
   const gX = useSpring(rawX, { stiffness: 600, damping: 30, mass: 0.3 });
   const gY = useSpring(rawY, { stiffness: 600, damping: 30, mass: 0.3 });
 
+  // The sprite is 200% of container, so visual center offset = GLOVE_FLY/2
   const half = GLOVE_FLY / 2;
 
   const isOverPet = useCallback((cx: number, cy: number) => {
@@ -264,16 +278,17 @@ function PettingGlove({ petRef, onStroking, isStroking }: {
   const startDrag = useCallback((cx: number, cy: number) => {
     dragging.current = true;
     history.current = [{ x: cx, y: cy, t: Date.now() }];
-    // Position glove centered on the circle
+    // Position glove centered on the circle — jump BOTH raw and spring
     const el = circleRef.current;
-    if (el) {
-      const r = el.getBoundingClientRect();
-      rawX.jump(r.left + r.width / 2 - half);
-      rawY.jump(r.top + r.height / 2 - half);
-    }
+    const startX = el ? el.getBoundingClientRect().left + el.getBoundingClientRect().width / 2 - half : cx - half;
+    const startY = el ? el.getBoundingClientRect().top + el.getBoundingClientRect().height / 2 - half : cy - half;
+    rawX.jump(startX);
+    rawY.jump(startY);
+    gX.jump(startX);
+    gY.jump(startY);
     setIsDragging(true);
     onStroking(false);
-  }, [onStroking, rawX, rawY, half]);
+  }, [onStroking, rawX, rawY, gX, gY, half]);
 
   const moveDrag = useCallback((cx: number, cy: number) => {
     if (!dragging.current) return;
@@ -320,7 +335,7 @@ function PettingGlove({ petRef, onStroking, isStroking }: {
       >
         <img src="/sprites/glove.svg" draggable={false}
           style={{
-            width: 64, height: 64, objectFit: "contain", pointerEvents: "none",
+            width: 36, height: 36, objectFit: "contain", pointerEvents: "none",
             opacity: isDragging ? 0.25 : 1, transition: "opacity 0.15s",
           }}
         />
@@ -346,11 +361,15 @@ function PettingGlove({ petRef, onStroking, isStroking }: {
               x: gX, y: gY,
               pointerEvents: "none",
               transformOrigin: "center center",
+              overflow: "visible",
             }}
           >
             <img src="/sprites/glove.svg" draggable={false}
               style={{
                 width: "200%", height: "200%", objectFit: "contain",
+                // Center the 200% image within the GLOVE_FLY box
+                position: "absolute",
+                top: "-50%", left: "-50%",
                 filter: isStroking
                   ? "drop-shadow(0 4px 16px rgba(249,168,212,0.6))"
                   : "drop-shadow(0 4px 12px rgba(0,0,0,0.14))",
@@ -611,6 +630,7 @@ export function HomePage({ petId }: Props) {
           ...G.carousel, borderRadius: 999,
           padding: `${NAV_PAD}px ${NAV_PAD + 2}px`,
           display: "inline-flex", height: WIDGET_H, alignItems: "center",
+          overflow: "visible",
         }}>
           <Carousel>
             <CarouselBtn icon={IC.food} active={activeTab === "feed"} disabled={isCd("feed")} cdLabel={fmtCd(getCd("feed"))} onClick={() => handleTab("feed")} />
