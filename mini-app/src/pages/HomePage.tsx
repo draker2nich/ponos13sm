@@ -40,7 +40,6 @@ const IC: Record<string, React.ReactNode> = {
   users: <svg viewBox="0 0 24 24" fill="currentColor" width="100%" height="100%"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>,
   settings: <svg viewBox="0 0 24 24" fill="currentColor" width="100%" height="100%"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>,
   dot: <svg viewBox="0 0 8 8" fill="currentColor" width="100%" height="100%"><circle cx="4" cy="4" r="4"/></svg>,
-  heart: <svg viewBox="0 0 24 24" fill="currentColor" width="100%" height="100%"><path d="M12 21.593c-5.63-5.539-11-10.297-11-14.402 0-3.791 3.068-5.191 5.281-5.191 1.312 0 4.151.501 5.719 4.457 1.59-3.968 4.464-4.447 5.726-4.447 2.54 0 5.274 1.621 5.274 5.181 0 4.069-5.136 8.625-11 14.402z"/></svg>,
 };
 
 /* ── Helpers ────────────────────────────────────────────────────────────────── */
@@ -63,7 +62,8 @@ const BTN_GAP = 5;
 const VISIBLE = 4;
 const VIEWPORT_W = VISIBLE * BTN_W + (VISIBLE - 1) * BTN_GAP;
 const WIDGET_H = NAV_PAD * 2 + BTN_W;
-const GLOVE_SIZE = WIDGET_H;
+const GLOVE_CIRCLE = WIDGET_H;
+const GLOVE_FLY = 52; // size of flying glove sprite
 const GLOVE_GAP = 10;
 
 /* ── StatusRing ────────────────────────────────────────────────────────────── */
@@ -81,7 +81,7 @@ function StatusRing({ value, icon }: { value: number; icon: React.ReactNode }) {
       <div style={{
         position: "absolute", inset: 5, borderRadius: "50%", background: "rgba(255,255,255,0.5)",
         display: "flex", alignItems: "center", justifyContent: "center", padding: 5,
-        color: low ? "rgba(200,50,50,0.85)" : "rgba(60,60,80,0.55)"
+        color: low ? "rgba(200,50,50,0.85)" : "rgba(60,60,80,0.55)",
       }}>{icon}</div>
     </div>
   );
@@ -105,41 +105,46 @@ function Carousel({ children }: { children: React.ReactNode }) {
   );
 }
 
-/* ── CarouselBtn — fixed circular shadow ───────────────────────────────────── */
+/* ── CarouselBtn — uses filter:drop-shadow for truly circular shadow ───────── */
 type TabId = ActionType | "shop" | "sleep" | "partner" | "settings";
 
 function CarouselBtn({ icon, active, disabled, cdLabel, onClick }: {
   icon: React.ReactNode; active?: boolean; disabled?: boolean; cdLabel?: string; onClick?: () => void;
 }) {
+  // Outer wrapper applies drop-shadow (respects border-radius shape)
+  // Inner div has background/border but NO box-shadow
   return (
-    <motion.button whileTap={disabled ? {} : { scale: 0.84 }} onClick={disabled ? undefined : onClick}
-      style={{
-        flexShrink: 0, width: BTN_W, height: BTN_W, borderRadius: "50%",
-        ...(active
-          ? {
-            background: "rgba(255,255,255,0.82)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
-            border: "1.5px solid rgba(255,255,255,0.95)",
-            // Circular shadow via radial gradient on boxShadow
-            boxShadow: "0 4px 14px 2px rgba(100,100,150,0.18), inset 0 1px 0 rgba(255,255,255,1)",
-          }
-          : {
-            background: "rgba(255,255,255,0.30)", border: "1px solid rgba(255,255,255,0.50)",
-            boxShadow: "0 2px 8px rgba(100,100,150,0.07)",
-          }),
-        cursor: disabled ? "not-allowed" : "pointer",
-        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-        gap: 2, transition: "all 0.15s", fontFamily: "inherit",
-        // Clip overflow to ensure shadow stays circular
-        overflow: "hidden",
-      }}
-    >
-      <div style={{
-        width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center",
-        color: disabled ? "rgba(0,0,0,0.18)" : active ? "rgba(0,0,0,0.68)" : "rgba(0,0,0,0.38)",
-        filter: disabled ? "opacity(0.35)" : "none", transition: "color 0.15s",
-      }}>{icon}</div>
-      {disabled && cdLabel && <span style={{ fontSize: 7, fontWeight: 800, color: "rgba(0,0,0,0.30)", lineHeight: 1 }}>{cdLabel}</span>}
-    </motion.button>
+    <div style={{
+      flexShrink: 0, width: BTN_W, height: BTN_W,
+      filter: active
+        ? "drop-shadow(0 4px 6px rgba(100,100,150,0.22)) drop-shadow(0 1px 3px rgba(100,100,150,0.12))"
+        : "drop-shadow(0 2px 4px rgba(100,100,150,0.10))",
+      transition: "filter 0.15s",
+    }}>
+      <motion.button whileTap={disabled ? {} : { scale: 0.84 }} onClick={disabled ? undefined : onClick}
+        style={{
+          width: "100%", height: "100%", borderRadius: "50%",
+          background: active ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.30)",
+          backdropFilter: active ? "blur(16px)" : undefined,
+          WebkitBackdropFilter: active ? "blur(16px)" : undefined,
+          border: active ? "1.5px solid rgba(255,255,255,0.95)" : "1px solid rgba(255,255,255,0.50)",
+          boxShadow: "none", // No box-shadow! Shadow is on outer div via filter
+          cursor: disabled ? "not-allowed" : "pointer",
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+          gap: 2, transition: "background 0.15s, border 0.15s", fontFamily: "inherit",
+          padding: 0,
+        }}
+      >
+        <div style={{
+          width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center",
+          color: disabled ? "rgba(0,0,0,0.18)" : active ? "rgba(0,0,0,0.68)" : "rgba(0,0,0,0.38)",
+          filter: disabled ? "opacity(0.35)" : "none", transition: "color 0.15s",
+        }}>{icon}</div>
+        {disabled && cdLabel && (
+          <span style={{ fontSize: 7, fontWeight: 800, color: "rgba(0,0,0,0.30)", lineHeight: 1 }}>{cdLabel}</span>
+        )}
+      </motion.button>
+    </div>
   );
 }
 
@@ -150,8 +155,10 @@ function FloatAnim({ show, text }: { show: boolean; text: string }) {
       {show && (
         <motion.div initial={{ opacity: 1, y: 0 }} animate={{ opacity: 0, y: -60 }} transition={{ duration: 0.85, ease: "easeOut" }}
           style={{
-            position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)", fontSize: 20, fontWeight: 800,
-            color: "rgba(0,0,0,0.60)", textShadow: "0 2px 8px rgba(255,255,255,0.6)", pointerEvents: "none", whiteSpace: "nowrap", zIndex: 20,
+            position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)",
+            fontSize: 20, fontWeight: 800, color: "rgba(0,0,0,0.60)",
+            textShadow: "0 2px 8px rgba(255,255,255,0.6)", pointerEvents: "none",
+            whiteSpace: "nowrap", zIndex: 20,
           }}
         >{text}</motion.div>
       )}
@@ -210,99 +217,111 @@ function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, petDomR
   );
 }
 
-/* ── PettingGlove — fixed: mobile support, starts from circle, petting animation ── */
+/* ── PettingGlove ──────────────────────────────────────────────────────────── 
+   Key fixes:
+   - Glove spawns exactly at circle center (no offset drift)
+   - Movement detection uses accumulated distance over a time window,
+     so any direction (vertical, horizontal, circular) triggers stroking
+   - Mobile: uses pointer events (unified mouse+touch), no separate
+     mouse/touch handlers. The overlay captures pointermove globally.
+   - The flying glove is positioned so its CENTER tracks the pointer,
+     eliminating visual offset.
+*/
 function PettingGlove({ petRef, onStroking, isStroking }: {
   petRef: React.RefObject<HTMLDivElement | null>;
   onStroking: (v: boolean) => void;
   isStroking: boolean;
 }) {
   const circleRef = useRef<HTMLDivElement>(null);
-  const draggingRef = useRef(false);
-  const prevXY = useRef<{ x: number; y: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
+  // Refs for drag state (no re-renders needed)
+  const dragging = useRef(false);
+  // Ring buffer of recent positions for velocity/movement detection
+  const history = useRef<Array<{ x: number; y: number; t: number }>>([]);
+
+  // Spring-driven glove position (top-left of the GLOVE_FLY box)
   const rawX = useMotionValue(0);
   const rawY = useMotionValue(0);
-  const gX = useSpring(rawX, { stiffness: 700, damping: 32, mass: 0.35 });
-  const gY = useSpring(rawY, { stiffness: 700, damping: 32, mass: 0.35 });
+  const gX = useSpring(rawX, { stiffness: 600, damping: 30, mass: 0.3 });
+  const gY = useSpring(rawY, { stiffness: 600, damping: 30, mass: 0.3 });
+
+  const half = GLOVE_FLY / 2;
 
   const isOverPet = useCallback((cx: number, cy: number) => {
     const el = petRef.current;
     if (!el) return false;
     const r = el.getBoundingClientRect();
-    // Slightly enlarged hit area for easier mobile interaction
-    const pad = 20;
+    const pad = 24;
     return cx >= r.left - pad && cx <= r.right + pad && cy >= r.top - pad && cy <= r.bottom + pad;
   }, [petRef]);
 
-  const getCircleCenter = useCallback(() => {
-    const el = circleRef.current;
-    if (!el) return { x: window.innerWidth / 2, y: window.innerHeight - 100 };
-    const r = el.getBoundingClientRect();
-    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  // Check if pointer has been MOVING recently (any direction)
+  const isMoving = useCallback(() => {
+    const h = history.current;
+    const now = Date.now();
+    // Keep last 200ms of history
+    while (h.length > 0 && now - h[0].t > 200) h.shift();
+    if (h.length < 2) return false;
+    // Accumulate total path distance over the window
+    let dist = 0;
+    for (let i = 1; i < h.length; i++) {
+      dist += Math.abs(h[i].x - h[i - 1].x) + Math.abs(h[i].y - h[i - 1].y);
+    }
+    return dist > 6; // threshold: 6px of total movement in 200ms
   }, []);
 
   const startDrag = useCallback((cx: number, cy: number) => {
-    // Initialize glove at the circle center, not at 0,0
-    const center = getCircleCenter();
-    rawX.jump(center.x - 24);
-    rawY.jump(center.y - 24);
-    draggingRef.current = true;
-    prevXY.current = { x: cx, y: cy };
+    dragging.current = true;
+    history.current = [{ x: cx, y: cy, t: Date.now() }];
+    // Position glove centered on the circle
+    const el = circleRef.current;
+    if (el) {
+      const r = el.getBoundingClientRect();
+      rawX.jump(r.left + r.width / 2 - half);
+      rawY.jump(r.top + r.height / 2 - half);
+    }
     setIsDragging(true);
     onStroking(false);
-  }, [onStroking, rawX, rawY, getCircleCenter]);
+  }, [onStroking, rawX, rawY, half]);
 
   const moveDrag = useCallback((cx: number, cy: number) => {
-    if (!draggingRef.current) return;
-    rawX.set(cx - 24);
-    rawY.set(cy - 24);
-    const moving = prevXY.current
-      ? Math.hypot(cx - prevXY.current.x, cy - prevXY.current.y) > 2
-      : false;
-    prevXY.current = { x: cx, y: cy };
-    onStroking(isOverPet(cx, cy) && moving);
-  }, [isOverPet, onStroking, rawX, rawY]);
+    if (!dragging.current) return;
+    // Position: center of glove tracks pointer
+    rawX.set(cx - half);
+    rawY.set(cy - half);
+    // Record history
+    history.current.push({ x: cx, y: cy, t: Date.now() });
+    // Detect stroking: over pet AND moving in any direction
+    const moving = isMoving();
+    const over = isOverPet(cx, cy);
+    onStroking(over && moving);
+  }, [isOverPet, isMoving, onStroking, rawX, rawY, half]);
 
   const stopDrag = useCallback(() => {
-    draggingRef.current = false;
-    prevXY.current = null;
+    dragging.current = false;
+    history.current = [];
     setIsDragging(false);
     onStroking(false);
   }, [onStroking]);
 
-  // Global listeners for drag end — covers both mouse and touch
-  useEffect(() => {
-    const up = () => { if (draggingRef.current) stopDrag(); };
-    window.addEventListener("mouseup", up);
-    window.addEventListener("touchend", up, { passive: true });
-    window.addEventListener("touchcancel", up, { passive: true });
-    return () => {
-      window.removeEventListener("mouseup", up);
-      window.removeEventListener("touchend", up);
-      window.removeEventListener("touchcancel", up);
-    };
-  }, [stopDrag]);
-
-  // Petting animation: glove wobbles when stroking
+  // Glove wobble animation when stroking
   const gloveAnim = isStroking
-    ? { rotate: [-12, 12, -12], transition: { repeat: Infinity, duration: 0.3, ease: "easeInOut" as const } }
+    ? { rotate: [-15, 15, -15], transition: { repeat: Infinity, duration: 0.25, ease: "easeInOut" as const } }
     : { rotate: 0 };
 
   return (
     <>
-      {/* Static circle — always visible */}
+      {/* Static circle — grab handle */}
       <div
         ref={circleRef}
-        onMouseDown={e => { e.preventDefault(); startDrag(e.clientX, e.clientY); }}
-        onTouchStart={e => {
-          // Don't prevent default here to allow touch events to flow,
-          // but do start drag from actual touch position
-          const t = e.touches[0];
-          startDrag(t.clientX, t.clientY);
+        onPointerDown={e => {
+          e.preventDefault();
+          (e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
+          startDrag(e.clientX, e.clientY);
         }}
         style={{
-          width: GLOVE_SIZE, height: GLOVE_SIZE, borderRadius: "50%", flexShrink: 0,
+          width: GLOVE_CIRCLE, height: GLOVE_CIRCLE, borderRadius: "50%", flexShrink: 0,
           ...G.carousel,
           display: "flex", alignItems: "center", justifyContent: "center",
           cursor: isDragging ? "grabbing" : "grab",
@@ -312,38 +331,36 @@ function PettingGlove({ petRef, onStroking, isStroking }: {
         <img src="/sprites/glove.svg" draggable={false}
           style={{
             width: 64, height: 64, objectFit: "contain", pointerEvents: "none",
-            opacity: isDragging ? 0.3 : 1, transition: "opacity 0.15s",
+            opacity: isDragging ? 0.25 : 1, transition: "opacity 0.15s",
           }}
         />
       </div>
 
-      {/* Flying glove — fixed overlay while dragging */}
+      {/* Full-screen overlay for drag tracking */}
       {isDragging && (
         <div
-          onMouseMove={e => moveDrag(e.clientX, e.clientY)}
-          onTouchMove={e => {
-            e.preventDefault(); // Prevent scroll while dragging
-            const t = e.touches[0];
-            moveDrag(t.clientX, t.clientY);
-          }}
-          onTouchEnd={() => stopDrag()}
-          onMouseUp={() => stopDrag()}
+          onPointerMove={e => moveDrag(e.clientX, e.clientY)}
+          onPointerUp={() => stopDrag()}
+          onPointerCancel={() => stopDrag()}
           style={{
             position: "fixed", inset: 0, zIndex: 999,
-            cursor: "grabbing", touchAction: "none", pointerEvents: "all",
+            cursor: "grabbing", touchAction: "none",
           }}
         >
+          {/* Flying glove — positioned so CENTER = pointer */}
           <motion.div
             animate={gloveAnim}
             style={{
-              position: "absolute", top: 0, left: 0, width: 48, height: 48,
-              x: gX, y: gY, pointerEvents: "none",
+              position: "fixed", top: 0, left: 0,
+              width: GLOVE_FLY, height: GLOVE_FLY,
+              x: gX, y: gY,
+              pointerEvents: "none",
               transformOrigin: "center center",
             }}
           >
             <img src="/sprites/glove.svg" draggable={false}
               style={{
-                width: 128, height: 128, objectFit: "contain",
+                width: "100%", height: "100%", objectFit: "contain",
                 filter: isStroking
                   ? "drop-shadow(0 4px 16px rgba(249,168,212,0.6))"
                   : "drop-shadow(0 4px 12px rgba(0,0,0,0.14))",
@@ -373,14 +390,8 @@ export function HomePage({ petId }: Props) {
   const petDomRef = useRef<HTMLDivElement>(null);
 
   const refresh = useCallback(() => fetchPet(petId), [petId, fetchPet]);
-
   useEffect(() => { refresh(); }, [petId]);
-
-  useEffect(() => {
-    const id = setInterval(refresh, 60_000);
-    return () => clearInterval(id);
-  }, [refresh]);
-
+  useEffect(() => { const id = setInterval(refresh, 60_000); return () => clearInterval(id); }, [refresh]);
   useEffect(() => {
     const h = () => { if (!document.hidden) refresh(); };
     document.addEventListener("visibilitychange", h);
@@ -397,7 +408,6 @@ export function HomePage({ petId }: Props) {
     setTimeout(() => setHearts(h => h.filter(hh => hh.id !== id)), 900);
   }, []);
 
-  // Memoize derived values
   const derived = useMemo(() => {
     if (!pet) return null;
     const evo = Math.min(7, Math.floor(pet.level / 2) + 1);
@@ -407,7 +417,7 @@ export function HomePage({ petId }: Props) {
     const pMins = partner?.last_active_at ? Math.floor((Date.now() - new Date(partner.last_active_at).getTime()) / 60_000) : null;
     const pOnline = pMins !== null && pMins < 5;
     const sleepVal = pet.mood === "sleepy" ? 100 : 55;
-    return { evo, needed, xpPct, partner, pMins, pOnline, sleepVal };
+    return { evo, xpPct, partner, pMins, pOnline, sleepVal };
   }, [pet]);
 
   if (loading && !pet) return (
@@ -482,8 +492,8 @@ export function HomePage({ petId }: Props) {
         }}>
           <div style={{
             width: RING_SIZE, height: RING_SIZE, borderRadius: "50%", flexShrink: 0,
-            background: "rgba(255,255,255,0.55)", display: "flex", alignItems: "center", justifyContent: "center",
-            padding: 6, color: "rgba(0,0,0,0.42)",
+            background: "rgba(255,255,255,0.55)", display: "flex", alignItems: "center",
+            justifyContent: "center", padding: 6, color: "rgba(0,0,0,0.42)",
           }}>{IC.petIcon}</div>
           <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
             <div style={{
@@ -494,7 +504,8 @@ export function HomePage({ petId }: Props) {
             <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
               <span style={{ fontSize: 9, fontWeight: 700, color: "rgba(0,0,0,0.28)", letterSpacing: "0.06em" }}>LV.{pet.level}</span>
               <div style={{ width: "clamp(24px,7vw,44px)", height: 2.5, background: "rgba(0,0,0,0.08)", borderRadius: 2, overflow: "hidden" }}>
-                <motion.div animate={{ width: `${xpPct}%` }} transition={{ duration: 0.6 }} style={{ height: "100%", background: "rgba(0,0,0,0.32)", borderRadius: 2 }} />
+                <motion.div animate={{ width: `${xpPct}%` }} transition={{ duration: 0.6 }}
+                  style={{ height: "100%", background: "rgba(0,0,0,0.32)", borderRadius: 2 }} />
               </div>
             </div>
           </div>
@@ -538,8 +549,7 @@ export function HomePage({ petId }: Props) {
             <div ref={petDomRef} style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
               <PetSVG
                 mood={isStroking ? "happy" : pet.mood}
-                petType={pet.pet_type}
-                evolution={evo}
+                petType={pet.pet_type} evolution={evo}
                 isReacting={floatShow || isStroking}
                 size="clamp(140px,38vw,200px)"
               />
@@ -561,7 +571,8 @@ export function HomePage({ petId }: Props) {
           transition={{ duration: 0.8, ease: "easeOut" }}
           style={{
             position: "fixed", top: 0, left: 0, fontSize: 18, pointerEvents: "none",
-            zIndex: 1000, color: "#f9a8d4", filter: "drop-shadow(0 1px 4px rgba(249,168,212,0.5))",
+            zIndex: 1000, color: "#f9a8d4",
+            filter: "drop-shadow(0 1px 4px rgba(249,168,212,0.5))",
           }}
         >🩷</motion.div>
       ))}
@@ -598,7 +609,7 @@ export function HomePage({ petId }: Props) {
         )}
       </div>
 
-      {/* ── CAROUSEL NAV + GLOVE — centred together ── */}
+      {/* ── CAROUSEL NAV + GLOVE — centred together as siblings ── */}
       <nav style={{
         padding: `0 16px clamp(24px,6.5vw,38px)`,
         zIndex: 10, position: "relative",
@@ -621,7 +632,7 @@ export function HomePage({ petId }: Props) {
           </Carousel>
         </div>
 
-        {/* Glove circle — always visible, inline in flex, auto-centred with pill */}
+        {/* Glove — always visible, inline flex sibling, auto-centred */}
         <PettingGlove petRef={petDomRef} onStroking={handleStroking} isStroking={isStroking} />
       </nav>
 
