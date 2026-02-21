@@ -175,12 +175,14 @@ function CarouselBtn({ icon, active, disabled, cdLabel, onClick }: {
               backdropFilter: "blur(16px)",
               WebkitBackdropFilter: "blur(16px)",
               border: "1.5px solid rgba(255,255,255,0.95)",
-              boxShadow: "0 4px 16px rgba(100,100,150,0.14), inset 0 1px 0 rgba(255,255,255,1)",
+              // круглая тень — spread совпадает с радиусом кнопки
+              boxShadow: "0 4px 14px 2px rgba(100,100,150,0.18), inset 0 1px 0 rgba(255,255,255,1)",
             }
           : {
               background: "rgba(255,255,255,0.30)",
               border: "1px solid rgba(255,255,255,0.50)",
-              boxShadow: "none",
+              // лёгкая круглая тень даже у неактивных
+              boxShadow: "0 2px 8px 1px rgba(100,100,150,0.07)",
             }),
         cursor: disabled ? "not-allowed" : "pointer",
         display: "flex", flexDirection: "column",
@@ -232,16 +234,19 @@ function FloatAnim({ show, text }: { show: boolean; text: string }) {
   );
 }
 
-// ─── DraggablePet — без ограничений, весь экран ───────────────────────────────
-function DraggablePet({ children }: { children: React.ReactNode }) {
+// ─── DraggablePet — ограничен размером родительского main ────────────────────
+function DraggablePet({ children, constraintsRef }: {
+  children: React.ReactNode;
+  constraintsRef: React.RefObject<HTMLElement | null>;
+}) {
   const controls = useDragControls();
   return (
     <motion.div
       drag
       dragControls={controls}
-      // Без dragConstraints — питомец свободно гуляет по всему экрану
-      dragElastic={0.08}
-      dragMomentum={true}
+      dragConstraints={constraintsRef}
+      dragElastic={0.10}
+      dragMomentum={false}
       whileDrag={{ scale: 1.06, filter: "drop-shadow(0 8px 24px rgba(0,0,0,0.12))" }}
       style={{ cursor: "grab", touchAction: "none", display: "inline-block" }}
       onPointerDown={e => controls.start(e)}
@@ -431,7 +436,7 @@ export function HomePage({ petId }: Props) {
       }}>
         <div style={{ position: "relative" }}>
           <FloatAnim show={floatShow} text={floatText}/>
-          <DraggablePet>
+          <DraggablePet constraintsRef={mainRef}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
               <PetSVG
                 mood={pet.mood} petType={pet.pet_type}
