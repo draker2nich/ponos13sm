@@ -311,7 +311,7 @@ function PettingGlove({ petRef, onStroking, isStroking }: {
       >
         <img src="/sprites/glove.svg" draggable={false}
           style={{
-            width: 36, height: 36, objectFit: "contain", pointerEvents: "none",
+            width: 64, height: 64, objectFit: "contain", pointerEvents: "none",
             opacity: isDragging ? 0.3 : 1, transition: "opacity 0.15s",
           }}
         />
@@ -343,7 +343,7 @@ function PettingGlove({ petRef, onStroking, isStroking }: {
           >
             <img src="/sprites/glove.svg" draggable={false}
               style={{
-                width: 48, height: 48, objectFit: "contain",
+                width: 128, height: 128, objectFit: "contain",
                 filter: isStroking
                   ? "drop-shadow(0 4px 16px rgba(249,168,212,0.6))"
                   : "drop-shadow(0 4px 12px rgba(0,0,0,0.14))",
