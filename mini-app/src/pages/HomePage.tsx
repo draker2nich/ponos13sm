@@ -212,6 +212,143 @@ function CarouselBtn({ icon, active, disabled, cdLabel, onClick }: {
   );
 }
 
+// ─── PettingGlove ─────────────────────────────────────────────────────────────
+interface PettingGloveProps {
+  onPetProgress: (delta: number) => void;
+  carouselRef: React.RefObject<HTMLElement | null>;
+}
+
+function PettingGlove({ onPetProgress, carouselRef }: PettingGloveProps) {
+  const [active, setActive]       = useState(false);
+  const [pos, setPos]             = useState<{ x: number; y: number } | null>(null);
+  const [hearts, setHearts]       = useState<{ id: number; x: number; y: number }[]>([]);
+  const anchorRef   = useRef<HTMLDivElement>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const nextHeart   = useRef(0);
+
+  // Позиция кружка-якоря
+  const getAnchorCenter = (): { x: number; y: number } | null => {
+    const el = anchorRef.current;
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  };
+
+  const startPetting = (cx: number, cy: number) => {
+    setActive(true);
+    setPos({ x: cx, y: cy });
+    intervalRef.current = setInterval(() => {
+      onPetProgress(2);
+      const id = nextHeart.current++;
+      setHearts(h => [...h.slice(-6), { id, x: cx + (Math.random() - 0.5) * 40, y: cy }]);
+      setTimeout(() => setHearts(h => h.filter(hh => hh.id !== id)), 800);
+    }, 120);
+  };
+
+  const movePetting = (cx: number, cy: number) => {
+    if (!active) return;
+    setPos({ x: cx, y: cy });
+  };
+
+  const stopPetting = () => {
+    setActive(false);
+    setPos(null);
+    if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
+  };
+
+  useEffect(() => () => { if (intervalRef.current) clearInterval(intervalRef.current); }, []);
+
+  // Глобальные события мыши/тач для отпускания за пределами
+  useEffect(() => {
+    const up = () => { if (active) stopPetting(); };
+    window.addEventListener("mouseup",  up);
+    window.addEventListener("touchend", up);
+    return () => { window.removeEventListener("mouseup", up); window.removeEventListener("touchend", up); };
+  }, [active]);
+
+  const anchor = getAnchorCenter();
+  // Перчатка: если активна — на позиции курсора, иначе — в центре кружка
+  const gloveX = active && pos ? pos.x : (anchor?.x ?? 0);
+  const gloveY = active && pos ? pos.y : (anchor?.y ?? 0);
+
+  return (
+    <>
+      {/* Кружок-якорь — позиционируется снаружи карусели */}
+      <div
+        ref={anchorRef}
+        onMouseDown={e => { e.preventDefault(); const a = getAnchorCenter(); if (a) startPetting(a.x, a.y); }}
+        onTouchStart={e => { e.preventDefault(); const t = e.touches[0]; startPetting(t.clientX, t.clientY); }}
+        onMouseMove={e  => movePetting(e.clientX, e.clientY)}
+        onTouchMove={e  => { e.preventDefault(); const t = e.touches[0]; movePetting(t.clientX, t.clientY); }}
+        style={{
+          width: 52, height: 52, borderRadius: "50%", flexShrink: 0,
+          background: active ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.55)",
+          backdropFilter: "blur(32px) saturate(180%)",
+          WebkitBackdropFilter: "blur(32px) saturate(180%)",
+          border: `1px solid ${active ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.70)"}`,
+          boxShadow: active
+            ? "0 4px 14px 2px rgba(100,100,150,0.18), inset 0 1px 0 rgba(255,255,255,1)"
+            : "0 2px 8px 1px rgba(100,100,150,0.07)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          cursor: active ? "grabbing" : "grab",
+          userSelect: "none", touchAction: "none",
+          transition: "background 0.15s, border 0.15s, box-shadow 0.15s",
+          // Перчатка в кружке — скрыта когда активна (летит за курсором)
+          overflow: "hidden",
+        }}
+      >
+        {!active && (
+          <img
+            src="/sprites/glove.svg"
+            draggable={false}
+            style={{ width: 28, height: 28, objectFit: "contain", pointerEvents: "none" }}
+          />
+        )}
+      </div>
+
+      {/* Летающая перчатка — рендерится поверх всего через portal-like fixed */}
+      {active && (
+        <div
+          onMouseMove={e  => movePetting(e.clientX, e.clientY)}
+          onTouchMove={e  => { e.preventDefault(); const t = e.touches[0]; movePetting(t.clientX, t.clientY); }}
+          style={{
+            position: "fixed", inset: 0, zIndex: 999,
+            cursor: "grabbing", touchAction: "none", pointerEvents: "all",
+          }}
+        >
+          <motion.div
+            animate={{ x: gloveX - 24, y: gloveY - 24 }}
+            transition={{ type: "spring", stiffness: 600, damping: 30, mass: 0.4 }}
+            style={{ position: "absolute", top: 0, left: 0, width: 48, height: 48, pointerEvents: "none" }}
+          >
+            <motion.div
+              animate={{ rotate: [-8, 8, -8] }}
+              transition={{ repeat: Infinity, duration: 0.25, ease: "easeInOut" }}
+            >
+              <img
+                src="/sprites/glove.svg"
+                draggable={false}
+                style={{ width: 48, height: 48, objectFit: "contain", filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.18))" }}
+              />
+            </motion.div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Сердечки */}
+      {hearts.map(h => (
+        <motion.div
+          key={h.id}
+          initial={{ opacity: 1, y: h.y, x: h.x, scale: 0.6 }}
+          animate={{ opacity: 0, y: h.y - 55, scale: 1 }}
+          transition={{ duration: 0.75, ease: "easeOut" }}
+          style={{ position: "fixed", top: 0, left: 0, fontSize: 18, pointerEvents: "none", zIndex: 1000 }}
+        >🤍</motion.div>
+      ))}
+    </>
+  );
+}
+
 // ─── FloatAnim ────────────────────────────────────────────────────────────────
 function FloatAnim({ show, text }: { show: boolean; text: string }) {
   return (
@@ -264,7 +401,9 @@ export function HomePage({ petId }: Props) {
   const [activeTab, setActiveTab] = useState<TabId>("feed");
   const [floatText, setFloatText] = useState("");
   const [floatShow, setFloatShow] = useState(false);
-  const mainRef = useRef<HTMLDivElement>(null);
+  const [petScore,  setPetScore]  = useState(0);
+  const mainRef    = useRef<HTMLDivElement>(null);
+  const carouselRef = useRef<HTMLElement | null>(null);
 
   const refresh = useCallback(() => fetchPet(petId), [petId, fetchPet]);
   useEffect(() => { refresh(); }, [petId]);
@@ -496,11 +635,15 @@ export function HomePage({ petId }: Props) {
       </div>
 
       {/* ── CAROUSEL NAV ─────────────────────────────────────────────── */}
-      <nav style={{
-        padding: "0 16px clamp(24px,6.5vw,38px)",
-        zIndex: 10, position: "relative",
-        display: "flex", justifyContent: "center",
-      }}>
+      <nav
+        ref={carouselRef as React.RefObject<HTMLElement>}
+        style={{
+          padding: "0 16px clamp(24px,6.5vw,38px)",
+          zIndex: 10, position: "relative",
+          display: "flex", justifyContent: "center",
+          alignItems: "center", gap: 10,
+        }}
+      >
         <div style={{
           ...G.carousel,
           borderRadius: 999,
@@ -517,6 +660,12 @@ export function HomePage({ petId }: Props) {
             <CarouselBtn icon={IC.settings} active={activeTab==="settings"} onClick={() => handleTab("settings")}/>
           </Carousel>
         </div>
+
+        {/* Кружок с перчаткой — на одном уровне с каруселью, справа */}
+        <PettingGlove
+          onPetProgress={delta => setPetScore(s => s + delta)}
+          carouselRef={carouselRef}
+        />
       </nav>
 
       {/* iOS home indicator */}
