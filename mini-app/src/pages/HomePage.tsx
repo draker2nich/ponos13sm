@@ -67,14 +67,14 @@ const cdActive = (iso: string | null) => !!iso && new Date(iso).getTime() > Date
 const toDeg    = (v: number) => Math.round(Math.max(0, Math.min(100, v)) / 100 * 360);
 
 // ─── Layout constants ─────────────────────────────────────────────────────────
-const PILL_H   = 50;
+const PILL_H    = 50;
 const RING_SIZE = 34;
-const NAV_PAD  = 8;
-const BTN_W    = PILL_H;
-const BTN_GAP  = 5;
-const VISIBLE  = 4;
+const NAV_PAD   = 8;
+const BTN_W     = PILL_H;   // button diameter = pill inner height
+const BTN_GAP   = 5;
+const VISIBLE   = 4;
 const VIEWPORT_W = VISIBLE * BTN_W + (VISIBLE - 1) * BTN_GAP;
-const WIDGET_H = NAV_PAD * 2 + BTN_W; // 66px — total pill height
+const WIDGET_H  = NAV_PAD * 2 + BTN_W;  // total pill height incl. padding
 
 // ─── StatusRing ───────────────────────────────────────────────────────────────
 function StatusRing({ value, icon }: { value: number; icon: React.ReactNode }) {
@@ -88,36 +88,32 @@ function StatusRing({ value, icon }: { value: number; icon: React.ReactNode }) {
     <div style={{ position: "relative", width: RING_SIZE, height: RING_SIZE, flexShrink: 0 }}>
       <svg width={RING_SIZE} height={RING_SIZE} style={{ position: "absolute", inset: 0, transform: "rotate(-90deg)" }}>
         <circle cx={RING_SIZE/2} cy={RING_SIZE/2} r={R} fill="none" stroke="rgba(0,0,0,0.06)" strokeWidth={2}/>
-        <circle cx={RING_SIZE/2} cy={RING_SIZE/2} r={R} fill="none"
-          stroke={col} strokeWidth={2}
-          strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
-        />
+        <circle cx={RING_SIZE/2} cy={RING_SIZE/2} r={R} fill="none" stroke={col} strokeWidth={2}
+          strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"/>
       </svg>
       <div style={{
         position: "absolute", inset: 5, borderRadius: "50%",
         background: "rgba(255,255,255,0.5)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        padding: 5,
+        display: "flex", alignItems: "center", justifyContent: "center", padding: 5,
         color: low ? "rgba(200,50,50,0.85)" : "rgba(60,60,80,0.55)",
       }}>{icon}</div>
     </div>
   );
 }
 
-// ─── Carousel ─────────────────────────────────────────────────────────────────
+// ─── Carousel (drag-scroll) ───────────────────────────────────────────────────
 function Carousel({ children }: { children: React.ReactNode }) {
   const ref  = useRef<HTMLDivElement>(null);
   const down = useRef(false);
   const sx   = useRef(0);
   const sl   = useRef(0);
   return (
-    <div
-      ref={ref}
-      onMouseDown={e => { down.current = true; sx.current = e.pageX - ref.current!.offsetLeft; sl.current = ref.current!.scrollLeft; ref.current!.style.cursor = "grabbing"; }}
-      onMouseUp={()   => { down.current = false; if (ref.current) ref.current.style.cursor = "grab"; }}
-      onMouseLeave={() => { down.current = false; if (ref.current) ref.current.style.cursor = "grab"; }}
-      onMouseMove={e  => { if (!down.current) return; ref.current!.scrollLeft = sl.current - (e.pageX - ref.current!.offsetLeft - sx.current) * 1.2; }}
-      style={{ display: "flex", gap: BTN_GAP, width: VIEWPORT_W, overflowX: "auto", scrollbarWidth: "none", WebkitOverflowScrolling: "touch", cursor: "grab", userSelect: "none" }}
+    <div ref={ref}
+      onMouseDown={e => { down.current=true; sx.current=e.pageX-ref.current!.offsetLeft; sl.current=ref.current!.scrollLeft; ref.current!.style.cursor="grabbing"; }}
+      onMouseUp={()   => { down.current=false; if(ref.current) ref.current.style.cursor="grab"; }}
+      onMouseLeave={() => { down.current=false; if(ref.current) ref.current.style.cursor="grab"; }}
+      onMouseMove={e  => { if(!down.current) return; ref.current!.scrollLeft=sl.current-(e.pageX-ref.current!.offsetLeft-sx.current)*1.2; }}
+      style={{ display:"flex", gap:BTN_GAP, width:VIEWPORT_W, overflowX:"auto", scrollbarWidth:"none", WebkitOverflowScrolling:"touch", cursor:"grab", userSelect:"none" }}
     >{children}</div>
   );
 }
@@ -129,21 +125,21 @@ function CarouselBtn({ icon, active, disabled, cdLabel, onClick }: {
   icon: React.ReactNode; active?: boolean; disabled?: boolean; cdLabel?: string; onClick?: () => void;
 }) {
   return (
-    <motion.button
-      whileTap={disabled ? {} : { scale: 0.84 }}
-      onClick={disabled ? undefined : onClick}
+    <motion.button whileTap={disabled ? {} : { scale: 0.84 }} onClick={disabled ? undefined : onClick}
       style={{
-        flexShrink: 0, width: BTN_W, height: BTN_W, borderRadius: "50%",
+        flexShrink:0, width:BTN_W, height:BTN_W, borderRadius:"50%",
         ...(active
-          ? { background: "rgba(255,255,255,0.82)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1.5px solid rgba(255,255,255,0.95)", boxShadow: "0 4px 14px 2px rgba(100,100,150,0.18), inset 0 1px 0 rgba(255,255,255,1)" }
-          : { background: "rgba(255,255,255,0.30)", border: "1px solid rgba(255,255,255,0.50)", boxShadow: "0 2px 8px 1px rgba(100,100,150,0.07)" }),
-        cursor: disabled ? "not-allowed" : "pointer",
-        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-        gap: 2, transition: "all 0.15s", fontFamily: "inherit",
+          ? { background:"rgba(255,255,255,0.82)", backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)", border:"1.5px solid rgba(255,255,255,0.95)", boxShadow:"0 4px 14px 2px rgba(100,100,150,0.18), inset 0 1px 0 rgba(255,255,255,1)" }
+          : { background:"rgba(255,255,255,0.30)", border:"1px solid rgba(255,255,255,0.50)", boxShadow:"0 2px 8px 1px rgba(100,100,150,0.07)" }),
+        cursor:disabled?"not-allowed":"pointer",
+        display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+        gap:2, transition:"all 0.15s", fontFamily:"inherit",
       }}
     >
-      <div style={{ width: 22, height: 22, color: disabled ? "rgba(0,0,0,0.18)" : active ? "rgba(0,0,0,0.68)" : "rgba(0,0,0,0.38)", display: "flex", alignItems: "center", justifyContent: "center", filter: disabled ? "opacity(0.35)" : "none", transition: "color 0.15s" }}>{icon}</div>
-      {disabled && cdLabel && <span style={{ fontSize: 7, fontWeight: 800, color: "rgba(0,0,0,0.30)", lineHeight: 1 }}>{cdLabel}</span>}
+      <div style={{ width:22, height:22, display:"flex", alignItems:"center", justifyContent:"center",
+        color: disabled?"rgba(0,0,0,0.18)": active?"rgba(0,0,0,0.68)":"rgba(0,0,0,0.38)",
+        filter:disabled?"opacity(0.35)":"none", transition:"color 0.15s" }}>{icon}</div>
+      {disabled && cdLabel && <span style={{ fontSize:7, fontWeight:800, color:"rgba(0,0,0,0.30)", lineHeight:1 }}>{cdLabel}</span>}
     </motion.button>
   );
 }
@@ -153,51 +149,42 @@ function FloatAnim({ show, text }: { show: boolean; text: string }) {
   return (
     <AnimatePresence>
       {show && (
-        <motion.div
-          initial={{ opacity: 1, y: 0 }} animate={{ opacity: 0, y: -60 }}
-          transition={{ duration: 0.85, ease: "easeOut" }}
-          style={{ position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)", fontSize: 20, fontWeight: 800, color: "rgba(0,0,0,0.60)", textShadow: "0 2px 8px rgba(255,255,255,0.6)", pointerEvents: "none", whiteSpace: "nowrap", zIndex: 20 }}
+        <motion.div initial={{ opacity:1, y:0 }} animate={{ opacity:0, y:-60 }} transition={{ duration:0.85, ease:"easeOut" }}
+          style={{ position:"absolute", top:0, left:"50%", transform:"translateX(-50%)", fontSize:20, fontWeight:800,
+            color:"rgba(0,0,0,0.60)", textShadow:"0 2px 8px rgba(255,255,255,0.6)", pointerEvents:"none", whiteSpace:"nowrap", zIndex:20 }}
         >{text}</motion.div>
       )}
     </AnimatePresence>
   );
 }
 
-// ─── HeartFx ──────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 interface HeartFx { id: number; x: number; y: number; angle: number; dist: number }
 
 // ─── DraggablePet ─────────────────────────────────────────────────────────────
 interface DraggablePetProps {
   children: React.ReactNode;
   constraintsRef: React.RefObject<HTMLElement | null>;
-  isPetting: boolean;
-  glovePos: { x: number; y: number } | null;
+  // isStroking = glove is held down AND moving AND over the pet
+  isStroking: boolean;
   onHeartAt: (x: number, y: number) => void;
   onScoreInc: () => void;
 }
 
-function DraggablePet({ children, constraintsRef, isPetting, glovePos, onHeartAt, onScoreInc }: DraggablePetProps) {
+function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, onScoreInc }: DraggablePetProps) {
   const controls = useDragControls();
-  const petRef   = useRef<HTMLDivElement>(null);
   const tickRef  = useRef<ReturnType<typeof setInterval> | null>(null);
+  const petRef   = useRef<HTMLDivElement>(null);
 
-  const isOverPet = useCallback((cx: number, cy: number) => {
+  const getPetCenter = useCallback((): { x: number; y: number } => {
     const el = petRef.current;
-    if (!el) return false;
+    if (!el) return { x:0, y:0 };
     const r = el.getBoundingClientRect();
-    return cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom;
-  }, []);
-
-  const getPetCenter = useCallback(() => {
-    const el = petRef.current;
-    if (!el) return { x: 0, y: 0 };
-    const r = el.getBoundingClientRect();
-    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    return { x: r.left + r.width/2, y: r.top + r.height/2 };
   }, []);
 
   useEffect(() => {
-    const shouldPet = isPetting && glovePos && isOverPet(glovePos.x, glovePos.y);
-    if (shouldPet) {
+    if (isStroking) {
       if (!tickRef.current) {
         tickRef.current = setInterval(() => {
           onScoreInc();
@@ -210,18 +197,17 @@ function DraggablePet({ children, constraintsRef, isPetting, glovePos, onHeartAt
     } else {
       if (tickRef.current) { clearInterval(tickRef.current); tickRef.current = null; }
     }
-  }, [isPetting, glovePos, isOverPet, getPetCenter, onHeartAt, onScoreInc]);
+  }, [isStroking, getPetCenter, onHeartAt, onScoreInc]);
 
   useEffect(() => () => { if (tickRef.current) clearInterval(tickRef.current); }, []);
 
   return (
-    <motion.div
-      drag dragControls={controls} dragConstraints={constraintsRef}
-      dragElastic={0.10} dragMomentum={false} whileDrag={{ scale: 1.06 }}
-      style={{ cursor: "grab", touchAction: "none", display: "inline-block" }}
+    <motion.div drag dragControls={controls} dragConstraints={constraintsRef}
+      dragElastic={0.10} dragMomentum={false} whileDrag={{ scale:1.06 }}
+      style={{ cursor:"grab", touchAction:"none", display:"inline-block" }}
       onPointerDown={e => controls.start(e)}
     >
-      <div ref={petRef} style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+      <div ref={petRef} style={{ display:"flex", flexDirection:"column", alignItems:"center" }}>
         {children}
       </div>
     </motion.div>
@@ -229,114 +215,129 @@ function DraggablePet({ children, constraintsRef, isPetting, glovePos, onHeartAt
 }
 
 // ─── PettingGlove ─────────────────────────────────────────────────────────────
-interface PettingGloveProps {
-  onGloveState: (active: boolean, pos: { x: number; y: number } | null) => void;
+// Reports: isDragging + position + isStroking (dragging + moving + over pet)
+interface GloveState {
+  isDragging: boolean;
+  pos: { x: number; y: number } | null;
+  isStroking: boolean; // moving over pet
 }
 
-function PettingGlove({ onGloveState }: PettingGloveProps) {
-  const [active, setActive] = useState(false);
-  const [pos,    setPos]    = useState<{ x: number; y: number } | null>(null);
-  const circleRef = useRef<HTMLDivElement>(null);
+interface PettingGloveProps {
+  petRef: React.RefObject<HTMLDivElement | null>;
+  onState: (s: GloveState) => void;
+}
 
-  const getCircleCenter = () => {
+function PettingGlove({ petRef, onState }: PettingGloveProps) {
+  const circleRef  = useRef<HTMLDivElement>(null);
+  const dragging   = useRef(false);
+  const posRef     = useRef<{ x: number; y: number } | null>(null);
+  const prevPosRef = useRef<{ x: number; y: number } | null>(null);
+  // Displayed position for the flying glove (state for re-render)
+  const [flyPos, setFlyPos] = useState<{ x: number; y: number } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const isOverPet = useCallback((cx: number, cy: number): boolean => {
+    const el = petRef.current;
+    if (!el) return false;
+    const r = el.getBoundingClientRect();
+    return cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom;
+  }, [petRef]);
+
+  const isMoving = useCallback((cx: number, cy: number): boolean => {
+    const prev = prevPosRef.current;
+    if (!prev) return false;
+    const dx = cx - prev.x, dy = cy - prev.y;
+    return Math.sqrt(dx*dx + dy*dy) > 1.5; // threshold px
+  }, []);
+
+  const getCircleCenter = (): { x: number; y: number } | null => {
     const el = circleRef.current;
     if (!el) return null;
     const r = el.getBoundingClientRect();
-    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    return { x: r.left + r.width/2, y: r.top + r.height/2 };
   };
 
-  const start = (cx: number, cy: number) => {
-    setActive(true);
-    setPos({ x: cx, y: cy });
-    onGloveState(true, { x: cx, y: cy });
-  };
+  const startDrag = useCallback((cx: number, cy: number) => {
+    dragging.current = true;
+    posRef.current = { x: cx, y: cy };
+    prevPosRef.current = null;
+    setFlyPos({ x: cx, y: cy });
+    setIsDragging(true);
+    onState({ isDragging: true, pos: { x:cx, y:cy }, isStroking: false });
+  }, [onState]);
 
-  const move = useCallback((cx: number, cy: number) => {
-    setPos({ x: cx, y: cy });
-    onGloveState(true, { x: cx, y: cy });
-  }, [onGloveState]);
+  const moveDrag = useCallback((cx: number, cy: number) => {
+    if (!dragging.current) return;
+    const stroking = isOverPet(cx, cy) && isMoving(cx, cy);
+    prevPosRef.current = posRef.current;
+    posRef.current = { x:cx, y:cy };
+    setFlyPos({ x:cx, y:cy });
+    onState({ isDragging: true, pos: { x:cx, y:cy }, isStroking: stroking });
+  }, [onState, isOverPet, isMoving]);
 
-  const stop = useCallback(() => {
-    setActive(false);
-    setPos(null);
-    onGloveState(false, null);
-  }, [onGloveState]);
+  const stopDrag = useCallback(() => {
+    dragging.current = false;
+    posRef.current = null;
+    prevPosRef.current = null;
+    setFlyPos(null);
+    setIsDragging(false);
+    onState({ isDragging: false, pos: null, isStroking: false });
+  }, [onState]);
 
   useEffect(() => {
-    if (!active) return;
-    const up = () => stop();
-    window.addEventListener("mouseup",  up);
-    window.addEventListener("touchend", up);
+    const up = () => { if (dragging.current) stopDrag(); };
+    window.addEventListener("mouseup",   up);
+    window.addEventListener("touchend",  up);
     window.addEventListener("touchcancel", up);
     return () => {
-      window.removeEventListener("mouseup",  up);
-      window.removeEventListener("touchend", up);
+      window.removeEventListener("mouseup",   up);
+      window.removeEventListener("touchend",  up);
       window.removeEventListener("touchcancel", up);
     };
-  }, [active, stop]);
+  }, [stopDrag]);
 
-  // The flying glove starts from circle center
-  const initCenter = getCircleCenter() ?? { x: 0, y: 0 };
-  const flyX = active && pos ? pos.x : initCenter.x;
-  const flyY = active && pos ? pos.y : initCenter.y;
+  const circleCenter = getCircleCenter();
 
   return (
     <>
-      {/* ── Circle — same size as WIDGET_H ── */}
+      {/* ── Static circle — always shows glove icon, diameter = WIDGET_H ── */}
       <div
         ref={circleRef}
-        onMouseDown={e => {
-          e.preventDefault();
-          // start exactly from circle center
-          const c = getCircleCenter();
-          if (c) start(c.x, c.y);
-        }}
-        onTouchStart={e => {
-          e.preventDefault();
-          const c = getCircleCenter();
-          if (c) start(c.x, c.y);
-        }}
+        onMouseDown={e => { e.preventDefault(); const c = getCircleCenter(); if (c) startDrag(c.x, c.y); }}
+        onTouchStart={e => { e.preventDefault(); const c = getCircleCenter(); if (c) startDrag(c.x, c.y); }}
         style={{
           width: WIDGET_H, height: WIDGET_H, borderRadius: "50%", flexShrink: 0,
-          ...(active
-            ? { background: "rgba(255,255,255,0.82)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1.5px solid rgba(255,255,255,0.95)", boxShadow: "0 4px 14px 2px rgba(100,100,150,0.18), inset 0 1px 0 rgba(255,255,255,1)" }
-            : { background: "rgba(255,255,255,0.60)", backdropFilter: "blur(32px) saturate(180%)", WebkitBackdropFilter: "blur(32px) saturate(180%)", border: "1px solid rgba(255,255,255,0.72)", boxShadow: "0 8px 32px rgba(100,100,140,0.13), inset 0 1.5px 0 rgba(255,255,255,0.95)" }),
+          // same style as carousel pill so it visually matches
+          ...G.carousel,
           display: "flex", alignItems: "center", justifyContent: "center",
-          cursor: active ? "grabbing" : "grab",
+          cursor: isDragging ? "grabbing" : "grab",
           userSelect: "none", touchAction: "none",
-          transition: "background 0.15s, border 0.15s, box-shadow 0.15s",
         }}
       >
-        {/* Always show glove icon in the circle — it disappears only when flying */}
-        {!active && (
-          <img src="/sprites/glove.svg" draggable={false}
-            style={{ width: 64, height: 64, objectFit: "contain", pointerEvents: "none" }}
-          />
-        )}
+        {/* Glove icon always visible in the circle */}
+        <img src="/sprites/glove.svg" draggable={false}
+          style={{ width: 32, height: 32, objectFit: "contain", pointerEvents: "none",
+            opacity: isDragging ? 0.35 : 1, transition: "opacity 0.15s" }}
+        />
       </div>
 
-      {/* ── Flying glove overlay ── */}
-      {active && (
+      {/* ── Flying glove — rendered fixed, spawns from circle center ── */}
+      {isDragging && circleCenter && (
         <div
-          onMouseMove={e  => move(e.clientX, e.clientY)}
-          onTouchMove={e  => { e.preventDefault(); const t = e.touches[0]; move(t.clientX, t.clientY); }}
-          style={{ position: "fixed", inset: 0, zIndex: 999, cursor: "grabbing", touchAction: "none", pointerEvents: "all" }}
+          onMouseMove={e  => moveDrag(e.clientX, e.clientY)}
+          onTouchMove={e  => { e.preventDefault(); const t = e.touches[0]; moveDrag(t.clientX, t.clientY); }}
+          style={{ position:"fixed", inset:0, zIndex:999, cursor:"grabbing", touchAction:"none", pointerEvents:"all" }}
         >
           <motion.div
-            // initial position = circle center so glove spawns there, not top-left
-            initial={{ x: initCenter.x - 24, y: initCenter.y - 24 }}
-            animate={{ x: flyX - 24, y: flyY - 24 }}
-            transition={{ type: "spring", stiffness: 700, damping: 32, mass: 0.35 }}
-            style={{ position: "absolute", top: 0, left: 0, width: 48, height: 48, pointerEvents: "none" }}
+            initial={{ x: circleCenter.x - 24, y: circleCenter.y - 24 }}
+            animate={{ x: (flyPos?.x ?? circleCenter.x) - 24, y: (flyPos?.y ?? circleCenter.y) - 24 }}
+            transition={{ type:"spring", stiffness:700, damping:32, mass:0.35 }}
+            style={{ position:"absolute", top:0, left:0, width:48, height:48, pointerEvents:"none" }}
           >
-            <motion.div
-              animate={{ rotate: [-10, 10, -10] }}
-              transition={{ repeat: Infinity, duration: 0.22, ease: "easeInOut" }}
-            >
-              <img src="/sprites/glove.svg" draggable={false}
-                style={{ width: 96, height: 96, objectFit: "contain", filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.14))" }}
-              />
-            </motion.div>
+            <img src="/sprites/glove.svg" draggable={false}
+              style={{ width:48, height:48, objectFit:"contain",
+                filter:"drop-shadow(0 4px 12px rgba(0,0,0,0.14))" }}
+            />
           </motion.div>
         </div>
       )}
@@ -352,13 +353,13 @@ export function HomePage({ petId }: Props) {
   const [activeTab, setActiveTab] = useState<TabId>("feed");
   const [floatText, setFloatText] = useState("");
   const [floatShow, setFloatShow] = useState(false);
-
-  const [isPetting, setIsPetting] = useState(false);
-  const [glovePos,  setGlovePos]  = useState<{ x: number; y: number } | null>(null);
-  const [hearts,    setHearts]    = useState<HeartFx[]>([]);
+  const [isStroking, setIsStroking] = useState(false);
+  const [hearts, setHearts]         = useState<HeartFx[]>([]);
   const nextHeart = useRef(0);
 
-  const mainRef = useRef<HTMLDivElement>(null);
+  const mainRef   = useRef<HTMLDivElement>(null);
+  // ref to the pet's DOM node — passed to PettingGlove for hit-testing
+  const petDomRef = useRef<HTMLDivElement>(null);
 
   const refresh = useCallback(() => fetchPet(petId), [petId, fetchPet]);
   useEffect(() => { refresh(); }, [petId]);
@@ -369,9 +370,8 @@ export function HomePage({ petId }: Props) {
     return () => document.removeEventListener("visibilitychange", h);
   }, [refresh]);
 
-  const handleGloveState = useCallback((active: boolean, pos: { x: number; y: number } | null) => {
-    setIsPetting(active);
-    setGlovePos(pos);
+  const handleGloveState = useCallback((s: GloveState) => {
+    setIsStroking(s.isStroking);
   }, []);
 
   const spawnHeart = useCallback((x: number, y: number) => {
@@ -385,21 +385,22 @@ export function HomePage({ petId }: Props) {
   const incPetScore = useCallback(() => {}, []);
 
   if (loading && !pet) return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100dvh", background: "linear-gradient(135deg, #f0f4ff 0%, #fce4f0 50%, #e8f5f0 100%)" }}>
-      <div style={{ width: 36, height: 36, color: "rgba(0,0,0,0.3)" }}>{IC.petIcon}</div>
-      <div style={{ fontSize: 13, color: "rgba(0,0,0,0.3)", marginTop: 10 }}>Загрузка...</div>
+    <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+      height:"100dvh", background:"linear-gradient(135deg,#f0f4ff 0%,#fce4f0 50%,#e8f5f0 100%)" }}>
+      <div style={{ width:36, height:36, color:"rgba(0,0,0,0.3)" }}>{IC.petIcon}</div>
+      <div style={{ fontSize:13, color:"rgba(0,0,0,0.3)", marginTop:10 }}>Загрузка...</div>
     </div>
   );
   if (!pet) return null;
 
-  const evo     = Math.min(7, Math.floor(pet.level / 2) + 1);
-  const needed  = pet.level * 100;
-  const xpPct   = Math.min(100, pet.experience / needed * 100);
-  const getCd   = (a: string) => pet.cooldowns.find(c => c.action === a)?.available_at ?? null;
-  const isCd    = (a: string) => cdActive(getCd(a));
-  const partner = pet.owners.find(o => !o.is_creator) ?? pet.owners[1];
-  const pMins   = partner?.last_active_at ? Math.floor((Date.now() - new Date(partner.last_active_at).getTime()) / 60_000) : null;
-  const pOnline = pMins !== null && pMins < 5;
+  const evo      = Math.min(7, Math.floor(pet.level / 2) + 1);
+  const needed   = pet.level * 100;
+  const xpPct    = Math.min(100, pet.experience / needed * 100);
+  const getCd    = (a: string) => pet.cooldowns.find(c => c.action === a)?.available_at ?? null;
+  const isCd     = (a: string) => cdActive(getCd(a));
+  const partner  = pet.owners.find(o => !o.is_creator) ?? pet.owners[1];
+  const pMins    = partner?.last_active_at ? Math.floor((Date.now()-new Date(partner.last_active_at).getTime())/60_000) : null;
+  const pOnline  = pMins !== null && pMins < 5;
   const sleepVal = pet.mood === "sleepy" ? 100 : 55;
   const showGlove = activeTab === "pet";
 
@@ -435,102 +436,112 @@ export function HomePage({ petId }: Props) {
 
   return (
     <div style={{
-      maxWidth: 480, margin: "0 auto",
-      height: "100dvh", minHeight: 560,
-      background: "linear-gradient(150deg, #eef2ff 0%, #fce7f3 45%, #ecfdf5 100%)",
-      fontFamily: "'Inter', system-ui, sans-serif",
-      position: "relative", overflow: "hidden",
-      display: "flex", flexDirection: "column",
-      color: "rgba(0,0,0,0.75)",
+      maxWidth:480, margin:"0 auto", height:"100dvh", minHeight:560,
+      background:"linear-gradient(150deg,#eef2ff 0%,#fce7f3 45%,#ecfdf5 100%)",
+      fontFamily:"'Inter',system-ui,sans-serif",
+      position:"relative", overflow:"hidden",
+      display:"flex", flexDirection:"column",
+      color:"rgba(0,0,0,0.75)",
     }}>
 
       {/* Decorative blurs */}
-      <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 0 }}>
-        <div style={{ position: "absolute", top: "-12%", left: "-18%", width: "55%", paddingBottom: "55%", borderRadius: "50%", background: "radial-gradient(circle, rgba(196,181,253,0.22) 0%, transparent 70%)" }}/>
-        <div style={{ position: "absolute", top: "15%", right: "-20%", width: "52%", paddingBottom: "52%", borderRadius: "50%", background: "radial-gradient(circle, rgba(251,207,232,0.22) 0%, transparent 70%)" }}/>
-        <div style={{ position: "absolute", bottom: "8%", left: "8%", width: "46%", paddingBottom: "46%", borderRadius: "50%", background: "radial-gradient(circle, rgba(167,243,208,0.18) 0%, transparent 70%)" }}/>
+      <div style={{ position:"absolute", inset:0, pointerEvents:"none", zIndex:0 }}>
+        <div style={{ position:"absolute", top:"-12%", left:"-18%", width:"55%", paddingBottom:"55%", borderRadius:"50%", background:"radial-gradient(circle,rgba(196,181,253,0.22) 0%,transparent 70%)" }}/>
+        <div style={{ position:"absolute", top:"15%", right:"-20%", width:"52%", paddingBottom:"52%", borderRadius:"50%", background:"radial-gradient(circle,rgba(251,207,232,0.22) 0%,transparent 70%)" }}/>
+        <div style={{ position:"absolute", bottom:"8%", left:"8%", width:"46%", paddingBottom:"46%", borderRadius:"50%", background:"radial-gradient(circle,rgba(167,243,208,0.18) 0%,transparent 70%)" }}/>
       </div>
 
       {/* ── HEADER ── */}
-      <header style={{ padding: "clamp(12px,3.5vw,20px) clamp(12px,4vw,18px) 6px", zIndex: 10, position: "relative", display: "flex", alignItems: "center", gap: 8 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 7, ...G.heavy, borderRadius: 999, height: PILL_H, padding: "0 12px 0 7px", flexShrink: 0 }}>
-          <div style={{ width: RING_SIZE, height: RING_SIZE, borderRadius: "50%", flexShrink: 0, background: "rgba(255,255,255,0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: 6, color: "rgba(0,0,0,0.42)" }}>{IC.petIcon}</div>
-          <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-            <div style={{ fontSize: "clamp(11px,3vw,13px)", fontWeight: 700, color: "rgba(0,0,0,0.70)", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "clamp(60px,18vw,110px)" }}>{pet.name}</div>
-            <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
-              <span style={{ fontSize: 9, fontWeight: 700, color: "rgba(0,0,0,0.28)", letterSpacing: "0.06em" }}>LV.{pet.level}</span>
-              <div style={{ width: "clamp(24px,7vw,44px)", height: 2.5, background: "rgba(0,0,0,0.08)", borderRadius: 2, overflow: "hidden" }}>
-                <motion.div animate={{ width: `${xpPct}%` }} transition={{ duration: 0.6 }} style={{ height: "100%", background: "rgba(0,0,0,0.32)", borderRadius: 2 }}/>
+      <header style={{
+        padding:"clamp(12px,3.5vw,20px) clamp(12px,4vw,18px) 6px",
+        zIndex:10, position:"relative",
+        display:"flex", alignItems:"center", gap:8,
+      }}>
+        <div style={{ display:"flex", alignItems:"center", gap:7, ...G.heavy, borderRadius:999, height:PILL_H, padding:"0 12px 0 7px", flexShrink:0 }}>
+          <div style={{ width:RING_SIZE, height:RING_SIZE, borderRadius:"50%", flexShrink:0, background:"rgba(255,255,255,0.55)", display:"flex", alignItems:"center", justifyContent:"center", padding:6, color:"rgba(0,0,0,0.42)" }}>{IC.petIcon}</div>
+          <div style={{ display:"flex", flexDirection:"column", minWidth:0 }}>
+            <div style={{ fontSize:"clamp(11px,3vw,13px)", fontWeight:700, color:"rgba(0,0,0,0.70)", lineHeight:1.2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:"clamp(60px,18vw,110px)" }}>{pet.name}</div>
+            <div style={{ display:"flex", alignItems:"center", gap:4, marginTop:2 }}>
+              <span style={{ fontSize:9, fontWeight:700, color:"rgba(0,0,0,0.28)", letterSpacing:"0.06em" }}>LV.{pet.level}</span>
+              <div style={{ width:"clamp(24px,7vw,44px)", height:2.5, background:"rgba(0,0,0,0.08)", borderRadius:2, overflow:"hidden" }}>
+                <motion.div animate={{ width:`${xpPct}%` }} transition={{ duration:0.6 }} style={{ height:"100%", background:"rgba(0,0,0,0.32)", borderRadius:2 }}/>
               </div>
             </div>
           </div>
           {pet.streak > 0 && (
-            <div style={{ display: "flex", alignItems: "center", gap: 3, background: "rgba(255,255,255,0.40)", border: "1px solid rgba(255,255,255,0.60)", borderRadius: 999, padding: "3px 8px", marginLeft: 1 }}>
-              <div style={{ width: 11, height: 11, color: "rgba(220,80,30,0.80)" }}>{IC.fire}</div>
-              <span style={{ fontSize: 11, fontWeight: 800, color: "rgba(180,60,20,0.80)" }}>{pet.streak}</span>
+            <div style={{ display:"flex", alignItems:"center", gap:3, background:"rgba(255,255,255,0.40)", border:"1px solid rgba(255,255,255,0.60)", borderRadius:999, padding:"3px 8px", marginLeft:1 }}>
+              <div style={{ width:11, height:11, color:"rgba(220,80,30,0.80)" }}>{IC.fire}</div>
+              <span style={{ fontSize:11, fontWeight:800, color:"rgba(180,60,20,0.80)" }}>{pet.streak}</span>
             </div>
           )}
         </div>
-        <div style={{ flex: 1 }}/>
-        <div style={{ ...G.heavy, borderRadius: 999, height: PILL_H, padding: "0 10px", display: "flex", gap: 4, alignItems: "center", flexShrink: 0 }}>
-          <StatusRing value={pet.hunger}    icon={IC.food} />
-          <StatusRing value={pet.happiness} icon={IC.game} />
-          <StatusRing value={sleepVal}      icon={IC.moon} />
-          <StatusRing value={pet.health}    icon={IC.wash} />
+        <div style={{ flex:1 }}/>
+        <div style={{ ...G.heavy, borderRadius:999, height:PILL_H, padding:"0 10px", display:"flex", gap:4, alignItems:"center", flexShrink:0 }}>
+          <StatusRing value={pet.hunger}    icon={IC.food}/>
+          <StatusRing value={pet.happiness} icon={IC.game}/>
+          <StatusRing value={sleepVal}      icon={IC.moon}/>
+          <StatusRing value={pet.health}    icon={IC.wash}/>
         </div>
       </header>
 
       {/* ── PET AREA ── */}
-      <main ref={mainRef} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden", zIndex: 5 }}>
-        <div style={{ position: "relative" }}>
+      <main ref={mainRef} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", position:"relative", overflow:"hidden", zIndex:5 }}>
+        <div style={{ position:"relative" }}>
           <FloatAnim show={floatShow} text={floatText}/>
-          <DraggablePet constraintsRef={mainRef} isPetting={isPetting} glovePos={glovePos} onHeartAt={spawnHeart} onScoreInc={incPetScore}>
-            <PetSVG mood={pet.mood} petType={pet.pet_type} evolution={evo} isReacting={floatShow} size="clamp(140px,38vw,200px)"/>
-            <div style={{ width: "clamp(44px,12vw,68px)", height: 6, background: "rgba(0,0,0,0.07)", filter: "blur(5px)", borderRadius: "50%", marginTop: -2, pointerEvents: "none" }}/>
-          </DraggablePet>
+          {/* Wrapper div gives PettingGlove a concrete hit-test target */}
+          <div ref={petDomRef}>
+            <DraggablePet
+              constraintsRef={mainRef}
+              isStroking={isStroking}
+              onHeartAt={spawnHeart}
+              onScoreInc={incPetScore}
+            >
+              <PetSVG mood={pet.mood} petType={pet.pet_type} evolution={evo} isReacting={floatShow} size="clamp(140px,38vw,200px)"/>
+              <div style={{ width:"clamp(44px,12vw,68px)", height:6, background:"rgba(0,0,0,0.07)", filter:"blur(5px)", borderRadius:"50%", marginTop:-2, pointerEvents:"none" }}/>
+            </DraggablePet>
+          </div>
         </div>
       </main>
 
-      {/* ── Hearts — radial burst, fixed overlay ── */}
+      {/* ── Hearts — only emitted when isStroking ── */}
       {hearts.map(h => (
         <motion.div key={h.id}
-          initial={{ opacity: 1, scale: 0.5, x: h.x - 9, y: h.y - 9 }}
-          animate={{ opacity: 0, scale: 1.1, x: h.x - 9 + Math.cos(h.angle) * h.dist, y: h.y - 9 + Math.sin(h.angle) * h.dist }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          style={{ position: "fixed", top: 0, left: 0, fontSize: 18, pointerEvents: "none", zIndex: 1000, color: "#f9a8d4", filter: "drop-shadow(0 1px 4px rgba(249,168,212,0.5))" }}
+          initial={{ opacity:1, scale:0.5, x:h.x-9, y:h.y-9 }}
+          animate={{ opacity:0, scale:1.1, x:h.x-9+Math.cos(h.angle)*h.dist, y:h.y-9+Math.sin(h.angle)*h.dist }}
+          transition={{ duration:0.8, ease:"easeOut" }}
+          style={{ position:"fixed", top:0, left:0, fontSize:18, pointerEvents:"none", zIndex:1000, color:"#f9a8d4", filter:"drop-shadow(0 1px 4px rgba(249,168,212,0.5))" }}
         >🩷</motion.div>
       ))}
 
       {/* ── PARTNER / INVITE ── */}
-      <div style={{ zIndex: 10, position: "relative", display: "flex", justifyContent: "center", paddingBottom: 6 }}>
+      <div style={{ zIndex:10, position:"relative", display:"flex", justifyContent:"center", paddingBottom:6 }}>
         {partner ? (
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, ...G.pill, borderRadius: 999, padding: "5px 14px" }}>
-            <div style={{ width: 6, height: 6, flexShrink: 0, color: pOnline ? "#22c55e" : "rgba(0,0,0,0.20)", filter: pOnline ? "drop-shadow(0 0 4px #22c55e)" : "none" }}>{IC.dot}</div>
-            <span style={{ fontSize: "clamp(10px,2.8vw,12px)", color: "rgba(0,0,0,0.42)", fontWeight: 500 }}>
-              {pMins === null ? "Партнёр не заходил" : pMins < 5 ? "Партнёр онлайн" : pMins < 60 ? `Партнёр ${pMins} мин назад` : `Партнёр ${Math.floor(pMins / 60)} ч назад`}
+          <div style={{ display:"inline-flex", alignItems:"center", gap:6, ...G.pill, borderRadius:999, padding:"5px 14px" }}>
+            <div style={{ width:6, height:6, flexShrink:0, color:pOnline?"#22c55e":"rgba(0,0,0,0.20)", filter:pOnline?"drop-shadow(0 0 4px #22c55e)":"none" }}>{IC.dot}</div>
+            <span style={{ fontSize:"clamp(10px,2.8vw,12px)", color:"rgba(0,0,0,0.42)", fontWeight:500 }}>
+              {pMins===null?"Партнёр не заходил":pMins<5?"Партнёр онлайн":pMins<60?`Партнёр ${pMins} мин назад`:`Партнёр ${Math.floor(pMins/60)} ч назад`}
             </span>
           </div>
         ) : (
-          <motion.button whileTap={{ scale: 0.96 }} onClick={handleInvite}
-            style={{ display: "inline-flex", alignItems: "center", gap: 6, ...G.pill, border: "1px dashed rgba(0,0,0,0.13)", borderRadius: 999, padding: "6px 16px", cursor: "pointer", fontFamily: "inherit", fontSize: "clamp(11px,3vw,12px)", color: "rgba(0,0,0,0.42)", fontWeight: 600 }}
+          <motion.button whileTap={{ scale:0.96 }} onClick={handleInvite}
+            style={{ display:"inline-flex", alignItems:"center", gap:6, ...G.pill, border:"1px dashed rgba(0,0,0,0.13)", borderRadius:999, padding:"6px 16px", cursor:"pointer", fontFamily:"inherit", fontSize:"clamp(11px,3vw,12px)", color:"rgba(0,0,0,0.42)", fontWeight:600 }}
           >
-            <div style={{ width: 13, height: 13, color: "rgba(0,0,0,0.32)" }}>{IC.users}</div>
+            <div style={{ width:13, height:13, color:"rgba(0,0,0,0.32)" }}>{IC.users}</div>
             Пригласить партнёра
           </motion.button>
         )}
       </div>
 
       {/* ── CAROUSEL NAV ── */}
-      <nav style={{ padding: `0 16px clamp(24px,6.5vw,38px)`, zIndex: 10, position: "relative", display: "flex", justifyContent: "center", alignItems: "center" }}>
+      <nav style={{ padding:`0 16px clamp(24px,6.5vw,38px)`, zIndex:10, position:"relative", display:"flex", justifyContent:"center", alignItems:"center" }}>
         {/*
-          Outer wrapper is position:relative so the glove circle can be
-          positioned absolutely to the RIGHT of the carousel pill without
-          shifting the pill itself.
+          Carousel pill stays absolutely centred at all times.
+          Glove circle is positioned absolute to the right — it does NOT shift the pill.
         */}
-        <div style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
+        <div style={{ position:"relative", display:"inline-flex", alignItems:"center" }}>
 
-          {/* Carousel pill — position never changes */}
-          <div style={{ ...G.carousel, borderRadius: 999, padding: `${NAV_PAD}px ${NAV_PAD + 2}px`, display: "inline-flex", height: WIDGET_H, alignItems: "center" }}>
+          {/* Carousel pill — static, always in the same place */}
+          <div style={{ ...G.carousel, borderRadius:999, padding:`${NAV_PAD}px ${NAV_PAD+2}px`, display:"inline-flex", height:WIDGET_H, alignItems:"center" }}>
             <Carousel>
               <CarouselBtn icon={IC.food}     active={activeTab==="feed"}     disabled={isCd("feed")} cdLabel={fmtCd(getCd("feed"))} onClick={() => handleTab("feed")}/>
               <CarouselBtn icon={IC.game}     active={activeTab==="play"}     disabled={isCd("play")} cdLabel={fmtCd(getCd("play"))} onClick={() => handleTab("play")}/>
@@ -542,25 +553,22 @@ export function HomePage({ petId }: Props) {
             </Carousel>
           </div>
 
-          {/* Glove circle — absolutely positioned to the right of the pill */}
+          {/* Glove circle — absolute, right side, same height as pill, doesn't affect layout */}
           <AnimatePresence>
             {showGlove && (
               <motion.div
-                initial={{ opacity: 0, scale: 0.7 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.7 }}
-                transition={{ type: "spring", stiffness: 400, damping: 28 }}
+                initial={{ opacity:0, scale:0.7 }}
+                animate={{ opacity:1, scale:1 }}
+                exit={{ opacity:0, scale:0.7 }}
+                transition={{ type:"spring", stiffness:400, damping:28 }}
                 style={{
                   position: "absolute",
-                  // left edge of glove = right edge of pill + 10px gap
                   left: "calc(100% + 10px)",
                   top: "50%",
                   transform: "translateY(-50%)",
-                  // ensure it doesn't participate in layout
-                  pointerEvents: "auto",
                 }}
               >
-                <PettingGlove onGloveState={handleGloveState} />
+                <PettingGlove petRef={petDomRef} onState={handleGloveState}/>
               </motion.div>
             )}
           </AnimatePresence>
@@ -568,7 +576,7 @@ export function HomePage({ petId }: Props) {
       </nav>
 
       {/* iOS home indicator */}
-      <div style={{ position: "absolute", bottom: "clamp(5px,1.5vw,8px)", left: "50%", transform: "translateX(-50%)", width: 100, height: 4, background: "rgba(0,0,0,0.10)", borderRadius: 4, zIndex: 20 }}/>
+      <div style={{ position:"absolute", bottom:"clamp(5px,1.5vw,8px)", left:"50%", transform:"translateX(-50%)", width:100, height:4, background:"rgba(0,0,0,0.10)", borderRadius:4, zIndex:20 }}/>
     </div>
   );
 }
