@@ -76,11 +76,26 @@ function fmtCd(iso: string | null): string {
 const cdActive = (iso: string | null) => !!iso && new Date(iso).getTime() > Date.now();
 const toDeg    = (v: number) => Math.round(Math.max(0, Math.min(100, v)) / 100 * 360);
 
-// ─── StatusRing ───────────────────────────────────────────────────────────────
-// Размер = PILL_H (совпадает с лапкой в никнейме)
-const PILL_H = 50;
-const RING_SIZE = 34; // такой же как кружок иконки лапки в никнейме
+// ─── Dimensions ───────────────────────────────────────────────────────────────
+// NAV_PAD — внутренний паддинг карусели сверху/снизу
+const NAV_PAD   = 8;
+// BTN_W — диаметр каждой кнопки в карусели
+const BTN_W     = 50;
+// Высота карусельного виджета = паддинги + одна кнопка
+const WIDGET_H  = NAV_PAD * 2 + BTN_W;   // 66px
 
+// Кружок перчатки — такой же диаметр, чтобы совпадать с высотой виджета
+const GLOVE_BTN = BTN_W;   // 50px — диаметр кружка = диаметр кнопки внутри виджета
+
+// StatusRing / name-pill тоже выровнены по WIDGET_H
+const PILL_H    = WIDGET_H;
+const RING_SIZE = 34;
+
+const BTN_GAP   = 5;
+const VISIBLE   = 4;
+const VIEWPORT_W = VISIBLE * BTN_W + (VISIBLE - 1) * BTN_GAP;
+
+// ─── StatusRing ───────────────────────────────────────────────────────────────
 function StatusRing({ value, icon }: { value: number; icon: React.ReactNode }) {
   const deg   = toDeg(value);
   const low   = value < 25;
@@ -111,11 +126,6 @@ function StatusRing({ value, icon }: { value: number; icon: React.ReactNode }) {
 }
 
 // ─── Carousel ─────────────────────────────────────────────────────────────────
-const BTN_W   = PILL_H; // кнопки такого же размера как высота карусели → идеальный круг
-const BTN_GAP = 5;
-const VISIBLE = 4;
-const VIEWPORT_W = VISIBLE * BTN_W + (VISIBLE - 1) * BTN_GAP;
-
 function Carousel({ children }: { children: React.ReactNode }) {
   const ref  = useRef<HTMLDivElement>(null);
   const down = useRef(false);
@@ -224,16 +234,16 @@ function FloatAnim({ show, text }: { show: boolean; text: string }) {
   );
 }
 
-// ─── Типы ─────────────────────────────────────────────────────────────────────
-interface HeartFx { id: number; x: number; y: number }
+// ─── Types ────────────────────────────────────────────────────────────────────
+interface HeartFx { id: number; x: number; y: number; angle: number }
 
-// ─── DraggablePet + интеграция поглаживания ───────────────────────────────────
+// ─── DraggablePet ─────────────────────────────────────────────────────────────
 interface DraggablePetProps {
   children: React.ReactNode;
   constraintsRef: React.RefObject<HTMLElement | null>;
-  isPetting: boolean;         // перчатка зажата
-  glovePos: { x: number; y: number } | null; // позиция курсора
-  onHeartAt: (x: number, y: number) => void; // колбэк: где рисовать сердечко
+  isPetting: boolean;
+  glovePos: { x: number; y: number } | null;
+  onHeartAt: (x: number, y: number) => void;
   onScoreInc: () => void;
 }
 
@@ -242,7 +252,6 @@ function DraggablePet({ children, constraintsRef, isPetting, glovePos, onHeartAt
   const petRef    = useRef<HTMLDivElement>(null);
   const tickRef   = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Проверяем — находится ли курсор над прямоугольником питомца
   const isOverPet = useCallback((cx: number, cy: number): boolean => {
     const el = petRef.current;
     if (!el) return false;
@@ -250,12 +259,20 @@ function DraggablePet({ children, constraintsRef, isPetting, glovePos, onHeartAt
     return cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom;
   }, []);
 
-  // Центр питомца для спауна сердечек
-  const getPetCenter = useCallback((): { x: number; y: number } => {
+  // Случайная точка по периметру/ободку питомца для радиального спауна
+  const getPerimeterPoint = useCallback((): { x: number; y: number } => {
     const el = petRef.current;
     if (!el) return { x: 0, y: 0 };
-    const r = el.getBoundingClientRect();
-    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    const r  = el.getBoundingClientRect();
+    const cx = r.left + r.width  / 2;
+    const cy = r.top  + r.height / 2;
+    const rx = r.width  / 2 * 0.72;   // чуть внутри края
+    const ry = r.height / 2 * 0.72;
+    const angle = Math.random() * Math.PI * 2;
+    return {
+      x: cx + Math.cos(angle) * rx,
+      y: cy + Math.sin(angle) * ry,
+    };
   }, []);
 
   useEffect(() => {
@@ -263,18 +280,14 @@ function DraggablePet({ children, constraintsRef, isPetting, glovePos, onHeartAt
       if (!tickRef.current) {
         tickRef.current = setInterval(() => {
           onScoreInc();
-          const c = getPetCenter();
-          onHeartAt(
-            c.x + (Math.random() - 0.5) * 50,
-            c.y + (Math.random() - 0.5) * 40,
-          );
+          const p = getPerimeterPoint();
+          onHeartAt(p.x, p.y);
         }, 140);
       }
     } else {
       if (tickRef.current) { clearInterval(tickRef.current); tickRef.current = null; }
     }
-    return () => {};
-  }, [isPetting, glovePos, isOverPet, getPetCenter, onHeartAt, onScoreInc]);
+  }, [isPetting, glovePos, isOverPet, getPerimeterPoint, onHeartAt, onScoreInc]);
 
   useEffect(() => () => { if (tickRef.current) clearInterval(tickRef.current); }, []);
 
@@ -304,17 +317,19 @@ interface PettingGloveProps {
 function PettingGlove({ onGloveState }: PettingGloveProps) {
   const [active, setActive] = useState(false);
   const [pos,    setPos]    = useState<{ x: number; y: number } | null>(null);
-  const anchorRef = useRef<HTMLDivElement>(null);
+  // Ref на кнопку-кружок, чтобы брать её точный центр
+  const btnRef = useRef<HTMLDivElement>(null);
 
-  const getAnchorCenter = (): { x: number; y: number } | null => {
-    const el = anchorRef.current;
+  const getBtnCenter = (): { x: number; y: number } | null => {
+    const el = btnRef.current;
     if (!el) return null;
     const r = el.getBoundingClientRect();
     return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
   };
 
   const start = (cx: number, cy: number) => {
-    setActive(true); setPos({ x: cx, y: cy });
+    setActive(true);
+    setPos({ x: cx, y: cy });
     onGloveState(true, { x: cx, y: cy });
   };
   const move = (cx: number, cy: number) => {
@@ -323,7 +338,8 @@ function PettingGlove({ onGloveState }: PettingGloveProps) {
     onGloveState(true, { x: cx, y: cy });
   };
   const stop = () => {
-    setActive(false); setPos(null);
+    setActive(false);
+    setPos(null);
     onGloveState(false, null);
   };
 
@@ -331,24 +347,37 @@ function PettingGlove({ onGloveState }: PettingGloveProps) {
     const up = () => { if (active) stop(); };
     window.addEventListener("mouseup",  up);
     window.addEventListener("touchend", up);
-    return () => { window.removeEventListener("mouseup", up); window.removeEventListener("touchend", up); };
+    return () => {
+      window.removeEventListener("mouseup",  up);
+      window.removeEventListener("touchend", up);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active]);
 
-  const anchor = getAnchorCenter();
-  const gloveX = active && pos ? pos.x : (anchor?.x ?? 0);
-  const gloveY = active && pos ? pos.y : (anchor?.y ?? 0);
+  // Текущая позиция летящей перчатки: когда не активна — центр кнопки
+  const center = getBtnCenter();
+  const flyX   = active && pos ? pos.x : (center?.x ?? 0);
+  const flyY   = active && pos ? pos.y : (center?.y ?? 0);
 
   return (
     <>
-      {/* Кружок — размер = BTN_W = PILL_H */}
+      {/* Кружок-кнопка */}
       <div
-        ref={anchorRef}
-        onMouseDown={e => { e.preventDefault(); const a = getAnchorCenter(); if (a) start(a.x, a.y); }}
-        onTouchStart={e => { e.preventDefault(); const t = e.touches[0]; start(t.clientX, t.clientY); }}
+        ref={btnRef}
+        onMouseDown={e => {
+          e.preventDefault();
+          const c = getBtnCenter();
+          if (c) start(c.x, c.y);        // стартуем строго из центра кружка
+        }}
+        onTouchStart={e => {
+          e.preventDefault();
+          const c = getBtnCenter();
+          if (c) start(c.x, c.y);        // то же для тача
+        }}
         onMouseMove={e  => move(e.clientX, e.clientY)}
         onTouchMove={e  => { e.preventDefault(); const t = e.touches[0]; move(t.clientX, t.clientY); }}
         style={{
-          width: BTN_W, height: BTN_W, borderRadius: "50%", flexShrink: 0,
+          width: GLOVE_BTN, height: GLOVE_BTN, borderRadius: "50%", flexShrink: 0,
           ...(active
             ? {
                 background: "rgba(255,255,255,0.82)",
@@ -368,14 +397,19 @@ function PettingGlove({ onGloveState }: PettingGloveProps) {
           transition: "background 0.15s, border 0.15s, box-shadow 0.15s",
         }}
       >
-        {!active && (
-          <img src="/sprites/glove.svg" draggable={false}
-            style={{ width: 28, height: 28, objectFit: "contain", pointerEvents: "none" }}
-          />
-        )}
+        {/* Иконка всегда видна в кружке, даже когда перчатка летит */}
+        <img
+          src="/sprites/glove.svg"
+          draggable={false}
+          style={{
+            width: 28, height: 28, objectFit: "contain", pointerEvents: "none",
+            opacity: active ? 0.25 : 1,   // слегка гасим, пока летит
+            transition: "opacity 0.1s",
+          }}
+        />
       </div>
 
-      {/* Летающая перчатка */}
+      {/* Летящая перчатка (только когда active) */}
       {active && (
         <div
           onMouseMove={e  => move(e.clientX, e.clientY)}
@@ -386,7 +420,8 @@ function PettingGlove({ onGloveState }: PettingGloveProps) {
           }}
         >
           <motion.div
-            animate={{ x: gloveX - 24, y: gloveY - 24 }}
+            // Начинаем из центра кружка (flyX/flyY уже там при active=true)
+            animate={{ x: flyX - 24, y: flyY - 24 }}
             transition={{ type: "spring", stiffness: 700, damping: 32, mass: 0.35 }}
             style={{ position: "absolute", top: 0, left: 0, width: 48, height: 48, pointerEvents: "none" }}
           >
@@ -394,9 +429,13 @@ function PettingGlove({ onGloveState }: PettingGloveProps) {
               animate={{ rotate: [-10, 10, -10] }}
               transition={{ repeat: Infinity, duration: 0.22, ease: "easeInOut" }}
             >
-              <img src="/sprites/glove.svg" draggable={false}
-                style={{ width: 48, height: 48, objectFit: "contain",
-                  filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.14))" }}
+              <img
+                src="/sprites/glove.svg"
+                draggable={false}
+                style={{
+                  width: 48, height: 48, objectFit: "contain",
+                  filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.14))",
+                }}
               />
             </motion.div>
           </motion.div>
@@ -415,10 +454,9 @@ export function HomePage({ petId }: Props) {
   const [floatText, setFloatText] = useState("");
   const [floatShow, setFloatShow] = useState(false);
 
-  // Поглаживание
-  const [isPetting,  setIsPetting]  = useState(false);
-  const [glovePos,   setGlovePos]   = useState<{ x: number; y: number } | null>(null);
-  const [hearts,     setHearts]     = useState<HeartFx[]>([]);
+  const [isPetting, setIsPetting] = useState(false);
+  const [glovePos,  setGlovePos]  = useState<{ x: number; y: number } | null>(null);
+  const [hearts,    setHearts]    = useState<HeartFx[]>([]);
   const nextHeart = useRef(0);
 
   const mainRef = useRef<HTMLDivElement>(null);
@@ -437,15 +475,15 @@ export function HomePage({ petId }: Props) {
     setGlovePos(pos);
   }, []);
 
+  // Спаун сердечка: принимаем абсолютные экранные координаты + случайный угол
   const spawnHeart = useCallback((x: number, y: number) => {
-    const id = nextHeart.current++;
-    setHearts(h => [...h.slice(-10), { id, x, y }]);
+    const id    = nextHeart.current++;
+    const angle = Math.random() * Math.PI * 2;   // угол для анимации разлёта
+    setHearts(h => [...h.slice(-14), { id, x, y, angle }]);
     setTimeout(() => setHearts(h => h.filter(hh => hh.id !== id)), 900);
   }, []);
 
-  const incPetScore = useCallback(() => {
-    // просто визуальный эффект; реальный экшен можно отправить throttled
-  }, []);
+  const incPetScore = useCallback(() => {}, []);
 
   if (loading && !pet) return (
     <div style={{
@@ -493,16 +531,13 @@ export function HomePage({ petId }: Props) {
     switch (tab) {
       case "feed":     doAction("feed", "+30 🍎"); break;
       case "play":     doAction("play", "+25 🎾"); break;
-      case "pet":      /* режим поглаживания — глав. логика в PettingGlove */ break;
+      case "pet":      break;
       case "partner":  handleInvite(); break;
       case "sleep":    tg?.showAlert?.(`${pet.name} сладко спит!`); break;
       case "shop":     tg?.showAlert?.("Магазин — скоро!"); break;
       case "settings": tg?.showAlert?.(`${pet.name} · Ур.${pet.level}\nВозраст: ${pet.age_days} дн.\nЭволюция: ${evo}/7`); break;
     }
   };
-
-  // Высота виджета карусели = PAD*2 + BTN_W
-  const NAV_PAD = 8;
 
   return (
     <div style={{
@@ -528,7 +563,7 @@ export function HomePage({ petId }: Props) {
         zIndex: 10, position: "relative",
         display: "flex", alignItems: "center", gap: 8,
       }}>
-        {/* Name pill */}
+        {/* Name pill — высота = PILL_H = WIDGET_H */}
         <div style={{
           display: "flex", alignItems: "center", gap: 7,
           ...G.heavy, borderRadius: 999,
@@ -615,20 +650,26 @@ export function HomePage({ petId }: Props) {
         </div>
       </main>
 
-      {/* Сердечки — fixed, рендерятся поверх всего */}
-      {hearts.map(h => (
-        <motion.div key={h.id}
-          initial={{ opacity: 1, scale: 0.5, x: h.x - 10, y: h.y - 10 }}
-          animate={{ opacity: 0, scale: 1.2, x: h.x - 10 + (Math.random() - 0.5) * 20, y: h.y - 55 }}
-          transition={{ duration: 0.85, ease: "easeOut" }}
-          style={{
-            position: "fixed", top: 0, left: 0,
-            fontSize: 18, pointerEvents: "none", zIndex: 1000,
-            color: "#f9a8d4",
-            filter: "drop-shadow(0 1px 4px rgba(249,168,212,0.5))",
-          }}
-        >🩷</motion.div>
-      ))}
+      {/* ── HEARTS — fixed, радиальный разлёт ───────────────────────── */}
+      {hearts.map(h => {
+        const dist = 45 + Math.random() * 20;
+        const tx   = Math.cos(h.angle) * dist;
+        const ty   = Math.sin(h.angle) * dist;
+        return (
+          <motion.div
+            key={h.id}
+            initial={{ opacity: 1, scale: 0.5, x: h.x - 9, y: h.y - 9 }}
+            animate={{ opacity: 0, scale: 1.1, x: h.x - 9 + tx, y: h.y - 9 + ty }}
+            transition={{ duration: 0.82, ease: "easeOut" }}
+            style={{
+              position: "fixed", top: 0, left: 0,
+              fontSize: 18, pointerEvents: "none", zIndex: 1000,
+              color: "#f9a8d4",
+              filter: "drop-shadow(0 1px 4px rgba(249,168,212,0.5))",
+            }}
+          >🩷</motion.div>
+        );
+      })}
 
       {/* ── PARTNER / INVITE ─────────────────────────────────────────── */}
       <div style={{
@@ -677,7 +718,11 @@ export function HomePage({ petId }: Props) {
         zIndex: 10, position: "relative",
         display: "flex", justifyContent: "center", alignItems: "center",
       }}>
-        {/* Обёртка: карусель строго по центру, перчатка абсолютно справа */}
+        {/*
+          Обёртка: карусель по центру, кружок перчатки — абсолютно справа.
+          Высота кружка = GLOVE_BTN = BTN_W, высота виджета = WIDGET_H = NAV_PAD*2 + BTN_W.
+          Кружок выровнен по центру (top:50% + translateY(-50%)) → совпадает по высоте с виджетом.
+        */}
         <div style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
           {/* Carousel pill */}
           <div style={{
@@ -696,7 +741,7 @@ export function HomePage({ petId }: Props) {
             </Carousel>
           </div>
 
-          {/* Кружок перчатки — абсолютно справа, не сдвигает карусель */}
+          {/* Кружок перчатки: абсолютно справа, вертикальный центр совпадает с виджетом */}
           <AnimatePresence>
             {showGlove && (
               <motion.div
@@ -704,7 +749,18 @@ export function HomePage({ petId }: Props) {
                 animate={{ opacity: 1, scale: 1, x: 0 }}
                 exit={{ opacity: 0, scale: 0.7, x: -8 }}
                 transition={{ type: "spring", stiffness: 400, damping: 28 }}
-                style={{ position: "absolute", left: "calc(100% + 10px)", top: "50%", transform: "translateY(-50%)" }}
+                style={{
+                  position: "absolute",
+                  left: "calc(100% + 10px)",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  // Явно задаём размер обёртки = GLOVE_BTN, чтобы не было смещения
+                  width: GLOVE_BTN,
+                  height: GLOVE_BTN,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
               >
                 <PettingGlove onGloveState={handleGloveState} />
               </motion.div>
