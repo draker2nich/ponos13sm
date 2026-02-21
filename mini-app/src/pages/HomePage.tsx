@@ -275,7 +275,7 @@ function PettingGlove({ petRef, onStroking }: {
         }}
       >
         <img src="/sprites/glove.svg" draggable={false}
-          style={{ width: 32, height: 32, objectFit: "contain", pointerEvents: "none",
+          style={{ width: 96, height: 96, objectFit: "contain", pointerEvents: "none",
             opacity: isDragging ? 0.4 : 1, transition: "opacity 0.15s" }}
         />
       </div>
