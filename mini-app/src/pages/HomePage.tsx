@@ -63,8 +63,11 @@ const VISIBLE = 4;
 const VIEWPORT_W = VISIBLE * BTN_W + (VISIBLE - 1) * BTN_GAP;
 const WIDGET_H = NAV_PAD * 2 + BTN_W;
 const GLOVE_CIRCLE = WIDGET_H;
-const GLOVE_FLY = 52; // size of flying glove sprite
+const GLOVE_FLY = 52;
 const GLOVE_GAP = 10;
+
+// Shadow bleed on each side so drop-shadow of edge buttons is not clipped
+const SHADOW_BLEED = 12;
 
 /* ── StatusRing ────────────────────────────────────────────────────────────── */
 function StatusRing({ value, icon }: { value: number; icon: React.ReactNode }) {
@@ -92,30 +95,61 @@ function Carousel({ children }: { children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   const down = useRef(false); const sx = useRef(0); const sl = useRef(0);
   return (
-    <div ref={ref}
-      onMouseDown={e => { down.current = true; sx.current = e.pageX - ref.current!.offsetLeft; sl.current = ref.current!.scrollLeft; ref.current!.style.cursor = "grabbing"; }}
-      onMouseUp={() => { down.current = false; if (ref.current) ref.current.style.cursor = "grab"; }}
-      onMouseLeave={() => { down.current = false; if (ref.current) ref.current.style.cursor = "grab"; }}
-      onMouseMove={e => { if (!down.current) return; ref.current!.scrollLeft = sl.current - (e.pageX - ref.current!.offsetLeft - sx.current) * 1.2; }}
-      style={{
-        display: "flex", gap: BTN_GAP, width: VIEWPORT_W, overflowX: "auto", scrollbarWidth: "none",
-        WebkitOverflowScrolling: "touch", cursor: "grab", userSelect: "none",
-        // Extra padding so drop-shadow on buttons is not clipped by overflow
-        padding: "8px 0",
-        margin: "-8px 0",
-      }}
-    >{children}</div>
+    /*
+     * FIX: overflow:visible on the scroll container would break scrolling,
+     * so instead we use a two-layer approach:
+     *   - outer div: clips nothing (overflow:visible), has the fixed VIEWPORT_W
+     *   - inner scrollable div: overflow-x:auto, but with negative margin +
+     *     matching padding so that the shadow "bleed" area is outside the clip
+     *     rect while the scroll track still aligns correctly.
+     *
+     * Concretely:
+     *   • The outer wrapper is VIEWPORT_W wide and overflow:visible.
+     *   • The scrollable strip has margin:-SHADOW_BLEED on left/right and
+     *     padding:SHADOW_BLEED on left/right, so buttons sit at the same
+     *     visual position but their drop-shadows extend into the bleed zone
+     *     which is NOT clipped by the outer wrapper.
+     */
+    <div style={{ width: VIEWPORT_W, overflow: "visible", position: "relative" }}>
+      <div
+        ref={ref}
+        onMouseDown={e => { down.current = true; sx.current = e.pageX - ref.current!.offsetLeft; sl.current = ref.current!.scrollLeft; ref.current!.style.cursor = "grabbing"; }}
+        onMouseUp={() => { down.current = false; if (ref.current) ref.current.style.cursor = "grab"; }}
+        onMouseLeave={() => { down.current = false; if (ref.current) ref.current.style.cursor = "grab"; }}
+        onMouseMove={e => { if (!down.current) return; ref.current!.scrollLeft = sl.current - (e.pageX - ref.current!.offsetLeft - sx.current) * 1.2; }}
+        style={{
+          display: "flex",
+          gap: BTN_GAP,
+          // Extend the scrollable area by SHADOW_BLEED on each side so
+          // overflow:hidden of this element does not cut the shadows.
+          // The negative margin pulls the element edges outward; the padding
+          // compensates so the buttons' visual positions are unchanged.
+          marginLeft: -SHADOW_BLEED,
+          marginRight: -SHADOW_BLEED,
+          paddingLeft: SHADOW_BLEED,
+          paddingRight: SHADOW_BLEED,
+          overflowX: "auto",
+          scrollbarWidth: "none",
+          WebkitOverflowScrolling: "touch",
+          cursor: "grab",
+          userSelect: "none",
+          // Vertical bleed for the shadow (top/bottom)
+          paddingTop: SHADOW_BLEED,
+          paddingBottom: SHADOW_BLEED,
+          marginTop: -SHADOW_BLEED,
+          marginBottom: -SHADOW_BLEED,
+        }}
+      >{children}</div>
+    </div>
   );
 }
 
-/* ── CarouselBtn — uses filter:drop-shadow for truly circular shadow ───────── */
+/* ── CarouselBtn ───────────────────────────────────────────────────────────── */
 type TabId = ActionType | "shop" | "sleep" | "partner" | "settings";
 
 function CarouselBtn({ icon, active, disabled, cdLabel, onClick }: {
   icon: React.ReactNode; active?: boolean; disabled?: boolean; cdLabel?: string; onClick?: () => void;
 }) {
-  // Outer wrapper applies drop-shadow (respects border-radius shape)
-  // Inner div has background/border but NO box-shadow
   return (
     <div style={{
       flexShrink: 0, width: BTN_W, height: BTN_W,
@@ -131,7 +165,7 @@ function CarouselBtn({ icon, active, disabled, cdLabel, onClick }: {
           backdropFilter: active ? "blur(16px)" : undefined,
           WebkitBackdropFilter: active ? "blur(16px)" : undefined,
           border: active ? "1.5px solid rgba(255,255,255,0.95)" : "1px solid rgba(255,255,255,0.50)",
-          boxShadow: "none", // No box-shadow! Shadow is on outer div via filter
+          boxShadow: "none",
           cursor: disabled ? "not-allowed" : "pointer",
           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
           gap: 2, transition: "background 0.15s, border 0.15s", fontFamily: "inherit",
@@ -220,16 +254,7 @@ function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, petDomR
   );
 }
 
-/* ── PettingGlove ──────────────────────────────────────────────────────────── 
-   Key fixes:
-   - Glove spawns exactly at circle center (no offset drift)
-   - Movement detection uses accumulated distance over a time window,
-     so any direction (vertical, horizontal, circular) triggers stroking
-   - Mobile: uses pointer events (unified mouse+touch), no separate
-     mouse/touch handlers. The overlay captures pointermove globally.
-   - The flying glove is positioned so its CENTER tracks the pointer,
-     eliminating visual offset.
-*/
+/* ── PettingGlove ──────────────────────────────────────────────────────────── */
 function PettingGlove({ petRef, onStroking, isStroking }: {
   petRef: React.RefObject<HTMLDivElement | null>;
   onStroking: (v: boolean) => void;
@@ -238,18 +263,14 @@ function PettingGlove({ petRef, onStroking, isStroking }: {
   const circleRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
 
-  // Refs for drag state (no re-renders needed)
   const dragging = useRef(false);
-  // Ring buffer of recent positions for velocity/movement detection
   const history = useRef<Array<{ x: number; y: number; t: number }>>([]);
 
-  // Spring-driven glove position (top-left of the GLOVE_FLY box)
   const rawX = useMotionValue(-9999);
   const rawY = useMotionValue(-9999);
   const gX = useSpring(rawX, { stiffness: 600, damping: 30, mass: 0.3 });
   const gY = useSpring(rawY, { stiffness: 600, damping: 30, mass: 0.3 });
 
-  // The sprite is 200% of container, so visual center offset = GLOVE_FLY/2
   const half = GLOVE_FLY / 2;
 
   const isOverPet = useCallback((cx: number, cy: number) => {
@@ -260,25 +281,21 @@ function PettingGlove({ petRef, onStroking, isStroking }: {
     return cx >= r.left - pad && cx <= r.right + pad && cy >= r.top - pad && cy <= r.bottom + pad;
   }, [petRef]);
 
-  // Check if pointer has been MOVING recently (any direction)
   const isMoving = useCallback(() => {
     const h = history.current;
     const now = Date.now();
-    // Keep last 200ms of history
     while (h.length > 0 && now - h[0].t > 200) h.shift();
     if (h.length < 2) return false;
-    // Accumulate total path distance over the window
     let dist = 0;
     for (let i = 1; i < h.length; i++) {
       dist += Math.abs(h[i].x - h[i - 1].x) + Math.abs(h[i].y - h[i - 1].y);
     }
-    return dist > 6; // threshold: 6px of total movement in 200ms
+    return dist > 6;
   }, []);
 
   const startDrag = useCallback((cx: number, cy: number) => {
     dragging.current = true;
     history.current = [{ x: cx, y: cy, t: Date.now() }];
-    // Position glove centered on the circle — jump BOTH raw and spring
     const el = circleRef.current;
     const startX = el ? el.getBoundingClientRect().left + el.getBoundingClientRect().width / 2 - half : cx - half;
     const startY = el ? el.getBoundingClientRect().top + el.getBoundingClientRect().height / 2 - half : cy - half;
@@ -292,12 +309,9 @@ function PettingGlove({ petRef, onStroking, isStroking }: {
 
   const moveDrag = useCallback((cx: number, cy: number) => {
     if (!dragging.current) return;
-    // Position: center of glove tracks pointer
     rawX.set(cx - half);
     rawY.set(cy - half);
-    // Record history
     history.current.push({ x: cx, y: cy, t: Date.now() });
-    // Detect stroking: over pet AND moving in any direction
     const moving = isMoving();
     const over = isOverPet(cx, cy);
     onStroking(over && moving);
@@ -310,14 +324,12 @@ function PettingGlove({ petRef, onStroking, isStroking }: {
     onStroking(false);
   }, [onStroking]);
 
-  // Glove wobble animation when stroking
   const gloveAnim = isStroking
     ? { rotate: [-15, 15, -15], transition: { repeat: Infinity, duration: 0.25, ease: "easeInOut" as const } }
     : { rotate: 0 };
 
   return (
     <>
-      {/* Static circle — grab handle */}
       <div
         ref={circleRef}
         onPointerDown={e => {
@@ -341,7 +353,6 @@ function PettingGlove({ petRef, onStroking, isStroking }: {
         />
       </div>
 
-      {/* Full-screen overlay for drag tracking */}
       {isDragging && (
         <div
           onPointerMove={e => moveDrag(e.clientX, e.clientY)}
@@ -352,7 +363,6 @@ function PettingGlove({ petRef, onStroking, isStroking }: {
             cursor: "grabbing", touchAction: "none",
           }}
         >
-          {/* Flying glove — positioned so CENTER = pointer */}
           <motion.div
             animate={gloveAnim}
             style={{
@@ -367,7 +377,6 @@ function PettingGlove({ petRef, onStroking, isStroking }: {
             <img src="/sprites/glove.svg" draggable={false}
               style={{
                 width: "200%", height: "200%", objectFit: "contain",
-                // Center the 200% image within the GLOVE_FLY box
                 position: "absolute",
                 top: "-50%", left: "-50%",
                 filter: isStroking
@@ -618,19 +627,19 @@ export function HomePage({ petId }: Props) {
         )}
       </div>
 
-      {/* ── CAROUSEL NAV + GLOVE — centred together as siblings ── */}
+      {/* ── CAROUSEL NAV + GLOVE ── */}
       <nav style={{
         padding: `0 16px clamp(24px,6.5vw,38px)`,
         zIndex: 10, position: "relative",
         display: "flex", justifyContent: "center", alignItems: "center",
         gap: GLOVE_GAP,
       }}>
-        {/* Pill */}
+        {/* Pill — overflow:visible so the Carousel's bleed area isn't clipped */}
         <div style={{
           ...G.carousel, borderRadius: 999,
           padding: `${NAV_PAD}px ${NAV_PAD + 2}px`,
           display: "inline-flex", height: WIDGET_H, alignItems: "center",
-          overflow: "visible",
+          overflow: "visible",  // ← allow shadows to bleed outside the pill
         }}>
           <Carousel>
             <CarouselBtn icon={IC.food} active={activeTab === "feed"} disabled={isCd("feed")} cdLabel={fmtCd(getCd("feed"))} onClick={() => handleTab("feed")} />
@@ -642,7 +651,6 @@ export function HomePage({ petId }: Props) {
           </Carousel>
         </div>
 
-        {/* Glove — always visible, inline flex sibling, auto-centred */}
         <PettingGlove petRef={petDomRef} onStroking={handleStroking} isStroking={isStroking} />
       </nav>
 
