@@ -111,7 +111,8 @@ function StatusRing({ value, icon }: { value: number; icon: React.ReactNode }) {
 }
 
 // ─── Carousel ─────────────────────────────────────────────────────────────────
-const BTN_W   = PILL_H; // кнопки такого же размера как высота карусели → идеальный круг
+const BTN_W   = PILL_H; // diameter = PILL_H → идеальный круг, высота виджета = diameter
+const NAV_PAD = 0;      // padding = 0 → высота враппера строго BTN_W
 const BTN_GAP = 5;
 const VISIBLE = 4;
 const VIEWPORT_W = VISIBLE * BTN_W + (VISIBLE - 1) * BTN_GAP;
@@ -303,30 +304,40 @@ interface PettingGloveProps {
 
 function PettingGlove({ onGloveState }: PettingGloveProps) {
   const [active, setActive] = useState(false);
-  const [pos,    setPos]    = useState<{ x: number; y: number } | null>(null);
+  // glovePos — реальные экранные координаты центра перчатки
+  const [glovePos, setGlovePos] = useState<{ x: number; y: number } | null>(null);
   const anchorRef = useRef<HTMLDivElement>(null);
+  // Запоминаем центр кружка в момент нажатия
+  const anchorCenter = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  const getAnchorCenter = (): { x: number; y: number } | null => {
+  const getCenter = (): { x: number; y: number } => {
     const el = anchorRef.current;
-    if (!el) return null;
+    if (!el) return { x: 0, y: 0 };
     const r = el.getBoundingClientRect();
     return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
   };
 
   const start = (cx: number, cy: number) => {
-    setActive(true); setPos({ x: cx, y: cy });
+    const c = getCenter();
+    anchorCenter.current = c;
+    setActive(true);
+    setGlovePos({ x: cx, y: cy });
     onGloveState(true, { x: cx, y: cy });
   };
+
   const move = (cx: number, cy: number) => {
     if (!active) return;
-    setPos({ x: cx, y: cy });
+    setGlovePos({ x: cx, y: cy });
     onGloveState(true, { x: cx, y: cy });
   };
+
   const stop = () => {
-    setActive(false); setPos(null);
+    setActive(false);
+    setGlovePos(null);
     onGloveState(false, null);
   };
 
+  // Глобальный mouseup/touchend — отпускание в любом месте
   useEffect(() => {
     const up = () => { if (active) stop(); };
     window.addEventListener("mouseup",  up);
@@ -334,19 +345,20 @@ function PettingGlove({ onGloveState }: PettingGloveProps) {
     return () => { window.removeEventListener("mouseup", up); window.removeEventListener("touchend", up); };
   }, [active]);
 
-  const anchor = getAnchorCenter();
-  const gloveX = active && pos ? pos.x : (anchor?.x ?? 0);
-  const gloveY = active && pos ? pos.y : (anchor?.y ?? 0);
+  // Текущая позиция перчатки в px (для motion.div translate)
+  // Когда не активна — возвращается в центр кружка (0,0 offset)
+  const ac = anchorCenter.current;
+  // offset от центра кружка
+  const offsetX = active && glovePos ? glovePos.x - ac.x : 0;
+  const offsetY = active && glovePos ? glovePos.y - ac.y : 0;
 
   return (
     <>
-      {/* Кружок — размер = BTN_W = PILL_H */}
+      {/* Кружок-якорь */}
       <div
         ref={anchorRef}
-        onMouseDown={e => { e.preventDefault(); const a = getAnchorCenter(); if (a) start(a.x, a.y); }}
+        onMouseDown={e => { e.preventDefault(); start(e.clientX, e.clientY); }}
         onTouchStart={e => { e.preventDefault(); const t = e.touches[0]; start(t.clientX, t.clientY); }}
-        onMouseMove={e  => move(e.clientX, e.clientY)}
-        onTouchMove={e  => { e.preventDefault(); const t = e.touches[0]; move(t.clientX, t.clientY); }}
         style={{
           width: BTN_W, height: BTN_W, borderRadius: "50%", flexShrink: 0,
           ...(active
@@ -366,41 +378,40 @@ function PettingGlove({ onGloveState }: PettingGloveProps) {
           cursor: active ? "grabbing" : "grab",
           userSelect: "none", touchAction: "none",
           transition: "background 0.15s, border 0.15s, box-shadow 0.15s",
+          position: "relative", overflow: "visible",
         }}
       >
-        {!active && (
+        {/* Перчатка внутри кружка — анимируется offset от своего центра */}
+        <motion.div
+          animate={{ x: offsetX, y: offsetY, rotate: active ? [-10, 10, -10] : 0 }}
+          transition={active
+            ? { x: { type: "spring", stiffness: 700, damping: 32, mass: 0.35 },
+                y: { type: "spring", stiffness: 700, damping: 32, mass: 0.35 },
+                rotate: { repeat: Infinity, duration: 0.22, ease: "easeInOut" } }
+            : { type: "spring", stiffness: 400, damping: 28 }}
+          style={{ position: "absolute", zIndex: active ? 1000 : 1, pointerEvents: "none" }}
+        >
           <img src="/sprites/glove.svg" draggable={false}
-            style={{ width: 28, height: 28, objectFit: "contain", pointerEvents: "none" }}
+            style={{
+              width: active ? 48 : 28, height: active ? 48 : 28,
+              objectFit: "contain",
+              filter: active ? "drop-shadow(0 4px 14px rgba(0,0,0,0.16))" : "none",
+              transition: "width 0.15s, height 0.15s",
+            }}
           />
-        )}
+        </motion.div>
       </div>
 
-      {/* Летающая перчатка */}
+      {/* Прозрачный overlay для отслеживания движения при активной перчатке */}
       {active && (
         <div
           onMouseMove={e  => move(e.clientX, e.clientY)}
           onTouchMove={e  => { e.preventDefault(); const t = e.touches[0]; move(t.clientX, t.clientY); }}
           style={{
-            position: "fixed", inset: 0, zIndex: 999,
-            cursor: "grabbing", touchAction: "none", pointerEvents: "all",
+            position: "fixed", inset: 0, zIndex: 998,
+            cursor: "grabbing", touchAction: "none",
           }}
-        >
-          <motion.div
-            animate={{ x: gloveX - 24, y: gloveY - 24 }}
-            transition={{ type: "spring", stiffness: 700, damping: 32, mass: 0.35 }}
-            style={{ position: "absolute", top: 0, left: 0, width: 48, height: 48, pointerEvents: "none" }}
-          >
-            <motion.div
-              animate={{ rotate: [-10, 10, -10] }}
-              transition={{ repeat: Infinity, duration: 0.22, ease: "easeInOut" }}
-            >
-              <img src="/sprites/glove.svg" draggable={false}
-                style={{ width: 48, height: 48, objectFit: "contain",
-                  filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.14))" }}
-              />
-            </motion.div>
-          </motion.div>
-        </div>
+        />
       )}
     </>
   );
@@ -438,9 +449,17 @@ export function HomePage({ petId }: Props) {
   }, []);
 
   const spawnHeart = useCallback((x: number, y: number) => {
-    const id = nextHeart.current++;
-    setHearts(h => [...h.slice(-10), { id, x, y }]);
-    setTimeout(() => setHearts(h => h.filter(hh => hh.id !== id)), 900);
+    // 6 сердечек радиально вокруг центра питомца
+    const count = 6;
+    Array.from({ length: count }).forEach((_, i) => {
+      const id  = nextHeart.current++;
+      const angle = (i / count) * Math.PI * 2 + Math.random() * 0.5;
+      const dist  = 28 + Math.random() * 18;
+      const ox    = Math.cos(angle) * dist;
+      const oy    = Math.sin(angle) * dist;
+      setHearts(h => [...h.slice(-18), { id, x: x + ox, y: y + oy }]);
+      setTimeout(() => setHearts(h => h.filter(hh => hh.id !== id)), 900);
+    });
   }, []);
 
   const incPetScore = useCallback(() => {
@@ -615,17 +634,16 @@ export function HomePage({ petId }: Props) {
         </div>
       </main>
 
-      {/* Сердечки — fixed, рендерятся поверх всего */}
+      {/* Сердечки — радиально от центра питомца */}
       {hearts.map(h => (
         <motion.div key={h.id}
-          initial={{ opacity: 1, scale: 0.5, x: h.x - 10, y: h.y - 10 }}
-          animate={{ opacity: 0, scale: 1.2, x: h.x - 10 + (Math.random() - 0.5) * 20, y: h.y - 55 }}
+          initial={{ opacity: 1, scale: 0.4, x: h.x - 10, y: h.y - 10 }}
+          animate={{ opacity: 0, scale: 1.1, x: h.x - 10, y: h.y - 44 }}
           transition={{ duration: 0.85, ease: "easeOut" }}
           style={{
             position: "fixed", top: 0, left: 0,
-            fontSize: 18, pointerEvents: "none", zIndex: 1000,
-            color: "#f9a8d4",
-            filter: "drop-shadow(0 1px 4px rgba(249,168,212,0.5))",
+            fontSize: 16, pointerEvents: "none", zIndex: 1000,
+            filter: "drop-shadow(0 1px 4px rgba(249,168,212,0.55))",
           }}
         >🩷</motion.div>
       ))}
@@ -679,11 +697,12 @@ export function HomePage({ petId }: Props) {
       }}>
         {/* Обёртка: карусель строго по центру, перчатка абсолютно справа */}
         <div style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
-          {/* Carousel pill */}
+          {/* Carousel pill — padding 4px чтобы кнопки не обрезались */}
           <div style={{
             ...G.carousel, borderRadius: 999,
-            padding: `${NAV_PAD}px ${NAV_PAD + 2}px`,
+            padding: "4px 4px",
             display: "inline-flex",
+            alignItems: "center",
           }}>
             <Carousel>
               <CarouselBtn icon={IC.food}     active={activeTab==="feed"}     disabled={isCd("feed")} cdLabel={fmtCd(getCd("feed"))} onClick={() => handleTab("feed")}/>
