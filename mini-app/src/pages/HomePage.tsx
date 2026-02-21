@@ -217,16 +217,6 @@ function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, petDomR
   );
 }
 
-/* ── PettingGlove ──────────────────────────────────────────────────────────── 
-   Key fixes:
-   - Glove spawns exactly at circle center (no offset drift)
-   - Movement detection uses accumulated distance over a time window,
-     so any direction (vertical, horizontal, circular) triggers stroking
-   - Mobile: uses pointer events (unified mouse+touch), no separate
-     mouse/touch handlers. The overlay captures pointermove globally.
-   - The flying glove is positioned so its CENTER tracks the pointer,
-     eliminating visual offset.
-*/
 function PettingGlove({ petRef, onStroking, isStroking }: {
   petRef: React.RefObject<HTMLDivElement | null>;
   onStroking: (v: boolean) => void;
@@ -360,7 +350,7 @@ function PettingGlove({ petRef, onStroking, isStroking }: {
           >
             <img src="/sprites/glove.svg" draggable={false}
               style={{
-                width: "100%", height: "100%", objectFit: "contain",
+                width: "200%", height: "200%", objectFit: "contain",
                 filter: isStroking
                   ? "drop-shadow(0 4px 16px rgba(249,168,212,0.6))"
                   : "drop-shadow(0 4px 12px rgba(0,0,0,0.14))",
