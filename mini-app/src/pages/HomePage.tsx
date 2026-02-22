@@ -7,7 +7,6 @@ import { PetSVG } from "../components/PetSVG";
 import { BottomBlock, cdActive, HALF_H } from "../components/BottomBlock";
 import { IC } from "../components/icons";
 import { NOTAP, type TabId } from "../components/NavCarousel";
-import { createInvite } from "../api/pets";
 import type { ActionType } from "../api/types";
 
 const tg = window.Telegram?.WebApp;
@@ -29,6 +28,7 @@ const G = {
 
 const PILL_H    = 50;
 const RING_SIZE = 34;
+const MENU_TABS = new Set<string>(MENU_ORDER);
 
 function toDeg(v: number) { return Math.round(Math.max(0, Math.min(100, v)) / 100 * 360); }
 
@@ -52,7 +52,6 @@ function StatusRing({ value, icon }: { value: number; icon: React.ReactNode }) {
   );
 }
 
-/* ── FloatAnim ── */
 function FloatAnim({ show, text }: { show: boolean; text: string }) {
   return (
     <AnimatePresence>
@@ -74,7 +73,6 @@ function FloatAnim({ show, text }: { show: boolean; text: string }) {
 
 interface HeartFx { id: number; x: number; y: number; angle: number; dist: number }
 
-/* ── DraggablePet ── */
 function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, petDomRef, disabled }: {
   children: React.ReactNode;
   constraintsRef: React.RefObject<HTMLElement | null>;
@@ -128,8 +126,6 @@ function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, petDomR
 /* ════════════════════════════════════════════
    HomePage
    ════════════════════════════════════════════ */
-const MENU_TABS = new Set<string>(MENU_ORDER);
-
 interface Props { petId: number }
 
 export function HomePage({ petId }: Props) {
@@ -157,7 +153,6 @@ export function HomePage({ petId }: Props) {
     return () => document.removeEventListener("visibilitychange", h);
   }, [refresh]);
 
-  // Sync carousel highlight when menu category changes via swipe
   useEffect(() => {
     if (openMenu !== null && MENU_TABS.has(openMenu)) setActiveTab(openMenu as TabId);
     if (openMenu === null) setActiveTab(null);
@@ -210,27 +205,32 @@ export function HomePage({ petId }: Props) {
     await performAction(action);
     showFloat(msg);
   };
-  const handleInvite = async () => {
-    try { const inv = await createInvite(pet.id); tg?.showAlert?.(`Ссылка:\n${inv.link}`); }
-    catch { tg?.showAlert?.("Не удалось создать ссылку"); }
-  };
-  const handleClose = () => { closeMenu(); };
+
+  const handleClose = () => closeMenu();
 
   const handleTab = (tab: TabId) => {
+    // Все табы открывают меню
     if (MENU_TABS.has(tab)) {
-      if (activeTab === tab) { handleClose(); return; }
+      if (activeTab === tab && menuIsOpen) { handleClose(); return; }
       setActiveTab(tab);
       setMenu(tab as MenuCategory);
+      // Триггерим действие сразу при открытии
       if (tab === "feed") doAction("feed", "+30 🍎");
       if (tab === "play") doAction("play", "+25 🎾");
       return;
     }
+    // Fallback для неизвестных табов
     setActiveTab(tab);
     closeMenu();
-    switch (tab) {
-      case "pet":      doAction("pet", "+15 🤍"); break;
-      case "partner":  handleInvite(); break;
-      case "settings": tg?.showAlert?.(`${pet.name} · Ур.${pet.level}\nВозраст: ${pet.age_days} дн.\nЭволюция: ${evo}/7`); break;
+  };
+
+  const handleInviteFromMenu = async () => {
+    try {
+      const { createInvite } = await import("../api/pets");
+      const inv = await createInvite(pet.id);
+      tg?.showAlert?.(`Ссылка:\n${inv.link}`);
+    } catch {
+      tg?.showAlert?.("Не удалось создать ссылку");
     }
   };
 
@@ -370,7 +370,8 @@ export function HomePage({ petId }: Props) {
                     </div>
                   ) : (
                     <motion.button
-                      whileTap={{ scale: 0.96 }} onClick={handleInvite}
+                      whileTap={{ scale: 0.96 }}
+                      onClick={() => handleTab("partner")}
                       style={{
                         display: "inline-flex", alignItems: "center", gap: 6,
                         ...G.pill, border: "1px dashed rgba(0,0,0,0.13)",
@@ -418,6 +419,9 @@ export function HomePage({ petId }: Props) {
           }}
         >🩷</motion.div>
       ))}
+
+      {/* Hidden: expose handleInviteFromMenu for MenuPanel via context or prop if needed */}
+      {/* For now partner menu has its own button; wire up via store or callback as needed */}
     </div>
   );
 }

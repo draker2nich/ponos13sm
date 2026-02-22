@@ -1,10 +1,11 @@
 // mini-app/src/store/useMenuStore.ts
 import { create } from "zustand";
 
-export type MenuCategory = "feed" | "play" | "shop" | "wash" | "sleep";
+// Все категории включая partner и settings
+export type MenuCategory = "feed" | "play" | "shop" | "wash" | "sleep" | "partner" | "settings";
 
-// Ordered list — defines swipe direction between categories
-export const MENU_ORDER: MenuCategory[] = ["feed", "play", "shop", "wash", "sleep"];
+// Порядок для свайп-навигации
+export const MENU_ORDER: MenuCategory[] = ["feed", "play", "shop", "wash", "sleep", "partner", "settings"];
 
 interface MenuStore {
   openMenu: MenuCategory | null;
