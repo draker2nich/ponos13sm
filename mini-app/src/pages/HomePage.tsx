@@ -2,7 +2,7 @@
 import { useEffect, useCallback, useState, useRef, useMemo } from "react";
 import { motion, AnimatePresence, useDragControls, useMotionValue, useSpring } from "framer-motion";
 import { usePetStore } from "../store/usePetStore";
-import { useMenuStore, type MenuCategory } from "../store/useMenuStore";
+import { useMenuStore, MENU_ORDER, type MenuCategory } from "../store/useMenuStore";
 import { PetSVG } from "../components/PetSVG";
 import { CategoryMenu } from "../components/CategoryMenu";
 import { createInvite } from "../api/pets";
@@ -14,25 +14,25 @@ type CSSProps = React.CSSProperties;
 /* ── Design tokens ─────────────────────────────────────────────────────────── */
 const G = {
   heavy: {
-    background: "rgba(255,255,255,0.55)", backdropFilter: "blur(32px) saturate(180%)",
-    WebkitBackdropFilter: "blur(32px) saturate(180%)", border: "1px solid rgba(255,255,255,0.70)",
-    boxShadow: "0 6px 24px rgba(0,0,0,0.07), inset 0 1.5px 0 rgba(255,255,255,0.9)",
+    background:"rgba(255,255,255,0.55)", backdropFilter:"blur(32px) saturate(180%)",
+    WebkitBackdropFilter:"blur(32px) saturate(180%)", border:"1px solid rgba(255,255,255,0.70)",
+    boxShadow:"0 6px 24px rgba(0,0,0,0.07), inset 0 1.5px 0 rgba(255,255,255,0.9)",
   } as CSSProps,
   pill: {
-    background: "rgba(255,255,255,0.38)", backdropFilter: "blur(14px)",
-    WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(255,255,255,0.55)",
-    boxShadow: "0 2px 10px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.7)",
+    background:"rgba(255,255,255,0.38)", backdropFilter:"blur(14px)",
+    WebkitBackdropFilter:"blur(14px)", border:"1px solid rgba(255,255,255,0.55)",
+    boxShadow:"0 2px 10px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.7)",
   } as CSSProps,
   carousel: {
-    background: "rgba(255,255,255,0.60)", backdropFilter: "blur(32px) saturate(180%)",
-    WebkitBackdropFilter: "blur(32px) saturate(180%)", border: "1px solid rgba(255,255,255,0.72)",
-    boxShadow: "0 8px 32px rgba(100,100,140,0.13), 0 2px 8px rgba(100,100,140,0.08), inset 0 1.5px 0 rgba(255,255,255,0.95)",
+    background:"rgba(255,255,255,0.60)", backdropFilter:"blur(32px) saturate(180%)",
+    WebkitBackdropFilter:"blur(32px) saturate(180%)", border:"1px solid rgba(255,255,255,0.72)",
+    boxShadow:"0 8px 32px rgba(100,100,140,0.13), 0 2px 8px rgba(100,100,140,0.08), inset 0 1.5px 0 rgba(255,255,255,0.95)",
   } as CSSProps,
 } as const;
 
 /* ── Icons ─────────────────────────────────────────────────────────────────── */
 const IC: Record<string, React.ReactNode> = {
-  petIcon: (<svg viewBox="0 0 24 24" fill="none" width="100%" height="100%"><path d="M19.08 15.72C18.49 12.19 15.1 9.32 11.52 9.32C7.63 9.32 4.21 12.47 3.88 16.35C3.75 17.85 4.23 19.27 5.22 20.34C6.2 21.41 7.58 22 9.08 22H13.76C15.45 22 16.93 21.34 17.94 20.15C18.95 18.96 19.35 17.38 19.08 15.72Z" fill="currentColor"/><path d="M10.28 7.86C11.9 7.86 13.21 6.55 13.21 4.93C13.21 3.31 11.9 2 10.28 2C8.66 2 7.35 3.31 7.35 4.93C7.35 6.55 8.66 7.86 10.28 7.86Z" fill="currentColor"/><path d="M16.94 9.03C18.29 9.03 19.38 7.94 19.38 6.59C19.38 5.24 18.29 4.15 16.94 4.15C15.59 4.15 14.5 5.24 14.5 6.59C14.5 7.94 15.59 9.03 16.94 9.03Z" fill="currentColor"/><path d="M20.55 12.93C21.63 12.93 22.5 12.06 22.5 10.98C22.5 9.9 21.63 9.03 20.55 9.03C19.47 9.03 18.6 9.9 18.6 10.98C18.6 12.06 19.47 12.93 20.55 12.93Z" fill="currentColor"/><path d="M3.94 10.98C5.29 10.98 6.38 9.89 6.38 8.54C6.38 7.19 5.29 6.1 3.94 6.1C2.59 6.1 1.5 7.19 1.5 8.54C1.5 9.89 2.59 10.98 3.94 10.98Z" fill="currentColor"/></svg>),
+  petIcon: <svg viewBox="0 0 24 24" fill="none" width="100%" height="100%"><path d="M19.08 15.72C18.49 12.19 15.1 9.32 11.52 9.32C7.63 9.32 4.21 12.47 3.88 16.35C3.75 17.85 4.23 19.27 5.22 20.34C6.2 21.41 7.58 22 9.08 22H13.76C15.45 22 16.93 21.34 17.94 20.15C18.95 18.96 19.35 17.38 19.08 15.72Z" fill="currentColor"/><path d="M10.28 7.86C11.9 7.86 13.21 6.55 13.21 4.93C13.21 3.31 11.9 2 10.28 2C8.66 2 7.35 3.31 7.35 4.93C7.35 6.55 8.66 7.86 10.28 7.86Z" fill="currentColor"/><path d="M16.94 9.03C18.29 9.03 19.38 7.94 19.38 6.59C19.38 5.24 18.29 4.15 16.94 4.15C15.59 4.15 14.5 5.24 14.5 6.59C14.5 7.94 15.59 9.03 16.94 9.03Z" fill="currentColor"/><path d="M20.55 12.93C21.63 12.93 22.5 12.06 22.5 10.98C22.5 9.9 21.63 9.03 20.55 9.03C19.47 9.03 18.6 9.9 18.6 10.98C18.6 12.06 19.47 12.93 20.55 12.93Z" fill="currentColor"/><path d="M3.94 10.98C5.29 10.98 6.38 9.89 6.38 8.54C6.38 7.19 5.29 6.1 3.94 6.1C2.59 6.1 1.5 7.19 1.5 8.54C1.5 9.89 2.59 10.98 3.94 10.98Z" fill="currentColor"/></svg>,
   fire: <svg viewBox="0 0 24 24" fill="currentColor" width="100%" height="100%"><path d="M12.8 21.8C16 21.2 20 18.9 20 13.1c0-5.3-3.9-8.8-6.7-10.4-.6-.4-1.3.1-1.3.8V5.3c0 1.4-.6 4-2.3 5.1-.9.6-1.8-.3-1.9-1.3l-.1-.8c-.1-1-.9-1.5-1.7-1-1.4 1.1-2.9 3-2.9 5.7 0 7.1 5.3 8.9 7.9 8.9.2 0 .4 0 .6-.01-1.3-.12-3.4-.92-3.4-3.53 0-2.05 1.5-3.44 2.6-4.11.3-.18.66.05.66.4v.59c0 .45.17 1.15.58 1.64.47.55 1.16-.02 1.22-.7.02-.22.24-.37.44-.25.64.38 1.46 1.18 1.46 2.46 0 2.05-1.13 2.98-2.17 3.35z"/></svg>,
   food: <svg viewBox="0 0 24 24" fill="currentColor" width="100%" height="100%"><path d="M18.06 22.99h1.66c.84 0 1.53-.64 1.63-1.46L23 5.05h-5V1h-1.97v4.05h-4.97l.3 2.34c1.71.47 3.31 1.32 4.27 2.26 1.44 1.42 2.43 2.89 2.43 5.29v8.05zM1 21.99V21h15.03v.99c0 .55-.45 1-1.01 1H2.01c-.56 0-1.01-.45-1.01-1zm15.03-7c0-8-15.03-8-15.03 0h15.03zM1.02 17h15v2h-15z"/></svg>,
   game: <svg viewBox="0 0 24 24" fill="currentColor" width="100%" height="100%"><path d="M15 7.5V2H9v5.5l3 3 3-3zM7.5 9H2v6h5.5l3-3-3-3zM9 16.5V22h6v-5.5l-3-3-3 3zM16.5 9l-3 3 3 3H22V9h-5.5z"/></svg>,
@@ -42,7 +42,6 @@ const IC: Record<string, React.ReactNode> = {
   users: <svg viewBox="0 0 24 24" fill="currentColor" width="100%" height="100%"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>,
   settings: <svg viewBox="0 0 24 24" fill="currentColor" width="100%" height="100%"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>,
   dot: <svg viewBox="0 0 8 8" fill="currentColor" width="100%" height="100%"><circle cx="4" cy="4" r="4"/></svg>,
-  // Down arrow for closing menu
   chevronDown: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="100%" height="100%"><polyline points="6 9 12 15 18 9"/></svg>,
 };
 
@@ -51,25 +50,24 @@ function fmtCd(iso: string | null): string {
   if (!iso) return "";
   const s = Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / 1000));
   if (!s) return "";
-  if (s > 3600) return `${Math.floor(s / 3600)}ч`;
-  if (s > 60) return `${Math.floor(s / 60)}м`;
+  if (s > 3600) return `${Math.floor(s/3600)}ч`;
+  if (s > 60)   return `${Math.floor(s/60)}м`;
   return `${s}с`;
 }
 const cdActive = (iso: string | null) => !!iso && new Date(iso).getTime() > Date.now();
 const toDeg = (v: number) => Math.round(Math.max(0, Math.min(100, v)) / 100 * 360);
 
-/* ── Categories that open a menu panel ─────────────────────────────────────── */
-const MENU_TABS = new Set<string>(["feed", "play", "sleep", "shop"]);
+const MENU_TABS = new Set<string>(["feed","play","sleep","shop"]);
 
-const PILL_H = 50;
-const RING_SIZE = 34;
-const NAV_PAD = 8;
-const BTN_W = PILL_H;
-const BTN_GAP = 5;
-const VISIBLE = 4;
+const NAV_PAD   = 8;
+const BTN_W     = 50;
+const BTN_GAP   = 5;
+const VISIBLE   = 4;
 const VIEWPORT_W = VISIBLE * BTN_W + (VISIBLE - 1) * BTN_GAP;
-const WIDGET_H = NAV_PAD * 2 + BTN_W;
-const GLOVE_CIRCLE = WIDGET_H;
+const WIDGET_H  = NAV_PAD * 2 + BTN_W;   // full height of the nav row
+const PILL_H    = 50;
+const RING_SIZE = 34;
+const GLOVE_SZ  = WIDGET_H;
 const GLOVE_FLY = 52;
 const GLOVE_GAP = 10;
 const SHADOW_BLEED = 12;
@@ -80,29 +78,26 @@ function StatusRing({ value, icon }: { value: number; icon: React.ReactNode }) {
   const circ = 2 * Math.PI * R; const dash = deg / 360 * circ;
   const col = low ? "rgba(220,60,60,0.80)" : "rgba(80,80,100,0.50)";
   return (
-    <div style={{ position: "relative", width: RING_SIZE, height: RING_SIZE, flexShrink: 0 }}>
-      <svg width={RING_SIZE} height={RING_SIZE} style={{ position: "absolute", inset: 0, transform: "rotate(-90deg)" }}>
+    <div style={{ position:"relative", width:RING_SIZE, height:RING_SIZE, flexShrink:0 }}>
+      <svg width={RING_SIZE} height={RING_SIZE} style={{ position:"absolute", inset:0, transform:"rotate(-90deg)" }}>
         <circle cx={RING_SIZE/2} cy={RING_SIZE/2} r={R} fill="none" stroke="rgba(0,0,0,0.06)" strokeWidth={2}/>
         <circle cx={RING_SIZE/2} cy={RING_SIZE/2} r={R} fill="none" stroke={col} strokeWidth={2}
           strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"/>
       </svg>
-      <div style={{
-        position:"absolute", inset:5, borderRadius:"50%", background:"rgba(255,255,255,0.5)",
+      <div style={{ position:"absolute", inset:5, borderRadius:"50%", background:"rgba(255,255,255,0.5)",
         display:"flex", alignItems:"center", justifyContent:"center", padding:5,
-        color: low ? "rgba(200,50,50,0.85)" : "rgba(60,60,80,0.55)",
-      }}>{icon}</div>
+        color: low ? "rgba(200,50,50,0.85)" : "rgba(60,60,80,0.55)" }}>{icon}</div>
     </div>
   );
 }
 
-/* ── Carousel ──────────────────────────────────────────────────────────────── */
+/* ── Carousel (scroll strip) ───────────────────────────────────────────────── */
 function Carousel({ children }: { children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   const down = useRef(false); const sx = useRef(0); const sl = useRef(0);
   return (
-    <div style={{ width: VIEWPORT_W, overflow: "visible", position: "relative" }}>
-      <div
-        ref={ref}
+    <div style={{ width:VIEWPORT_W, overflow:"visible", position:"relative" }}>
+      <div ref={ref}
         onMouseDown={e => { down.current=true; sx.current=e.pageX-ref.current!.offsetLeft; sl.current=ref.current!.scrollLeft; ref.current!.style.cursor="grabbing"; }}
         onMouseUp={() => { down.current=false; if(ref.current) ref.current.style.cursor="grab"; }}
         onMouseLeave={() => { down.current=false; if(ref.current) ref.current.style.cursor="grab"; }}
@@ -111,10 +106,10 @@ function Carousel({ children }: { children: React.ReactNode }) {
           display:"flex", gap:BTN_GAP,
           marginLeft:-SHADOW_BLEED, marginRight:-SHADOW_BLEED,
           paddingLeft:SHADOW_BLEED, paddingRight:SHADOW_BLEED,
-          overflowX:"auto", scrollbarWidth:"none",
-          WebkitOverflowScrolling:"touch", cursor:"grab", userSelect:"none",
           paddingTop:SHADOW_BLEED, paddingBottom:SHADOW_BLEED,
           marginTop:-SHADOW_BLEED, marginBottom:-SHADOW_BLEED,
+          overflowX:"auto", scrollbarWidth:"none",
+          WebkitOverflowScrolling:"touch", cursor:"grab", userSelect:"none",
         }}
       >{children}</div>
     </div>
@@ -160,44 +155,17 @@ function CarouselBtn({ icon, active, disabled, cdLabel, onClick }: {
   );
 }
 
-/* ── CloseBtn (down arrow replaces glove when menu is open) ─────────────────── */
-function CloseBtn({ onClick }: { onClick: () => void }) {
-  return (
-    <motion.div
-      key="close-btn"
-      initial={{ scale: 0.7, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      exit={{ scale: 0.7, opacity: 0 }}
-      transition={{ duration: 0.18 }}
-      style={{
-        width: GLOVE_CIRCLE, height: GLOVE_CIRCLE, borderRadius: "50%", flexShrink: 0,
-        background: "rgba(255,255,255,0.60)",
-        backdropFilter: "blur(32px) saturate(180%)",
-        WebkitBackdropFilter: "blur(32px) saturate(180%)",
-        border: "1px solid rgba(255,255,255,0.72)",
-        boxShadow: "0 8px 32px rgba(100,100,140,0.13), 0 2px 8px rgba(100,100,140,0.08), inset 0 1.5px 0 rgba(255,255,255,0.95)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        cursor: "pointer",
-      }}
-      onClick={onClick}
-    >
-      <div style={{ width: 26, height: 26, color: "rgba(0,0,0,0.50)" }}>{IC.chevronDown}</div>
-    </motion.div>
-  );
-}
-
 /* ── FloatAnim ─────────────────────────────────────────────────────────────── */
 function FloatAnim({ show, text }: { show: boolean; text: string }) {
   return (
     <AnimatePresence>
       {show && (
-        <motion.div initial={{ opacity:1, y:0 }} animate={{ opacity:0, y:-60 }} transition={{ duration:0.85, ease:"easeOut" }}
-          style={{
-            position:"absolute", top:0, left:"50%", transform:"translateX(-50%)",
+        <motion.div initial={{ opacity:1, y:0 }} animate={{ opacity:0, y:-60 }}
+          transition={{ duration:0.85, ease:"easeOut" }}
+          style={{ position:"absolute", top:0, left:"50%", transform:"translateX(-50%)",
             fontSize:20, fontWeight:800, color:"rgba(0,0,0,0.60)",
             textShadow:"0 2px 8px rgba(255,255,255,0.6)", pointerEvents:"none",
-            whiteSpace:"nowrap", zIndex:20,
-          }}
+            whiteSpace:"nowrap", zIndex:20 }}
         >{text}</motion.div>
       )}
     </AnimatePresence>
@@ -224,7 +192,7 @@ function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, petDomR
     const el = petDomRef.current;
     if (!el) return { x:0, y:0 };
     const r = el.getBoundingClientRect();
-    return { x: r.left+r.width/2, y: r.top+r.height/2 };
+    return { x:r.left+r.width/2, y:r.top+r.height/2 };
   }, [petDomRef]);
 
   useEffect(() => {
@@ -244,12 +212,8 @@ function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, petDomR
 
   return (
     <motion.div
-      drag={!disabled}
-      dragControls={controls}
-      dragConstraints={constraintsRef}
-      dragElastic={0.10}
-      dragMomentum={false}
-      whileDrag={disabled ? {} : { scale:1.06 }}
+      drag={!disabled} dragControls={controls} dragConstraints={constraintsRef}
+      dragElastic={0.10} dragMomentum={false} whileDrag={disabled ? {} : { scale:1.06 }}
       style={{ cursor: disabled ? "default" : "grab", touchAction:"none", display:"inline-block", x:dragX, y:dragY }}
       onPointerDown={e => { if (!disabled) controls.start(e); }}
     >
@@ -270,37 +234,31 @@ function PettingGlove({ petRef, onStroking, isStroking }: {
   const [isDragging, setIsDragging] = useState(false);
   const dragging = useRef(false);
   const history = useRef<Array<{x:number;y:number;t:number}>>([]);
-  const rawX = useMotionValue(-9999);
-  const rawY = useMotionValue(-9999);
+  const rawX = useMotionValue(-9999); const rawY = useMotionValue(-9999);
   const gX = useSpring(rawX, { stiffness:600, damping:30, mass:0.3 });
   const gY = useSpring(rawY, { stiffness:600, damping:30, mass:0.3 });
-  const half = GLOVE_FLY/2;
+  const half = GLOVE_FLY / 2;
 
   const isOverPet = useCallback((cx:number, cy:number) => {
-    const el = petRef.current;
-    if (!el) return false;
-    const r = el.getBoundingClientRect();
-    const pad = 24;
+    const el = petRef.current; if (!el) return false;
+    const r = el.getBoundingClientRect(); const pad = 24;
     return cx>=r.left-pad && cx<=r.right+pad && cy>=r.top-pad && cy<=r.bottom+pad;
   }, [petRef]);
 
   const isMoving = useCallback(() => {
-    const h = history.current;
-    const now = Date.now();
+    const h = history.current; const now = Date.now();
     while (h.length>0 && now-h[0].t>200) h.shift();
     if (h.length<2) return false;
-    let dist = 0;
-    for (let i=1;i<h.length;i++) dist += Math.abs(h[i].x-h[i-1].x)+Math.abs(h[i].y-h[i-1].y);
+    let dist=0; for (let i=1;i<h.length;i++) dist+=Math.abs(h[i].x-h[i-1].x)+Math.abs(h[i].y-h[i-1].y);
     return dist>6;
   }, []);
 
   const startDrag = useCallback((cx:number, cy:number) => {
-    dragging.current=true;
-    history.current=[{x:cx,y:cy,t:Date.now()}];
+    dragging.current=true; history.current=[{x:cx,y:cy,t:Date.now()}];
     const el = circleRef.current;
-    const startX = el ? el.getBoundingClientRect().left+el.getBoundingClientRect().width/2-half : cx-half;
-    const startY = el ? el.getBoundingClientRect().top+el.getBoundingClientRect().height/2-half : cy-half;
-    rawX.jump(startX); rawY.jump(startY); gX.jump(startX); gY.jump(startY);
+    const sx = el ? el.getBoundingClientRect().left+el.getBoundingClientRect().width/2-half : cx-half;
+    const sy = el ? el.getBoundingClientRect().top+el.getBoundingClientRect().height/2-half : cy-half;
+    rawX.jump(sx); rawY.jump(sy); gX.jump(sx); gY.jump(sy);
     setIsDragging(true); onStroking(false);
   }, [onStroking, rawX, rawY, gX, gY, half]);
 
@@ -329,7 +287,7 @@ function PettingGlove({ petRef, onStroking, isStroking }: {
           startDrag(e.clientX, e.clientY);
         }}
         style={{
-          width:GLOVE_CIRCLE, height:GLOVE_CIRCLE, borderRadius:"50%", flexShrink:0,
+          width:GLOVE_SZ, height:GLOVE_SZ, borderRadius:"50%", flexShrink:0,
           ...G.carousel,
           display:"flex", alignItems:"center", justifyContent:"center",
           cursor: isDragging ? "grabbing" : "grab",
@@ -338,33 +296,193 @@ function PettingGlove({ petRef, onStroking, isStroking }: {
       >
         <img src="/sprites/glove.svg" draggable={false}
           style={{ width:36, height:36, objectFit:"contain", pointerEvents:"none",
-            opacity: isDragging ? 0.25 : 1, transition:"opacity 0.15s" }}
-        />
+            opacity: isDragging ? 0.25 : 1, transition:"opacity 0.15s" }}/>
       </div>
       {isDragging && (
-        <div
-          onPointerMove={e => moveDrag(e.clientX, e.clientY)}
-          onPointerUp={() => stopDrag()}
-          onPointerCancel={() => stopDrag()}
-          style={{ position:"fixed", inset:0, zIndex:999, cursor:"grabbing", touchAction:"none" }}
-        >
+        <div onPointerMove={e => moveDrag(e.clientX,e.clientY)}
+          onPointerUp={stopDrag} onPointerCancel={stopDrag}
+          style={{ position:"fixed", inset:0, zIndex:999, cursor:"grabbing", touchAction:"none" }}>
           <motion.div animate={gloveAnim}
             style={{ position:"fixed", top:0, left:0, width:GLOVE_FLY, height:GLOVE_FLY,
-              x:gX, y:gY, pointerEvents:"none", transformOrigin:"center center", overflow:"visible" }}
-          >
+              x:gX, y:gY, pointerEvents:"none", transformOrigin:"center center", overflow:"visible" }}>
             <img src="/sprites/glove.svg" draggable={false}
               style={{ width:"200%", height:"200%", objectFit:"contain", position:"absolute",
                 top:"-50%", left:"-50%",
-                filter: isStroking
-                  ? "drop-shadow(0 4px 16px rgba(249,168,212,0.6))"
-                  : "drop-shadow(0 4px 12px rgba(0,0,0,0.14))",
-                transition:"filter 0.2s",
-              }}
-            />
+                filter: isStroking ? "drop-shadow(0 4px 16px rgba(249,168,212,0.6))"
+                  : "drop-shadow(0 4px 12px rgba(0,0,0,0.14))", transition:"filter 0.2s" }}/>
           </motion.div>
         </div>
       )}
     </>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   BottomBlock — carousel row + menu, animated as ONE unit
+   
+   Layout:
+   ┌─────────────────────────────┐
+   │  [pill: carousel] [glove]   │  ← NAV ROW  (always fixed height)
+   ├─────────────────────────────┤
+   │  menu content               │  ← MENU (height = 50vh - NAV_ROW_H)
+   └─────────────────────────────┘
+   
+   The entire block sits at the bottom. When closed, only the nav row is visible.
+   When opened, the block slides up as a unit until it reaches y=0 of the bottom half.
+══════════════════════════════════════════════════════════════════════════════ */
+
+interface BottomBlockProps {
+  pet: NonNullable<ReturnType<typeof usePetStore.getState>["pet"]>;
+  evo: number;
+  activeTab: TabId | null;
+  isCd: (a: string) => boolean;
+  getCd: (a: string) => string | null;
+  onTab: (t: TabId) => void;
+  onClose: () => void;
+  petRef: React.RefObject<HTMLDivElement | null>;
+  onStroking: (v: boolean) => void;
+  isStroking: boolean;
+}
+
+function BottomBlock({ pet, evo, activeTab, isCd, getCd, onTab, onClose, petRef, onStroking, isStroking }: BottomBlockProps) {
+  const { openMenu } = useMenuStore();
+  const menuIsOpen = openMenu !== null;
+
+  // WIDGET_H = height of the nav row pill area
+  // When closed: block = just nav row, positioned at normal bottom
+  // When open:   block = nav row + menu, fills bottom 50% of screen
+  //
+  // We animate `y` of the whole block.
+  // Closed: y = 0 (nav row at its natural position)
+  // Open:   y = 0 still, but the block has grown upward — handled by flex layout.
+  //
+  // Strategy: wrap nav+menu in a column. Menu has height = calc(50dvh - WIDGET_H - safe area).
+  // The entire column animates y from full-menu-height → 0 on open.
+
+  const menuContentH = `calc(50dvh - ${WIDGET_H}px - env(safe-area-inset-bottom, 0px))`;
+
+  // bottom padding when menu is closed (safe area + visual breathing room)
+  const closedBottomPad = "clamp(24px,6.5vw,38px)";
+
+  return (
+    <motion.div
+      // Slide the entire block up on open, down on close
+      initial={false}
+      animate={{ y: 0 }}
+      style={{
+        position:"relative", zIndex:10,
+        display:"flex", flexDirection:"column",
+        // When open: block sticks to bottom, height = 50dvh
+        // When closed: height is just the nav row + padding
+        width:"100%",
+      }}
+    >
+      {/*
+        ── NAV ROW ─────────────────────────────────────────────────────────────
+        The pill and glove circle. Pill bottom-radius becomes 0 when menu open.
+      */}
+      <motion.div
+        animate={{
+          paddingBottom: menuIsOpen ? 0 : undefined,
+          paddingTop: menuIsOpen ? 8 : undefined,
+        }}
+        style={{
+          padding: menuIsOpen
+            ? `8px 16px 0`
+            : `0 16px ${closedBottomPad}`,
+          display:"flex", justifyContent:"center", alignItems:"center",
+          gap:GLOVE_GAP, flexShrink:0,
+        }}
+      >
+        {/* Pill: only bottom corners change */}
+        <div style={{
+          ...G.carousel,
+          // Top corners always rounded; bottom corners = 0 when menu open
+          borderRadius: menuIsOpen
+            ? `999px 999px 0 0`
+            : 999,
+          // Remove bottom border when connected to menu
+          borderBottom: menuIsOpen ? "none" : undefined,
+          // Constant height — keep buttons vertically centered always
+          height: WIDGET_H,
+          padding:`${NAV_PAD}px ${NAV_PAD+2}px`,
+          display:"inline-flex", alignItems:"center",
+          overflow:"visible",
+          transition:"border-radius 0.25s ease",
+          boxSizing:"border-box",
+        }}>
+          <Carousel>
+            <CarouselBtn icon={IC.food}  active={activeTab==="feed"}  disabled={isCd("feed")} cdLabel={fmtCd(getCd("feed"))} onClick={() => onTab("feed")}/>
+            <CarouselBtn icon={IC.game}  active={activeTab==="play"}  disabled={isCd("play")} cdLabel={fmtCd(getCd("play"))} onClick={() => onTab("play")}/>
+            {/* shop before sleep ⚠️ */}
+            <CarouselBtn icon={IC.shop}  active={activeTab==="shop"}  onClick={() => onTab("shop")}/>
+            <CarouselBtn icon={IC.moon}  active={activeTab==="sleep"} onClick={() => onTab("sleep")}/>
+            <CarouselBtn icon={IC.users} active={activeTab==="partner"} onClick={() => onTab("partner")}/>
+            <CarouselBtn icon={IC.settings} active={activeTab==="settings"} onClick={() => onTab("settings")}/>
+          </Carousel>
+        </div>
+
+        {/* Glove ↔ Down arrow */}
+        <AnimatePresence mode="wait">
+          {menuIsOpen ? (
+            <motion.div key="close"
+              initial={{ scale:0.7, opacity:0 }} animate={{ scale:1, opacity:1 }} exit={{ scale:0.7, opacity:0 }}
+              transition={{ duration:0.15 }}
+              style={{
+                width:GLOVE_SZ, height:GLOVE_SZ, borderRadius:"50%", flexShrink:0,
+                ...G.carousel,
+                display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer",
+              }}
+              onClick={onClose}
+            >
+              <div style={{ width:26, height:26, color:"rgba(0,0,0,0.50)" }}>{IC.chevronDown}</div>
+            </motion.div>
+          ) : (
+            <motion.div key="glove"
+              initial={{ scale:0.7, opacity:0 }} animate={{ scale:1, opacity:1 }} exit={{ scale:0.7, opacity:0 }}
+              transition={{ duration:0.15 }}>
+              <PettingGlove petRef={petRef} onStroking={onStroking} isStroking={isStroking}/>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+
+      {/*
+        ── MENU PANEL ──────────────────────────────────────────────────────────
+        Height = 50dvh - nav row height.
+        Slides up as part of this block when openMenu changes.
+        The outer wrapper clips; inner AnimatePresence handles l/r slides.
+      */}
+      <AnimatePresence>
+        {menuIsOpen && (
+          <motion.div
+            key="menu-wrapper"
+            initial={{ height: 0 }}
+            animate={{ height: menuContentH }}
+            exit={{ height: 0 }}
+            transition={{ type:"spring", stiffness:380, damping:38, mass:0.85 }}
+            style={{
+              overflow:"hidden",
+              width:"100vw",
+              // break out of any horizontal padding to be truly full-width
+              marginLeft:"calc(-50vw + 50%)",
+              background:"rgba(255,255,255,0.60)",
+              backdropFilter:"blur(32px) saturate(180%)",
+              WebkitBackdropFilter:"blur(32px) saturate(180%)",
+              borderTop:"1px solid rgba(255,255,255,0.72)",
+              flexShrink:0,
+            }}
+          >
+            <CategoryMenu screenW={0 /* unused, width is 100vw */}/>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Home-indicator spacing when closed */}
+      {!menuIsOpen && (
+        <div style={{ height:4, marginBottom:"clamp(5px,1.5vw,8px)" }}/>
+      )}
+    </motion.div>
   );
 }
 
@@ -375,7 +493,7 @@ interface Props { petId: number }
 
 export function HomePage({ petId }: Props) {
   const { pet, fetchPet, performAction, loading } = usePetStore();
-  const { openMenu, setMenu } = useMenuStore();
+  const { openMenu, setMenu, closeMenu } = useMenuStore();
 
   const [activeTab, setActiveTab] = useState<TabId | null>(null);
   const [floatText, setFloatText] = useState("");
@@ -384,9 +502,8 @@ export function HomePage({ petId }: Props) {
   const [hearts, setHearts] = useState<HeartFx[]>([]);
   const nextHeart = useRef(0);
 
-  // Ref for the pet zone (upper 50%) — used as drag constraint
   const petZoneRef = useRef<HTMLDivElement>(null);
-  const petDomRef = useRef<HTMLDivElement>(null);
+  const petDomRef  = useRef<HTMLDivElement>(null);
 
   const menuIsOpen = openMenu !== null;
 
@@ -399,9 +516,8 @@ export function HomePage({ petId }: Props) {
     return () => document.removeEventListener("visibilitychange", h);
   }, [refresh]);
 
-  const handleStroking = useCallback((v: boolean) => setIsStroking(v), []);
-
-  const spawnHeart = useCallback((x: number, y: number) => {
+  const handleStroking = useCallback((v:boolean) => setIsStroking(v), []);
+  const spawnHeart = useCallback((x:number, y:number) => {
     const id = nextHeart.current++;
     const angle = Math.random()*Math.PI*2;
     const dist = 40+Math.random()*30;
@@ -417,7 +533,7 @@ export function HomePage({ petId }: Props) {
     const partner = pet.owners.find(o => !o.is_creator) ?? pet.owners[1];
     const pMins = partner?.last_active_at ? Math.floor((Date.now()-new Date(partner.last_active_at).getTime())/60_000) : null;
     const pOnline = pMins !== null && pMins < 5;
-    const sleepVal = pet.mood === "sleepy" ? 100 : 55;
+    const sleepVal = pet.mood==="sleepy" ? 100 : 55;
     return { evo, xpPct, partner, pMins, pOnline, sleepVal };
   }, [pet]);
 
@@ -431,18 +547,17 @@ export function HomePage({ petId }: Props) {
   if (!pet || !derived) return null;
 
   const { evo, xpPct, partner, pMins, pOnline, sleepVal } = derived;
-  const getCd = (a: string) => pet.cooldowns.find(c => c.action === a)?.available_at ?? null;
-  const isCd = (a: string) => cdActive(getCd(a));
+  const getCd = (a:string) => pet.cooldowns.find(c => c.action===a)?.available_at ?? null;
+  const isCd  = (a:string) => cdActive(getCd(a));
 
-  const showFloat = (t: string) => {
+  const showFloat = (t:string) => {
     setFloatText(t); setFloatShow(true);
     setTimeout(() => setFloatShow(false), 1400);
   };
 
   const doAction = async (action: ActionType, msg: string) => {
     if (isCd(action)) return;
-    await performAction(action);
-    showFloat(msg);
+    await performAction(action); showFloat(msg);
   };
 
   const handleInvite = async () => {
@@ -450,27 +565,24 @@ export function HomePage({ petId }: Props) {
     catch { tg?.showAlert?.("Не удалось создать ссылку"); }
   };
 
-  const closeMenu = () => { setMenu(null); setActiveTab(null); };
+  const handleClose = () => { closeMenu(); setActiveTab(null); };
 
   const handleTab = (tab: TabId) => {
-    // If this tab opens a menu panel
     if (MENU_TABS.has(tab)) {
-      if (activeTab === tab) {
-        // Tapping the same button again closes it
-        closeMenu();
-      } else {
-        setActiveTab(tab);
-        setMenu(tab as MenuCategory);
-        // Also trigger the action right away for feed/play
-        if (tab === "feed") doAction("feed", "+30 🍎");
-        if (tab === "play") doAction("play", "+25 🎾");
-      }
+      if (activeTab === tab) { handleClose(); return; }
+      // Switching category: direction is determined by index difference
+      const prevIdx = activeTab && MENU_ORDER.includes(activeTab as MenuCategory)
+        ? MENU_ORDER.indexOf(activeTab as MenuCategory) : -1;
+      const nextIdx = MENU_ORDER.indexOf(tab as MenuCategory);
+      // Store prev before setting (useMenuStore.setMenu handles it)
+      setActiveTab(tab);
+      setMenu(tab as MenuCategory);
+      if (tab === "feed") doAction("feed", "+30 🍎");
+      if (tab === "play") doAction("play", "+25 🎾");
       return;
     }
-
-    // Non-menu tabs
     setActiveTab(tab);
-    setMenu(null);
+    closeMenu();
     switch (tab) {
       case "pet":      doAction("pet", "+15 🤍"); break;
       case "partner":  handleInvite(); break;
@@ -487,34 +599,28 @@ export function HomePage({ petId }: Props) {
       display:"flex", flexDirection:"column",
       color:"rgba(0,0,0,0.75)",
     }}>
-      {/* Background blobs */}
+      {/* Blobs */}
       <div style={{ position:"absolute", inset:0, pointerEvents:"none", zIndex:0 }}>
         <div style={{ position:"absolute", top:"-12%", left:"-18%", width:"55%", paddingBottom:"55%", borderRadius:"50%", background:"radial-gradient(circle,rgba(196,181,253,0.22) 0%,transparent 70%)" }}/>
         <div style={{ position:"absolute", top:"15%", right:"-20%", width:"52%", paddingBottom:"52%", borderRadius:"50%", background:"radial-gradient(circle,rgba(251,207,232,0.22) 0%,transparent 70%)" }}/>
         <div style={{ position:"absolute", bottom:"8%", left:"8%", width:"46%", paddingBottom:"46%", borderRadius:"50%", background:"radial-gradient(circle,rgba(167,243,208,0.18) 0%,transparent 70%)" }}/>
       </div>
 
-      {/* ══ TOP ZONE — 50% when menu open, flex:1 otherwise ════════════════ */}
-      <motion.div
-        animate={{ height: menuIsOpen ? "50%" : undefined, flex: menuIsOpen ? "none" : 1 }}
-        transition={{ type:"spring", stiffness:340, damping:36 }}
-        style={{
-          display:"flex", flexDirection:"column",
-          position:"relative", zIndex:5,
-          overflow: "hidden",
-          // When menu is closed this is flex:1; when open it's fixed at 50dvh
-          ...(menuIsOpen ? { height:"50%", flex:"none" } : { flex:1 }),
-        }}
-      >
+      {/* ══ PET ZONE — always flex:1, constrained by bottom block ══════════ */}
+      <div ref={petZoneRef} style={{
+        flex:1, display:"flex", flexDirection:"column",
+        position:"relative", zIndex:5, overflow:"hidden",
+        // When menu open, pet zone = 50dvh. Bottom block = 50dvh.
+        // We use min-height:0 so flex shrinks correctly.
+        minHeight:0,
+        maxHeight: menuIsOpen ? "50dvh" : undefined,
+        transition:"max-height 0.35s cubic-bezier(0.32,0,0.67,0)",
+      }}>
         {/* ── HEADER ── */}
-        <header style={{
-          padding:"clamp(12px,3.5vw,20px) clamp(12px,4vw,18px) 6px",
-          zIndex:10, position:"relative", display:"flex", alignItems:"center", gap:8, flexShrink:0,
-        }}>
-          <div style={{
-            display:"flex", alignItems:"center", gap:7, ...G.heavy,
-            borderRadius:999, height:PILL_H, padding:"0 12px 0 7px", flexShrink:0,
-          }}>
+        <header style={{ padding:"clamp(12px,3.5vw,20px) clamp(12px,4vw,18px) 6px",
+          zIndex:10, position:"relative", display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:7, ...G.heavy,
+            borderRadius:999, height:PILL_H, padding:"0 12px 0 7px", flexShrink:0 }}>
             <div style={{ width:RING_SIZE, height:RING_SIZE, borderRadius:"50%", flexShrink:0,
               background:"rgba(255,255,255,0.55)", display:"flex", alignItems:"center",
               justifyContent:"center", padding:6, color:"rgba(0,0,0,0.42)" }}>{IC.petIcon}</div>
@@ -549,31 +655,17 @@ export function HomePage({ petId }: Props) {
           </div>
         </header>
 
-        {/* ── PET AREA — takes remaining space in top zone ── */}
-        <div
-          ref={petZoneRef}
-          style={{
-            flex:1, display:"flex", flexDirection:"column",
-            alignItems:"center", justifyContent:"center",
-            position:"relative", overflow:"hidden",
-          }}
-        >
+        {/* ── PET CENTERED IN REMAINING SPACE ── */}
+        <div style={{ flex:1, display:"flex", flexDirection:"column",
+          alignItems:"center", justifyContent:"center",
+          position:"relative", overflow:"hidden" }}>
           <div style={{ position:"relative" }}>
             <FloatAnim show={floatShow} text={floatText}/>
-            <DraggablePet
-              constraintsRef={petZoneRef}
-              isStroking={isStroking}
-              onHeartAt={spawnHeart}
-              petDomRef={petDomRef}
-              disabled={menuIsOpen}
-            >
+            <DraggablePet constraintsRef={petZoneRef} isStroking={isStroking}
+              onHeartAt={spawnHeart} petDomRef={petDomRef} disabled={menuIsOpen}>
               <div ref={petDomRef} style={{ display:"flex", flexDirection:"column", alignItems:"center" }}>
-                <PetSVG
-                  mood={isStroking ? "happy" : pet.mood}
-                  petType={pet.pet_type} evolution={evo}
-                  isReacting={floatShow || isStroking}
-                  size="clamp(120px,32vw,180px)"
-                />
+                <PetSVG mood={isStroking ? "happy" : pet.mood} petType={pet.pet_type} evolution={evo}
+                  isReacting={floatShow||isStroking} size="clamp(120px,32vw,180px)"/>
                 <div style={{ width:"clamp(44px,12vw,68px)", height:6,
                   background:"rgba(0,0,0,0.07)", filter:"blur(5px)",
                   borderRadius:"50%", marginTop:-2, pointerEvents:"none" }}/>
@@ -581,111 +673,52 @@ export function HomePage({ petId }: Props) {
             </DraggablePet>
           </div>
 
-          {/* Partner badge — inside pet zone, anchored bottom */}
-          {!menuIsOpen && (
-            <div style={{ position:"absolute", bottom:8, left:0, right:0,
-              display:"flex", justifyContent:"center", zIndex:6 }}>
-              {partner ? (
-                <div style={{ display:"inline-flex", alignItems:"center", gap:6, ...G.pill,
-                  borderRadius:999, padding:"5px 14px" }}>
-                  <div style={{ width:6, height:6, flexShrink:0,
-                    color: pOnline ? "#22c55e" : "rgba(0,0,0,0.20)",
-                    filter: pOnline ? "drop-shadow(0 0 4px #22c55e)" : "none" }}>{IC.dot}</div>
-                  <span style={{ fontSize:"clamp(10px,2.8vw,12px)", color:"rgba(0,0,0,0.42)", fontWeight:500 }}>
-                    {pMins===null ? "Партнёр не заходил" : pMins<5 ? "Партнёр онлайн" : pMins<60 ? `Партнёр ${pMins} мин назад` : `Партнёр ${Math.floor(pMins/60)} ч назад`}
-                  </span>
+          {/* Partner badge */}
+          <AnimatePresence>
+            {!menuIsOpen && (
+              <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
+                transition={{ duration:0.2 }}
+                style={{ position:"absolute", bottom:10, left:0, right:0,
+                  display:"flex", justifyContent:"center", zIndex:6, pointerEvents:"none" }}>
+                <div style={{ pointerEvents:"auto" }}>
+                  {partner ? (
+                    <div style={{ display:"inline-flex", alignItems:"center", gap:6,
+                      ...G.pill, borderRadius:999, padding:"5px 14px" }}>
+                      <div style={{ width:6, height:6, flexShrink:0,
+                        color: pOnline ? "#22c55e" : "rgba(0,0,0,0.20)",
+                        filter: pOnline ? "drop-shadow(0 0 4px #22c55e)" : "none" }}>{IC.dot}</div>
+                      <span style={{ fontSize:"clamp(10px,2.8vw,12px)", color:"rgba(0,0,0,0.42)", fontWeight:500 }}>
+                        {pMins===null ? "Партнёр не заходил" : pMins<5 ? "Партнёр онлайн" : pMins<60 ? `Партнёр ${pMins} мин назад` : `Партнёр ${Math.floor(pMins/60)} ч назад`}
+                      </span>
+                    </div>
+                  ) : (
+                    <motion.button whileTap={{ scale:0.96 }} onClick={handleInvite}
+                      style={{ display:"inline-flex", alignItems:"center", gap:6, ...G.pill,
+                        border:"1px dashed rgba(0,0,0,0.13)", borderRadius:999, padding:"6px 16px",
+                        cursor:"pointer", fontFamily:"inherit", fontSize:"clamp(11px,3vw,12px)",
+                        color:"rgba(0,0,0,0.42)", fontWeight:600 }}>
+                      <div style={{ width:13, height:13, color:"rgba(0,0,0,0.32)" }}>{IC.users}</div>
+                      Пригласить партнёра
+                    </motion.button>
+                  )}
                 </div>
-              ) : (
-                <motion.button whileTap={{ scale:0.96 }} onClick={handleInvite}
-                  style={{ display:"inline-flex", alignItems:"center", gap:6, ...G.pill,
-                    border:"1px dashed rgba(0,0,0,0.13)", borderRadius:999, padding:"6px 16px",
-                    cursor:"pointer", fontFamily:"inherit", fontSize:"clamp(11px,3vw,12px)",
-                    color:"rgba(0,0,0,0.42)", fontWeight:600 }}>
-                  <div style={{ width:13, height:13, color:"rgba(0,0,0,0.32)" }}>{IC.users}</div>
-                  Пригласить партнёра
-                </motion.button>
-              )}
-            </div>
-          )}
-        </div>
-      </motion.div>
-
-      {/* ══ BOTTOM ZONE — always 50% when menu open, auto otherwise ════════ */}
-      <motion.div
-        animate={{ height: menuIsOpen ? "50%" : undefined, flex: menuIsOpen ? "none" : "0 0 auto" }}
-        transition={{ type:"spring", stiffness:340, damping:36 }}
-        style={{
-          display:"flex", flexDirection:"column",
-          position:"relative", zIndex:10,
-          ...(menuIsOpen ? { height:"50%", flex:"none" } : { flex:"0 0 auto" }),
-        }}
-      >
-        {/* ── NAV ROW (carousel + glove/close) ── */}
-        <div style={{
-          padding: menuIsOpen
-            ? "8px 16px 0"
-            : `0 16px clamp(24px,6.5vw,38px)`,
-          display:"flex", justifyContent:"center", alignItems:"center", gap:GLOVE_GAP,
-          flexShrink:0, position:"relative",
-          // When menu open: carousel pill connects visually to menu panel below via same bg + top radius
-        }}>
-          {/* Pill */}
-          <div style={{
-            ...G.carousel,
-            borderRadius: menuIsOpen ? "999px 999px 0 0" : 999,
-            // Remove bottom border when menu is open so it visually merges with menu card
-            borderBottom: menuIsOpen ? "none" : undefined,
-            // Add a tiny bottom clip so the 1px border meets perfectly
-            ...(menuIsOpen && { paddingBottom: NAV_PAD + 1 }),
-            padding: `${NAV_PAD}px ${NAV_PAD+2}px`,
-            display:"inline-flex", height:WIDGET_H, alignItems:"center",
-            overflow:"visible",
-            transition:"border-radius 0.3s ease, border-bottom 0.3s ease",
-          }}>
-            <Carousel>
-              <CarouselBtn icon={IC.food}     active={activeTab==="feed"}     disabled={isCd("feed")} cdLabel={fmtCd(getCd("feed"))} onClick={() => handleTab("feed")}/>
-              <CarouselBtn icon={IC.game}     active={activeTab==="play"}     disabled={isCd("play")} cdLabel={fmtCd(getCd("play"))} onClick={() => handleTab("play")}/>
-              {/* ⚠️ shop and sleep swapped */}
-              <CarouselBtn icon={IC.shop}     active={activeTab==="shop"}     onClick={() => handleTab("shop")}/>
-              <CarouselBtn icon={IC.moon}     active={activeTab==="sleep"}    onClick={() => handleTab("sleep")}/>
-              <CarouselBtn icon={IC.users}    active={activeTab==="partner"}  onClick={() => handleTab("partner")}/>
-              <CarouselBtn icon={IC.settings} active={activeTab==="settings"} onClick={() => handleTab("settings")}/>
-            </Carousel>
-          </div>
-
-          {/* Glove ↔ Close button swap */}
-          <AnimatePresence mode="wait">
-            {menuIsOpen ? (
-              <CloseBtn key="close" onClick={closeMenu}/>
-            ) : (
-              <motion.div
-                key="glove"
-                initial={{ scale:0.7, opacity:0 }}
-                animate={{ scale:1, opacity:1 }}
-                exit={{ scale:0.7, opacity:0 }}
-                transition={{ duration:0.18 }}
-              >
-                <PettingGlove petRef={petDomRef} onStroking={handleStroking} isStroking={isStroking}/>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
+      </div>
 
-        {/* ── MENU PANEL — slides up from below carousel ── */}
-        <CategoryMenu open={openMenu} carouselH={WIDGET_H}/>
-
-        {/* Bottom safe-area bar (only when no menu) */}
-        {!menuIsOpen && (
-          <div style={{ height:"clamp(24px,6.5vw,38px)", flexShrink:0 }}/>
-        )}
-      </motion.div>
+      {/* ══ BOTTOM BLOCK (nav + menu) ════════════════════════════════════════ */}
+      <BottomBlock
+        pet={pet} evo={evo}
+        activeTab={activeTab} isCd={isCd} getCd={getCd}
+        onTab={handleTab} onClose={handleClose}
+        petRef={petDomRef} onStroking={handleStroking} isStroking={isStroking}
+      />
 
       {/* Home indicator */}
-      <div style={{
-        position:"absolute", bottom:"clamp(5px,1.5vw,8px)", left:"50%", transform:"translateX(-50%)",
-        width:100, height:4, background:"rgba(0,0,0,0.10)", borderRadius:4, zIndex:20,
-        pointerEvents:"none",
-      }}/>
+      <div style={{ position:"absolute", bottom:"clamp(5px,1.5vw,8px)", left:"50%", transform:"translateX(-50%)",
+        width:100, height:4, background:"rgba(0,0,0,0.10)", borderRadius:4, zIndex:20, pointerEvents:"none" }}/>
 
       {/* Hearts */}
       {hearts.map(h => (
