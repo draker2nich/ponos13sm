@@ -1,10 +1,9 @@
 // mini-app/src/pages/HomePage.tsx
 import { useEffect, useCallback, useState, useRef, useMemo } from "react";
-import { motion, AnimatePresence, useDragControls, useMotionValue, useSpring } from "framer-motion";
+import { motion, AnimatePresence, useDragControls, useMotionValue, useSpring, useAnimationControls } from "framer-motion";
 import { usePetStore } from "../store/usePetStore";
 import { useMenuStore, MENU_ORDER, type MenuCategory } from "../store/useMenuStore";
 import { PetSVG } from "../components/PetSVG";
-import { CategoryMenu } from "../components/CategoryMenu";
 import { createInvite } from "../api/pets";
 import type { ActionType } from "../api/types";
 
@@ -45,6 +44,71 @@ const IC: Record<string, React.ReactNode> = {
   chevronDown: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="100%" height="100%"><polyline points="6 9 12 15 18 9"/></svg>,
 };
 
+/* ── Menu content per category ────────────────────────────────────────────── */
+const MENU_CONTENT: Record<MenuCategory, React.ReactNode> = {
+  feed: (
+    <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+      <p style={{ fontSize:13, color:"rgba(0,0,0,0.45)", textAlign:"center", margin:0 }}>
+        Выбери угощение для питомца
+      </p>
+      <div style={{ display:"flex", flexWrap:"wrap", gap:10, justifyContent:"center" }}>
+        {["🍎 Яблоко","🍗 Курица","🥕 Морковь","🐟 Рыба","🧁 Кекс","🍖 Мясо"].map(f => (
+          <button key={f} style={{ padding:"10px 16px", borderRadius:18,
+            background:"rgba(255,255,255,0.55)", border:"1px solid rgba(255,255,255,0.75)",
+            fontSize:13, fontWeight:600, color:"rgba(0,0,0,0.65)", cursor:"pointer",
+            fontFamily:"inherit", boxShadow:"0 2px 8px rgba(0,0,0,0.06)" }}>{f}</button>
+        ))}
+      </div>
+    </div>
+  ),
+  play: (
+    <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+      <p style={{ fontSize:13, color:"rgba(0,0,0,0.45)", textAlign:"center", margin:0 }}>
+        Выбери игру
+      </p>
+      <div style={{ display:"flex", flexWrap:"wrap", gap:10, justifyContent:"center" }}>
+        {["🎾 Мяч","🧸 Игрушка","🎈 Шарик","🏀 Баскетбол","🎮 Игра"].map(g => (
+          <button key={g} style={{ padding:"10px 16px", borderRadius:18,
+            background:"rgba(255,255,255,0.55)", border:"1px solid rgba(255,255,255,0.75)",
+            fontSize:13, fontWeight:600, color:"rgba(0,0,0,0.65)", cursor:"pointer",
+            fontFamily:"inherit", boxShadow:"0 2px 8px rgba(0,0,0,0.06)" }}>{g}</button>
+        ))}
+      </div>
+    </div>
+  ),
+  sleep: (
+    <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:16 }}>
+      <span style={{ fontSize:48 }}>😴</span>
+      <p style={{ fontSize:14, color:"rgba(0,0,0,0.50)", textAlign:"center", margin:0, lineHeight:1.5 }}>
+        Питомец хочет отдохнуть.<br/>Уложи его спать, чтобы восстановить силы.
+      </p>
+      <button style={{ padding:"12px 32px", borderRadius:999,
+        background:"linear-gradient(135deg,#c5b8d8,#a89cc8)", border:"none",
+        fontSize:14, fontWeight:700, color:"#fff", cursor:"pointer", fontFamily:"inherit",
+        boxShadow:"0 4px 16px rgba(197,184,216,0.45)" }}>Спокойной ночи 🌙</button>
+    </div>
+  ),
+  shop: (
+    <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+      <p style={{ fontSize:13, color:"rgba(0,0,0,0.45)", textAlign:"center", margin:0 }}>
+        Магазин — скоро откроется!
+      </p>
+      <div style={{ display:"flex", flexWrap:"wrap", gap:10, justifyContent:"center" }}>
+        {["🎀 Бант","👑 Корона","🛁 Ванна","🏠 Домик","💎 Кристалл"].map(i => (
+          <button key={i} style={{ padding:"10px 16px", borderRadius:18,
+            background:"rgba(255,255,255,0.35)", border:"1px dashed rgba(0,0,0,0.12)",
+            fontSize:13, fontWeight:600, color:"rgba(0,0,0,0.35)",
+            cursor:"not-allowed", fontFamily:"inherit" }}>{i}</button>
+        ))}
+      </div>
+    </div>
+  ),
+};
+
+const MENU_TITLES: Record<MenuCategory, string> = {
+  feed:"Кормление", play:"Игра", sleep:"Сон", shop:"Магазин",
+};
+
 /* ── Helpers ────────────────────────────────────────────────────────────────── */
 function fmtCd(iso: string | null): string {
   if (!iso) return "";
@@ -64,13 +128,17 @@ const BTN_W     = 50;
 const BTN_GAP   = 5;
 const VISIBLE   = 4;
 const VIEWPORT_W = VISIBLE * BTN_W + (VISIBLE - 1) * BTN_GAP;
-const WIDGET_H  = NAV_PAD * 2 + BTN_W;   // full height of the nav row
+const WIDGET_H  = NAV_PAD * 2 + BTN_W;
 const PILL_H    = 50;
 const RING_SIZE = 34;
 const GLOVE_SZ  = WIDGET_H;
 const GLOVE_FLY = 52;
 const GLOVE_GAP = 10;
 const SHADOW_BLEED = 12;
+
+// Fixed border radius for pill and glove (top stays, bottom changes)
+const PILL_R = 999;
+const GLOVE_R = GLOVE_SZ / 2; // circle
 
 /* ── StatusRing ────────────────────────────────────────────────────────────── */
 function StatusRing({ value, icon }: { value: number; icon: React.ReactNode }) {
@@ -256,9 +324,9 @@ function PettingGlove({ petRef, onStroking, isStroking }: {
   const startDrag = useCallback((cx:number, cy:number) => {
     dragging.current=true; history.current=[{x:cx,y:cy,t:Date.now()}];
     const el = circleRef.current;
-    const sx = el ? el.getBoundingClientRect().left+el.getBoundingClientRect().width/2-half : cx-half;
-    const sy = el ? el.getBoundingClientRect().top+el.getBoundingClientRect().height/2-half : cy-half;
-    rawX.jump(sx); rawY.jump(sy); gX.jump(sx); gY.jump(sy);
+    const sxv = el ? el.getBoundingClientRect().left+el.getBoundingClientRect().width/2-half : cx-half;
+    const syv = el ? el.getBoundingClientRect().top+el.getBoundingClientRect().height/2-half : cy-half;
+    rawX.jump(sxv); rawY.jump(syv); gX.jump(sxv); gY.jump(syv);
     setIsDragging(true); onStroking(false);
   }, [onStroking, rawX, rawY, gX, gY, half]);
 
@@ -287,8 +355,7 @@ function PettingGlove({ petRef, onStroking, isStroking }: {
           startDrag(e.clientX, e.clientY);
         }}
         style={{
-          width:GLOVE_SZ, height:GLOVE_SZ, borderRadius:"50%", flexShrink:0,
-          ...G.carousel,
+          width:"100%", height:"100%",
           display:"flex", alignItems:"center", justifyContent:"center",
           cursor: isDragging ? "grabbing" : "grab",
           userSelect:"none", touchAction:"none",
@@ -318,17 +385,107 @@ function PettingGlove({ petRef, onStroking, isStroking }: {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
+   MenuPanel — the sliding menu content area
+   Handles horizontal swipe between categories and vertical close swipe
+══════════════════════════════════════════════════════════════════════════════ */
+function MenuPanel({ menuH }: { menuH: string }) {
+  const { openMenu, prevMenu, setMenu, closeMenu } = useMenuStore();
+  const swipeStartX = useRef(0);
+  const swipeStartY = useRef(0);
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    swipeStartX.current = e.clientX;
+    swipeStartY.current = e.clientY;
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (!openMenu) return;
+    const dx = e.clientX - swipeStartX.current;
+    const dy = e.clientY - swipeStartY.current;
+    // Vertical swipe down → close
+    if (dy > 50 && Math.abs(dy) > Math.abs(dx) * 1.2) {
+      closeMenu();
+      return;
+    }
+    // Horizontal swipe
+    if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy)) return;
+    const idx = MENU_ORDER.indexOf(openMenu);
+    if (dx < 0 && idx < MENU_ORDER.length - 1) setMenu(MENU_ORDER[idx + 1]);
+    if (dx > 0 && idx > 0) setMenu(MENU_ORDER[idx - 1]);
+  };
+
+  // Determine slide direction
+  const dir = useMemo(() => {
+    if (!prevMenu || !openMenu) return 0; // 0 = vertical (first open)
+    const pi = MENU_ORDER.indexOf(prevMenu);
+    const ni = MENU_ORDER.indexOf(openMenu);
+    if (pi === -1 || ni === -1) return 0;
+    return ni > pi ? 1 : -1; // +1=right, -1=left
+  }, [prevMenu, openMenu]);
+
+  return (
+    <div
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      style={{
+        width:"100%", height:menuH,
+        position:"relative", overflow:"hidden",
+        background:"rgba(255,255,255,0.60)",
+        backdropFilter:"blur(32px) saturate(180%)",
+        WebkitBackdropFilter:"blur(32px) saturate(180%)",
+        borderTop:"1px solid rgba(255,255,255,0.72)",
+        touchAction:"pan-y",
+      }}
+    >
+      <AnimatePresence mode="popLayout" custom={dir}>
+        {openMenu && (
+          <motion.div
+            key={openMenu}
+            custom={dir}
+            initial={{
+              x: dir !== 0 ? `${dir * 100}%` : 0,
+              y: dir === 0 ? "100%" : 0,
+              opacity: dir !== 0 ? 0.5 : 1,
+            }}
+            animate={{ x:0, y:0, opacity:1 }}
+            exit={{
+              x: dir !== 0 ? `${-dir * 100}%` : 0,
+              y: dir === 0 ? "100%" : 0,
+              opacity: dir !== 0 ? 0.5 : 1,
+            }}
+            transition={{ type:"spring", stiffness:500, damping:40, mass:0.8 }}
+            style={{
+              position:"absolute", inset:0,
+              display:"flex", flexDirection:"column",
+              overflow:"hidden",
+            }}
+          >
+            <div style={{
+              padding:"14px 20px 10px", flexShrink:0,
+              borderBottom:"1px solid rgba(0,0,0,0.05)",
+            }}>
+              <span style={{ fontSize:13, fontWeight:700, color:"rgba(0,0,0,0.55)", letterSpacing:"0.04em" }}>
+                {MENU_TITLES[openMenu]}
+              </span>
+            </div>
+            <div style={{ flex:1, overflowY:"auto", padding:"16px", scrollbarWidth:"none" }}>
+              {MENU_CONTENT[openMenu]}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
    BottomBlock — carousel row + menu, animated as ONE unit
-   
-   Layout:
-   ┌─────────────────────────────┐
-   │  [pill: carousel] [glove]   │  ← NAV ROW  (always fixed height)
-   ├─────────────────────────────┤
-   │  menu content               │  ← MENU (height = 50vh - NAV_ROW_H)
-   └─────────────────────────────┘
-   
-   The entire block sits at the bottom. When closed, only the nav row is visible.
-   When opened, the block slides up as a unit until it reaches y=0 of the bottom half.
+
+   CLOSED: pill + glove at bottom with padding, fully rounded
+   OPEN:   pill (bottom-radius=0) + arrow (bottom-radius=0) + full-width menu
+           Total height = 50dvh + WIDGET_H
+           Menu height = 50dvh
+           The whole block slides up from bottom
 ══════════════════════════════════════════════════════════════════════════════ */
 
 interface BottomBlockProps {
@@ -348,62 +505,50 @@ function BottomBlock({ pet, evo, activeTab, isCd, getCd, onTab, onClose, petRef,
   const { openMenu } = useMenuStore();
   const menuIsOpen = openMenu !== null;
 
-  // WIDGET_H = height of the nav row pill area
-  // When closed: block = just nav row, positioned at normal bottom
-  // When open:   block = nav row + menu, fills bottom 50% of screen
-  //
-  // We animate `y` of the whole block.
-  // Closed: y = 0 (nav row at its natural position)
-  // Open:   y = 0 still, but the block has grown upward — handled by flex layout.
-  //
-  // Strategy: wrap nav+menu in a column. Menu has height = calc(50dvh - WIDGET_H - safe area).
-  // The entire column animates y from full-menu-height → 0 on open.
-
-  const menuContentH = `calc(50dvh - ${WIDGET_H}px - env(safe-area-inset-bottom, 0px))`;
-
-  // bottom padding when menu is closed (safe area + visual breathing room)
+  // Menu content height = 50dvh. Total with widget = 50dvh + WIDGET_H.
+  const menuContentH = `50dvh`;
   const closedBottomPad = "clamp(24px,6.5vw,38px)";
+
+  // The nav row (pill + side button) border radii
+  // Top: always PILL_R. Bottom: 0 when open, PILL_R when closed.
+  const pillBorderRadius = menuIsOpen
+    ? `${PILL_R}px ${PILL_R}px 0 0`
+    : `${PILL_R}px`;
+
+  const sideBtnBorderRadius = menuIsOpen
+    ? `${GLOVE_R}px ${GLOVE_R}px 0 0`
+    : `${GLOVE_R}px`;
 
   return (
     <motion.div
-      // Slide the entire block up on open, down on close
       initial={false}
-      animate={{ y: 0 }}
+      animate={{
+        // When open: shift entire block up so the menu is visible
+        // Menu height = 50dvh, so we translate up by that amount
+        y: 0,
+      }}
       style={{
         position:"relative", zIndex:10,
         display:"flex", flexDirection:"column",
-        // When open: block sticks to bottom, height = 50dvh
-        // When closed: height is just the nav row + padding
         width:"100%",
       }}
     >
-      {/*
-        ── NAV ROW ─────────────────────────────────────────────────────────────
-        The pill and glove circle. Pill bottom-radius becomes 0 when menu open.
-      */}
-      <motion.div
-        animate={{
-          paddingBottom: menuIsOpen ? 0 : undefined,
-          paddingTop: menuIsOpen ? 8 : undefined,
-        }}
+      {/* ── NAV ROW ── */}
+      <div
         style={{
           padding: menuIsOpen
             ? `8px 16px 0`
             : `0 16px ${closedBottomPad}`,
           display:"flex", justifyContent:"center", alignItems:"center",
           gap:GLOVE_GAP, flexShrink:0,
+          transition:"padding 0.25s ease",
         }}
       >
-        {/* Pill: only bottom corners change */}
+        {/* Pill */}
         <div style={{
           ...G.carousel,
-          // Top corners always rounded; bottom corners = 0 when menu open
-          borderRadius: menuIsOpen
-            ? `999px 999px 0 0`
-            : 999,
-          // Remove bottom border when connected to menu
+          borderRadius: pillBorderRadius,
           borderBottom: menuIsOpen ? "none" : undefined,
-          // Constant height — keep buttons vertically centered always
           height: WIDGET_H,
           padding:`${NAV_PAD}px ${NAV_PAD+2}px`,
           display:"inline-flex", alignItems:"center",
@@ -414,7 +559,6 @@ function BottomBlock({ pet, evo, activeTab, isCd, getCd, onTab, onClose, petRef,
           <Carousel>
             <CarouselBtn icon={IC.food}  active={activeTab==="feed"}  disabled={isCd("feed")} cdLabel={fmtCd(getCd("feed"))} onClick={() => onTab("feed")}/>
             <CarouselBtn icon={IC.game}  active={activeTab==="play"}  disabled={isCd("play")} cdLabel={fmtCd(getCd("play"))} onClick={() => onTab("play")}/>
-            {/* shop before sleep ⚠️ */}
             <CarouselBtn icon={IC.shop}  active={activeTab==="shop"}  onClick={() => onTab("shop")}/>
             <CarouselBtn icon={IC.moon}  active={activeTab==="sleep"} onClick={() => onTab("sleep")}/>
             <CarouselBtn icon={IC.users} active={activeTab==="partner"} onClick={() => onTab("partner")}/>
@@ -422,58 +566,59 @@ function BottomBlock({ pet, evo, activeTab, isCd, getCd, onTab, onClose, petRef,
           </Carousel>
         </div>
 
-        {/* Glove ↔ Down arrow */}
-        <AnimatePresence mode="wait">
-          {menuIsOpen ? (
-            <motion.div key="close"
-              initial={{ scale:0.7, opacity:0 }} animate={{ scale:1, opacity:1 }} exit={{ scale:0.7, opacity:0 }}
-              transition={{ duration:0.15 }}
-              style={{
-                width:GLOVE_SZ, height:GLOVE_SZ, borderRadius:"50%", flexShrink:0,
-                ...G.carousel,
-                display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer",
-              }}
-              onClick={onClose}
-            >
-              <div style={{ width:26, height:26, color:"rgba(0,0,0,0.50)" }}>{IC.chevronDown}</div>
-            </motion.div>
-          ) : (
-            <motion.div key="glove"
-              initial={{ scale:0.7, opacity:0 }} animate={{ scale:1, opacity:1 }} exit={{ scale:0.7, opacity:0 }}
-              transition={{ duration:0.15 }}>
-              <PettingGlove petRef={petRef} onStroking={onStroking} isStroking={isStroking}/>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.div>
+        {/* Side button: Glove ↔ Down arrow */}
+        <div style={{
+          width:GLOVE_SZ, height:GLOVE_SZ, borderRadius:sideBtnBorderRadius,
+          flexShrink:0,
+          ...G.carousel,
+          borderBottom: menuIsOpen ? "none" : undefined,
+          display:"flex", alignItems:"center", justifyContent:"center",
+          transition:"border-radius 0.25s ease",
+          overflow:"hidden",
+        }}>
+          <AnimatePresence mode="wait">
+            {menuIsOpen ? (
+              <motion.div key="close"
+                initial={{ scale:0.7, opacity:0 }} animate={{ scale:1, opacity:1 }} exit={{ scale:0.7, opacity:0 }}
+                transition={{ duration:0.12 }}
+                onClick={onClose}
+                style={{
+                  width:"100%", height:"100%",
+                  display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer",
+                }}
+              >
+                <div style={{ width:26, height:26, color:"rgba(0,0,0,0.50)" }}>{IC.chevronDown}</div>
+              </motion.div>
+            ) : (
+              <motion.div key="glove"
+                initial={{ scale:0.7, opacity:0 }} animate={{ scale:1, opacity:1 }} exit={{ scale:0.7, opacity:0 }}
+                transition={{ duration:0.12 }}
+                style={{ width:"100%", height:"100%" }}
+              >
+                <PettingGlove petRef={petRef} onStroking={onStroking} isStroking={isStroking}/>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
 
-      {/*
-        ── MENU PANEL ──────────────────────────────────────────────────────────
-        Height = 50dvh - nav row height.
-        Slides up as part of this block when openMenu changes.
-        The outer wrapper clips; inner AnimatePresence handles l/r slides.
-      */}
+      {/* ── MENU PANEL ── */}
       <AnimatePresence>
         {menuIsOpen && (
           <motion.div
-            key="menu-wrapper"
-            initial={{ height: 0 }}
-            animate={{ height: menuContentH }}
-            exit={{ height: 0 }}
-            transition={{ type:"spring", stiffness:380, damping:38, mass:0.85 }}
+            key="menu-slide"
+            initial={{ height:0 }}
+            animate={{ height:menuContentH }}
+            exit={{ height:0 }}
+            transition={{ type:"spring", stiffness:480, damping:42, mass:0.75 }}
             style={{
               overflow:"hidden",
               width:"100vw",
-              // break out of any horizontal padding to be truly full-width
               marginLeft:"calc(-50vw + 50%)",
-              background:"rgba(255,255,255,0.60)",
-              backdropFilter:"blur(32px) saturate(180%)",
-              WebkitBackdropFilter:"blur(32px) saturate(180%)",
-              borderTop:"1px solid rgba(255,255,255,0.72)",
               flexShrink:0,
             }}
           >
-            <CategoryMenu screenW={0 /* unused, width is 100vw */}/>
+            <MenuPanel menuH={menuContentH}/>
           </motion.div>
         )}
       </AnimatePresence>
@@ -570,11 +715,6 @@ export function HomePage({ petId }: Props) {
   const handleTab = (tab: TabId) => {
     if (MENU_TABS.has(tab)) {
       if (activeTab === tab) { handleClose(); return; }
-      // Switching category: direction is determined by index difference
-      const prevIdx = activeTab && MENU_ORDER.includes(activeTab as MenuCategory)
-        ? MENU_ORDER.indexOf(activeTab as MenuCategory) : -1;
-      const nextIdx = MENU_ORDER.indexOf(tab as MenuCategory);
-      // Store prev before setting (useMenuStore.setMenu handles it)
       setActiveTab(tab);
       setMenu(tab as MenuCategory);
       if (tab === "feed") doAction("feed", "+30 🍎");
@@ -606,15 +746,15 @@ export function HomePage({ petId }: Props) {
         <div style={{ position:"absolute", bottom:"8%", left:"8%", width:"46%", paddingBottom:"46%", borderRadius:"50%", background:"radial-gradient(circle,rgba(167,243,208,0.18) 0%,transparent 70%)" }}/>
       </div>
 
-      {/* ══ PET ZONE — always flex:1, constrained by bottom block ══════════ */}
+      {/* ══ PET ZONE ══ */}
       <div ref={petZoneRef} style={{
         flex:1, display:"flex", flexDirection:"column",
         position:"relative", zIndex:5, overflow:"hidden",
-        // When menu open, pet zone = 50dvh. Bottom block = 50dvh.
-        // We use min-height:0 so flex shrinks correctly.
         minHeight:0,
-        maxHeight: menuIsOpen ? "50dvh" : undefined,
-        transition:"max-height 0.35s cubic-bezier(0.32,0,0.67,0)",
+        // When menu open, pet zone gets squeezed by the bottom block growing
+        // The bottom block = WIDGET_H (nav) + 50dvh (menu)
+        // So pet zone = 100dvh - WIDGET_H - 50dvh - top padding ~ 50dvh - WIDGET_H
+        transition:"flex 0.3s ease",
       }}>
         {/* ── HEADER ── */}
         <header style={{ padding:"clamp(12px,3.5vw,20px) clamp(12px,4vw,18px) 6px",
@@ -655,7 +795,7 @@ export function HomePage({ petId }: Props) {
           </div>
         </header>
 
-        {/* ── PET CENTERED IN REMAINING SPACE ── */}
+        {/* ── PET CENTERED ── */}
         <div style={{ flex:1, display:"flex", flexDirection:"column",
           alignItems:"center", justifyContent:"center",
           position:"relative", overflow:"hidden" }}>
@@ -708,7 +848,7 @@ export function HomePage({ petId }: Props) {
         </div>
       </div>
 
-      {/* ══ BOTTOM BLOCK (nav + menu) ════════════════════════════════════════ */}
+      {/* ══ BOTTOM BLOCK ══ */}
       <BottomBlock
         pet={pet} evo={evo}
         activeTab={activeTab} isCd={isCd} getCd={getCd}
