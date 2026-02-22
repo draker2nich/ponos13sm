@@ -3,8 +3,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, useMotionValue, useSpring } from "framer-motion";
 import { NOTAP } from "./NavCarousel";
 
-// Размер летящей перчатки — достаточно большой чтобы быть видимым
-export const GLOVE_FLY = 96;
+export const GLOVE_FLY = 96; // размер летящей перчатки
 
 interface Props {
   petRef: React.RefObject<HTMLDivElement | null>;
@@ -16,11 +15,11 @@ export function PettingGlove({ petRef, onStroking, isStroking }: Props) {
   const [isDragging, setIsDragging] = useState(false);
   const activePointerId = useRef<number | null>(null);
   const historyRef = useRef<Array<{ x: number; y: number; t: number }>>([]);
+  const half = GLOVE_FLY / 2;
 
-  // Позиция курсора (центр перчатки) — без вычета half
+  // Храним позицию левого-верхнего угла перчатки = cursor - half
   const rawX = useMotionValue(-9999);
   const rawY = useMotionValue(-9999);
-  // Плавное следование за курсором
   const gX = useSpring(rawX, { stiffness: 700, damping: 32, mass: 0.25 });
   const gY = useSpring(rawY, { stiffness: 700, damping: 32, mass: 0.25 });
 
@@ -44,28 +43,33 @@ export function PettingGlove({ petRef, onStroking, isStroking }: Props) {
     return d > 6;
   }, []);
 
+  const setPos = useCallback((cx: number, cy: number) => {
+    // top-left угла = центр курсора - half
+    rawX.set(cx - half);
+    rawY.set(cy - half);
+  }, [rawX, rawY, half]);
+
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     e.preventDefault();
     e.stopPropagation();
     activePointerId.current = e.pointerId;
     historyRef.current = [{ x: e.clientX, y: e.clientY, t: Date.now() }];
-    // Прыжок в точку курсора (перчатка центрируется на курсоре через translate)
-    rawX.jump(e.clientX);
-    rawY.jump(e.clientY);
-    gX.jump(e.clientX);
-    gY.jump(e.clientY);
+    // Прыжок без пружины, чтобы перчатка появилась мгновенно под пальцем
+    rawX.jump(e.clientX - half);
+    rawY.jump(e.clientY - half);
+    gX.jump(e.clientX - half);
+    gY.jump(e.clientY - half);
     setIsDragging(true);
     onStroking(false);
-  }, [rawX, rawY, gX, gY, onStroking]);
+  }, [rawX, rawY, gX, gY, half, onStroking]);
 
   const handlePointerMove = useCallback((e: PointerEvent) => {
     if (activePointerId.current === null || e.pointerId !== activePointerId.current) return;
     e.preventDefault();
-    rawX.set(e.clientX);
-    rawY.set(e.clientY);
+    setPos(e.clientX, e.clientY);
     historyRef.current.push({ x: e.clientX, y: e.clientY, t: Date.now() });
     onStroking(isOverPet(e.clientX, e.clientY) && isMoving());
-  }, [isOverPet, isMoving, onStroking, rawX, rawY]);
+  }, [setPos, isOverPet, isMoving, onStroking]);
 
   const handlePointerUp = useCallback((e: PointerEvent) => {
     if (activePointerId.current === null || e.pointerId !== activePointerId.current) return;
@@ -73,15 +77,18 @@ export function PettingGlove({ petRef, onStroking, isStroking }: Props) {
     historyRef.current = [];
     setIsDragging(false);
     onStroking(false);
-  }, [onStroking]);
+    // Убираем перчатку за экран
+    rawX.set(-9999);
+    rawY.set(-9999);
+  }, [onStroking, rawX, rawY]);
 
   useEffect(() => {
     if (!isDragging) return;
-    window.addEventListener("pointermove", handlePointerMove, { passive: false });
+    window.addEventListener("pointermove",  handlePointerMove,  { passive: false });
     window.addEventListener("pointerup",    handlePointerUp);
     window.addEventListener("pointercancel",handlePointerUp);
     return () => {
-      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointermove",  handlePointerMove);
       window.removeEventListener("pointerup",    handlePointerUp);
       window.removeEventListener("pointercancel",handlePointerUp);
     };
@@ -93,7 +100,7 @@ export function PettingGlove({ petRef, onStroking, isStroking }: Props) {
 
   return (
     <>
-      {/* ── Статичная перчатка внутри кнопки ── */}
+      {/* ── Статичная перчатка в кружке ── */}
       <div
         onPointerDown={handlePointerDown}
         style={{
@@ -107,51 +114,50 @@ export function PettingGlove({ petRef, onStroking, isStroking }: Props) {
           src="/sprites/glove.svg"
           draggable={false}
           style={{
-            width: 40, height: 40, objectFit: "contain",
+            // в 1.5 раза больше — кружок WIDGET_H=66, занимаем ~60px
+            width: 60, height: 60,
+            objectFit: "contain",
             pointerEvents: "none",
-            opacity: isDragging ? 0.20 : 1,
+            opacity: isDragging ? 0.15 : 1,
             transition: "opacity 0.15s",
           }}
         />
       </div>
 
-      {/* ── Летящая перчатка ── */}
+      {/* ── Летящая перчатка — портал в body через position:fixed ── */}
       {isDragging && (
-        // Слой на весь экран, не перехватывает события (pointerEvents: none)
-        <div style={{
-          position: "fixed", inset: 0, zIndex: 1000,
-          pointerEvents: "none", overflow: "visible",
-        }}>
-          <motion.div
-            animate={gloveAnim}
+        <motion.div
+          animate={gloveAnim}
+          style={{
+            // Рендерим через fixed, position задаём явно через top/left = 0
+            // и смещаем через x/y (motion values) — это надёжнее чем translateX
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: GLOVE_FLY,
+            height: GLOVE_FLY,
+            x: gX,
+            y: gY,
+            zIndex: 9999,
+            pointerEvents: "none",
+            transformOrigin: "center center",
+          }}
+        >
+          <img
+            src="/sprites/glove.svg"
+            draggable={false}
             style={{
-              position: "absolute",
-              top: 0, left: 0,
-              // Центрируем перчатку относительно курсора через translate
-              x: gX,
-              y: gY,
-              translateX: "-50%",
-              translateY: "-50%",
-              width: GLOVE_FLY,
-              height: GLOVE_FLY,
-              pointerEvents: "none",
-              transformOrigin: "center center",
+              width: "100%",
+              height: "100%",
+              objectFit: "contain",
+              display: "block",
+              filter: isStroking
+                ? "drop-shadow(0 4px 20px rgba(249,168,212,0.85))"
+                : "drop-shadow(0 4px 14px rgba(0,0,0,0.28))",
+              transition: "filter 0.15s",
             }}
-          >
-            <img
-              src="/sprites/glove.svg"
-              draggable={false}
-              style={{
-                width: "100%", height: "100%",
-                objectFit: "contain",
-                filter: isStroking
-                  ? "drop-shadow(0 4px 20px rgba(249,168,212,0.75))"
-                  : "drop-shadow(0 4px 14px rgba(0,0,0,0.22))",
-                transition: "filter 0.15s",
-              }}
-            />
-          </motion.div>
-        </div>
+          />
+        </motion.div>
       )}
     </>
   );
