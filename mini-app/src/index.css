@@ -16,6 +16,35 @@ body { overflow-x: hidden; }
 
 button { font-family: inherit; }
 
+/* ── Kill mobile tap highlight & text selection globally ── */
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+/* Prevent text/SVG selection app-wide */
+#root {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Allow selection only in explicit inputs */
+input, textarea {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+}
+
+/* Kill focus outlines on touch (keep for keyboard a11y via :focus-visible) */
+button:focus:not(:focus-visible),
+div:focus:not(:focus-visible),
+a:focus:not(:focus-visible) {
+  outline: none;
+}
+
 /* Splash screen */
 .splash {
   display: flex;

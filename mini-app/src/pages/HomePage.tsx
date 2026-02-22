@@ -10,6 +10,14 @@ import type { ActionType } from "../api/types";
 const tg = window.Telegram?.WebApp;
 type CSSProps = React.CSSProperties;
 
+/* ── Global tap-highlight kill (mobile blue flash) ─────────────────────────── */
+const NOTAP: CSSProps = {
+  WebkitTapHighlightColor: "transparent",
+  WebkitTouchCallout: "none",
+  WebkitUserSelect: "none",
+  userSelect: "none",
+};
+
 /* ── Design tokens ─────────────────────────────────────────────────────────── */
 const G = {
   heavy: {
@@ -48,7 +56,7 @@ const IC: Record<string, React.ReactNode> = {
 const MENU_CONTENT: Record<MenuCategory, React.ReactNode> = {
   feed: (
     <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-      <p style={{ fontSize:13, color:"rgba(0,0,0,0.45)", textAlign:"center", margin:0 }}>
+      <p style={{ fontSize:13, color:"rgba(0,0,0,0.45)", textAlign:"center", margin:0, ...NOTAP }}>
         Выбери угощение для питомца
       </p>
       <div style={{ display:"flex", flexWrap:"wrap", gap:10, justifyContent:"center" }}>
@@ -56,14 +64,14 @@ const MENU_CONTENT: Record<MenuCategory, React.ReactNode> = {
           <button key={f} style={{ padding:"10px 16px", borderRadius:18,
             background:"rgba(255,255,255,0.55)", border:"1px solid rgba(255,255,255,0.75)",
             fontSize:13, fontWeight:600, color:"rgba(0,0,0,0.65)", cursor:"pointer",
-            fontFamily:"inherit", boxShadow:"0 2px 8px rgba(0,0,0,0.06)" }}>{f}</button>
+            fontFamily:"inherit", boxShadow:"0 2px 8px rgba(0,0,0,0.06)", ...NOTAP }}>{f}</button>
         ))}
       </div>
     </div>
   ),
   play: (
     <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-      <p style={{ fontSize:13, color:"rgba(0,0,0,0.45)", textAlign:"center", margin:0 }}>
+      <p style={{ fontSize:13, color:"rgba(0,0,0,0.45)", textAlign:"center", margin:0, ...NOTAP }}>
         Выбери игру
       </p>
       <div style={{ display:"flex", flexWrap:"wrap", gap:10, justifyContent:"center" }}>
@@ -71,26 +79,26 @@ const MENU_CONTENT: Record<MenuCategory, React.ReactNode> = {
           <button key={g} style={{ padding:"10px 16px", borderRadius:18,
             background:"rgba(255,255,255,0.55)", border:"1px solid rgba(255,255,255,0.75)",
             fontSize:13, fontWeight:600, color:"rgba(0,0,0,0.65)", cursor:"pointer",
-            fontFamily:"inherit", boxShadow:"0 2px 8px rgba(0,0,0,0.06)" }}>{g}</button>
+            fontFamily:"inherit", boxShadow:"0 2px 8px rgba(0,0,0,0.06)", ...NOTAP }}>{g}</button>
         ))}
       </div>
     </div>
   ),
   sleep: (
     <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:16 }}>
-      <span style={{ fontSize:48 }}>😴</span>
-      <p style={{ fontSize:14, color:"rgba(0,0,0,0.50)", textAlign:"center", margin:0, lineHeight:1.5 }}>
+      <span style={{ fontSize:48, ...NOTAP }}>😴</span>
+      <p style={{ fontSize:14, color:"rgba(0,0,0,0.50)", textAlign:"center", margin:0, lineHeight:1.5, ...NOTAP }}>
         Питомец хочет отдохнуть.<br/>Уложи его спать, чтобы восстановить силы.
       </p>
       <button style={{ padding:"12px 32px", borderRadius:999,
         background:"linear-gradient(135deg,#c5b8d8,#a89cc8)", border:"none",
         fontSize:14, fontWeight:700, color:"#fff", cursor:"pointer", fontFamily:"inherit",
-        boxShadow:"0 4px 16px rgba(197,184,216,0.45)" }}>Спокойной ночи 🌙</button>
+        boxShadow:"0 4px 16px rgba(197,184,216,0.45)", ...NOTAP }}>Спокойной ночи 🌙</button>
     </div>
   ),
   shop: (
     <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-      <p style={{ fontSize:13, color:"rgba(0,0,0,0.45)", textAlign:"center", margin:0 }}>
+      <p style={{ fontSize:13, color:"rgba(0,0,0,0.45)", textAlign:"center", margin:0, ...NOTAP }}>
         Магазин — скоро откроется!
       </p>
       <div style={{ display:"flex", flexWrap:"wrap", gap:10, justifyContent:"center" }}>
@@ -98,15 +106,11 @@ const MENU_CONTENT: Record<MenuCategory, React.ReactNode> = {
           <button key={i} style={{ padding:"10px 16px", borderRadius:18,
             background:"rgba(255,255,255,0.35)", border:"1px dashed rgba(0,0,0,0.12)",
             fontSize:13, fontWeight:600, color:"rgba(0,0,0,0.35)",
-            cursor:"not-allowed", fontFamily:"inherit" }}>{i}</button>
+            cursor:"not-allowed", fontFamily:"inherit", ...NOTAP }}>{i}</button>
         ))}
       </div>
     </div>
   ),
-};
-
-const MENU_TITLES: Record<MenuCategory, string> = {
-  feed:"Кормление", play:"Игра", sleep:"Сон", shop:"Магазин",
 };
 
 /* ── Helpers ────────────────────────────────────────────────────────────────── */
@@ -126,19 +130,12 @@ const MENU_TABS = new Set<string>(["feed","play","sleep","shop"]);
 const NAV_PAD   = 8;
 const BTN_W     = 50;
 const BTN_GAP   = 5;
-const VISIBLE   = 4;
-const VIEWPORT_W = VISIBLE * BTN_W + (VISIBLE - 1) * BTN_GAP;
 const WIDGET_H  = NAV_PAD * 2 + BTN_W;
 const PILL_H    = 50;
 const RING_SIZE = 34;
 const GLOVE_SZ  = WIDGET_H;
 const GLOVE_FLY = 52;
 const GLOVE_GAP = 10;
-const SHADOW_BLEED = 12;
-
-// Fixed border radius for pill and glove (top stays, bottom changes)
-const PILL_R = 999;
-const GLOVE_R = GLOVE_SZ / 2; // circle
 
 /* ── StatusRing ────────────────────────────────────────────────────────────── */
 function StatusRing({ value, icon }: { value: number; icon: React.ReactNode }) {
@@ -146,7 +143,7 @@ function StatusRing({ value, icon }: { value: number; icon: React.ReactNode }) {
   const circ = 2 * Math.PI * R; const dash = deg / 360 * circ;
   const col = low ? "rgba(220,60,60,0.80)" : "rgba(80,80,100,0.50)";
   return (
-    <div style={{ position:"relative", width:RING_SIZE, height:RING_SIZE, flexShrink:0 }}>
+    <div style={{ position:"relative", width:RING_SIZE, height:RING_SIZE, flexShrink:0, ...NOTAP }}>
       <svg width={RING_SIZE} height={RING_SIZE} style={{ position:"absolute", inset:0, transform:"rotate(-90deg)" }}>
         <circle cx={RING_SIZE/2} cy={RING_SIZE/2} r={R} fill="none" stroke="rgba(0,0,0,0.06)" strokeWidth={2}/>
         <circle cx={RING_SIZE/2} cy={RING_SIZE/2} r={R} fill="none" stroke={col} strokeWidth={2}
@@ -159,28 +156,28 @@ function StatusRing({ value, icon }: { value: number; icon: React.ReactNode }) {
   );
 }
 
-/* ── Carousel (scroll strip) ───────────────────────────────────────────────── */
+/* ── Carousel — scrollable button strip, clipped inside pill ───────────────── */
 function Carousel({ children }: { children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   const down = useRef(false); const sx = useRef(0); const sl = useRef(0);
   return (
-    <div style={{ width:VIEWPORT_W, overflow:"visible", position:"relative" }}>
-      <div ref={ref}
-        onMouseDown={e => { down.current=true; sx.current=e.pageX-ref.current!.offsetLeft; sl.current=ref.current!.scrollLeft; ref.current!.style.cursor="grabbing"; }}
-        onMouseUp={() => { down.current=false; if(ref.current) ref.current.style.cursor="grab"; }}
-        onMouseLeave={() => { down.current=false; if(ref.current) ref.current.style.cursor="grab"; }}
-        onMouseMove={e => { if(!down.current) return; ref.current!.scrollLeft=sl.current-(e.pageX-ref.current!.offsetLeft-sx.current)*1.2; }}
-        style={{
-          display:"flex", gap:BTN_GAP,
-          marginLeft:-SHADOW_BLEED, marginRight:-SHADOW_BLEED,
-          paddingLeft:SHADOW_BLEED, paddingRight:SHADOW_BLEED,
-          paddingTop:SHADOW_BLEED, paddingBottom:SHADOW_BLEED,
-          marginTop:-SHADOW_BLEED, marginBottom:-SHADOW_BLEED,
-          overflowX:"auto", scrollbarWidth:"none",
-          WebkitOverflowScrolling:"touch", cursor:"grab", userSelect:"none",
-        }}
-      >{children}</div>
-    </div>
+    <div ref={ref}
+      onMouseDown={e => { down.current=true; sx.current=e.pageX; sl.current=ref.current!.scrollLeft; }}
+      onMouseUp={() => { down.current=false; }}
+      onMouseLeave={() => { down.current=false; }}
+      onMouseMove={e => { if(!down.current) return; ref.current!.scrollLeft=sl.current-(e.pageX-sx.current)*1.2; }}
+      style={{
+        display:"flex", gap:BTN_GAP, alignItems:"center",
+        overflowX:"auto", overflowY:"hidden",
+        scrollbarWidth:"none",
+        WebkitOverflowScrolling:"touch",
+        cursor:"grab",
+        ...NOTAP,
+        // Fill the pill interior
+        height:"100%",
+        padding:`0 2px`,
+      }}
+    >{children}</div>
   );
 }
 
@@ -191,13 +188,7 @@ function CarouselBtn({ icon, active, disabled, cdLabel, onClick }: {
   icon: React.ReactNode; active?: boolean; disabled?: boolean; cdLabel?: string; onClick?: () => void;
 }) {
   return (
-    <div style={{
-      flexShrink:0, width:BTN_W, height:BTN_W,
-      filter: active
-        ? "drop-shadow(0 4px 6px rgba(100,100,150,0.22)) drop-shadow(0 1px 3px rgba(100,100,150,0.12))"
-        : "drop-shadow(0 2px 4px rgba(100,100,150,0.10))",
-      transition:"filter 0.15s",
-    }}>
+    <div style={{ flexShrink:0, width:BTN_W, height:BTN_W }}>
       <motion.button whileTap={disabled ? {} : { scale:0.84 }} onClick={disabled ? undefined : onClick}
         style={{
           width:"100%", height:"100%", borderRadius:"50%",
@@ -205,9 +196,14 @@ function CarouselBtn({ icon, active, disabled, cdLabel, onClick }: {
           backdropFilter: active ? "blur(16px)" : undefined,
           WebkitBackdropFilter: active ? "blur(16px)" : undefined,
           border: active ? "1.5px solid rgba(255,255,255,0.95)" : "1px solid rgba(255,255,255,0.50)",
-          boxShadow:"none", cursor: disabled ? "not-allowed" : "pointer",
+          boxShadow: active
+            ? "0 4px 6px rgba(100,100,150,0.22), 0 1px 3px rgba(100,100,150,0.12)"
+            : "0 2px 4px rgba(100,100,150,0.10)",
+          cursor: disabled ? "not-allowed" : "pointer",
           display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
-          gap:2, transition:"background 0.15s, border 0.15s", fontFamily:"inherit", padding:0,
+          gap:2, transition:"background 0.15s, border 0.15s, box-shadow 0.15s",
+          fontFamily:"inherit", padding:0, outline:"none",
+          ...NOTAP,
         }}
       >
         <div style={{
@@ -233,7 +229,7 @@ function FloatAnim({ show, text }: { show: boolean; text: string }) {
           style={{ position:"absolute", top:0, left:"50%", transform:"translateX(-50%)",
             fontSize:20, fontWeight:800, color:"rgba(0,0,0,0.60)",
             textShadow:"0 2px 8px rgba(255,255,255,0.6)", pointerEvents:"none",
-            whiteSpace:"nowrap", zIndex:20 }}
+            whiteSpace:"nowrap", zIndex:20, ...NOTAP }}
         >{text}</motion.div>
       )}
     </AnimatePresence>
@@ -282,7 +278,7 @@ function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, petDomR
     <motion.div
       drag={!disabled} dragControls={controls} dragConstraints={constraintsRef}
       dragElastic={0.10} dragMomentum={false} whileDrag={disabled ? {} : { scale:1.06 }}
-      style={{ cursor: disabled ? "default" : "grab", touchAction:"none", display:"inline-block", x:dragX, y:dragY }}
+      style={{ cursor: disabled ? "default" : "grab", touchAction:"none", display:"inline-block", x:dragX, y:dragY, ...NOTAP }}
       onPointerDown={e => { if (!disabled) controls.start(e); }}
     >
       <div style={{ display:"flex", flexDirection:"column", alignItems:"center" }}>
@@ -293,12 +289,12 @@ function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, petDomR
 }
 
 /* ── PettingGlove ──────────────────────────────────────────────────────────── */
-function PettingGlove({ petRef, onStroking, isStroking }: {
+function PettingGlove({ petRef, onStroking, isStroking, containerRef }: {
   petRef: React.RefObject<HTMLDivElement|null>;
   onStroking: (v:boolean) => void;
   isStroking: boolean;
+  containerRef: React.RefObject<HTMLDivElement|null>;
 }) {
-  const circleRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const dragging = useRef(false);
   const history = useRef<Array<{x:number;y:number;t:number}>>([]);
@@ -323,12 +319,14 @@ function PettingGlove({ petRef, onStroking, isStroking }: {
 
   const startDrag = useCallback((cx:number, cy:number) => {
     dragging.current=true; history.current=[{x:cx,y:cy,t:Date.now()}];
-    const el = circleRef.current;
-    const sxv = el ? el.getBoundingClientRect().left+el.getBoundingClientRect().width/2-half : cx-half;
-    const syv = el ? el.getBoundingClientRect().top+el.getBoundingClientRect().height/2-half : cy-half;
+    // Start from center of the glove button
+    const el = containerRef.current;
+    const rect = el?.getBoundingClientRect();
+    const sxv = rect ? rect.left+rect.width/2-half : cx-half;
+    const syv = rect ? rect.top+rect.height/2-half : cy-half;
     rawX.jump(sxv); rawY.jump(syv); gX.jump(sxv); gY.jump(syv);
     setIsDragging(true); onStroking(false);
-  }, [onStroking, rawX, rawY, gX, gY, half]);
+  }, [onStroking, rawX, rawY, gX, gY, half, containerRef]);
 
   const moveDrag = useCallback((cx:number, cy:number) => {
     if (!dragging.current) return;
@@ -348,23 +346,26 @@ function PettingGlove({ petRef, onStroking, isStroking }: {
 
   return (
     <>
-      <div ref={circleRef}
+      {/* Touch area — fills entire glove button */}
+      <div
         onPointerDown={e => {
           e.preventDefault();
           (e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
           startDrag(e.clientX, e.clientY);
         }}
         style={{
-          width:"100%", height:"100%",
+          position:"absolute", inset:0,
           display:"flex", alignItems:"center", justifyContent:"center",
           cursor: isDragging ? "grabbing" : "grab",
-          userSelect:"none", touchAction:"none",
+          touchAction:"none", zIndex:2,
+          ...NOTAP,
         }}
       >
         <img src="/sprites/glove.svg" draggable={false}
           style={{ width:36, height:36, objectFit:"contain", pointerEvents:"none",
             opacity: isDragging ? 0.25 : 1, transition:"opacity 0.15s" }}/>
       </div>
+      {/* Flying glove overlay */}
       {isDragging && (
         <div onPointerMove={e => moveDrag(e.clientX,e.clientY)}
           onPointerUp={stopDrag} onPointerCancel={stopDrag}
@@ -385,48 +386,49 @@ function PettingGlove({ petRef, onStroking, isStroking }: {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
-   MenuPanel — the sliding menu content area
-   Handles horizontal swipe between categories and vertical close swipe
+   MenuPanel — horizontal slide between categories + vertical close swipe
 ══════════════════════════════════════════════════════════════════════════════ */
 function MenuPanel({ menuH }: { menuH: string }) {
   const { openMenu, prevMenu, setMenu, closeMenu } = useMenuStore();
-  const swipeStartX = useRef(0);
-  const swipeStartY = useRef(0);
+  const touchStart = useRef<{ x:number; y:number } | null>(null);
 
-  const handlePointerDown = (e: React.PointerEvent) => {
-    swipeStartX.current = e.clientX;
-    swipeStartY.current = e.clientY;
-  };
+  const handleStart = useCallback((cx: number, cy: number) => {
+    touchStart.current = { x:cx, y:cy };
+  }, []);
 
-  const handlePointerUp = (e: React.PointerEvent) => {
-    if (!openMenu) return;
-    const dx = e.clientX - swipeStartX.current;
-    const dy = e.clientY - swipeStartY.current;
+  const handleEnd = useCallback((cx: number, cy: number) => {
+    if (!touchStart.current || !openMenu) return;
+    const dx = cx - touchStart.current.x;
+    const dy = cy - touchStart.current.y;
+    touchStart.current = null;
+
     // Vertical swipe down → close
-    if (dy > 50 && Math.abs(dy) > Math.abs(dx) * 1.2) {
-      closeMenu();
-      return;
+    if (dy > 40 && Math.abs(dy) > Math.abs(dx) * 1.3) {
+      closeMenu(); return;
     }
     // Horizontal swipe
-    if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy)) return;
+    if (Math.abs(dx) < 35) return;
+    if (Math.abs(dx) < Math.abs(dy) * 0.7) return;
     const idx = MENU_ORDER.indexOf(openMenu);
     if (dx < 0 && idx < MENU_ORDER.length - 1) setMenu(MENU_ORDER[idx + 1]);
     if (dx > 0 && idx > 0) setMenu(MENU_ORDER[idx - 1]);
-  };
+  }, [openMenu, setMenu, closeMenu]);
 
-  // Determine slide direction
+  // direction: horizontal if switching between known categories, vertical otherwise
   const dir = useMemo(() => {
-    if (!prevMenu || !openMenu) return 0; // 0 = vertical (first open)
+    if (!prevMenu || !openMenu) return 0;
     const pi = MENU_ORDER.indexOf(prevMenu);
     const ni = MENU_ORDER.indexOf(openMenu);
     if (pi === -1 || ni === -1) return 0;
-    return ni > pi ? 1 : -1; // +1=right, -1=left
+    return ni > pi ? 1 : -1;
   }, [prevMenu, openMenu]);
 
   return (
     <div
-      onPointerDown={handlePointerDown}
-      onPointerUp={handlePointerUp}
+      onTouchStart={e => { const t = e.touches[0]; handleStart(t.clientX, t.clientY); }}
+      onTouchEnd={e => { const t = e.changedTouches[0]; handleEnd(t.clientX, t.clientY); }}
+      onMouseDown={e => handleStart(e.clientX, e.clientY)}
+      onMouseUp={e => handleEnd(e.clientX, e.clientY)}
       style={{
         width:"100%", height:menuH,
         position:"relative", overflow:"hidden",
@@ -434,7 +436,8 @@ function MenuPanel({ menuH }: { menuH: string }) {
         backdropFilter:"blur(32px) saturate(180%)",
         WebkitBackdropFilter:"blur(32px) saturate(180%)",
         borderTop:"1px solid rgba(255,255,255,0.72)",
-        touchAction:"pan-y",
+        touchAction:"pan-y pinch-zoom",
+        ...NOTAP,
       }}
     >
       <AnimatePresence mode="popLayout" custom={dir}>
@@ -471,13 +474,7 @@ function MenuPanel({ menuH }: { menuH: string }) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
-   BottomBlock — carousel row + menu, animated as ONE unit
-
-   CLOSED: pill + glove at bottom with padding, fully rounded
-   OPEN:   pill (bottom-radius=0) + arrow (bottom-radius=0) + full-width menu
-           Total height = 50dvh + WIDGET_H
-           Menu height = 50dvh
-           The whole block slides up from bottom
+   BottomBlock — carousel row + menu
 ══════════════════════════════════════════════════════════════════════════════ */
 
 interface BottomBlockProps {
@@ -496,56 +493,43 @@ interface BottomBlockProps {
 function BottomBlock({ pet, evo, activeTab, isCd, getCd, onTab, onClose, petRef, onStroking, isStroking }: BottomBlockProps) {
   const { openMenu } = useMenuStore();
   const menuIsOpen = openMenu !== null;
+  const gloveContainerRef = useRef<HTMLDivElement>(null);
 
-  // Menu content height = 50dvh. Total with widget = 50dvh + WIDGET_H.
-  const menuContentH = `50dvh`;
+  const menuContentH = "50dvh";
   const closedBottomPad = "clamp(24px,6.5vw,38px)";
 
-  // Border radii: top always rounded, bottom = 0 when menu open
+  // Radii: top always half-height (circle-like), bottom 0 when open
   const halfH = WIDGET_H / 2;
-  const pillBorderRadius = menuIsOpen
+  const pillR = menuIsOpen
     ? `${halfH}px ${halfH}px 0 0`
     : `${halfH}px`;
-
-  const sideBtnR = GLOVE_SZ / 2;
-  const sideBtnBorderRadius = menuIsOpen
-    ? `${sideBtnR}px ${sideBtnR}px 0 0`
-    : `${sideBtnR}px`;
+  const sideR = GLOVE_SZ / 2;
+  const sideBtnR = menuIsOpen
+    ? `${sideR}px ${sideR}px 0 0`
+    : `${sideR}px`;
 
   return (
-    <motion.div
-      initial={false}
-      animate={{
-        // When open: shift entire block up so the menu is visible
-        // Menu height = 50dvh, so we translate up by that amount
-        y: 0,
-      }}
-      style={{
-        position:"relative", zIndex:10,
-        display:"flex", flexDirection:"column",
-        width:"100%",
-      }}
-    >
+    <div style={{
+      position:"relative", zIndex:10,
+      display:"flex", flexDirection:"column",
+      width:"100%", ...NOTAP,
+    }}>
       {/* ── NAV ROW ── */}
-      <div
-        style={{
-          padding: menuIsOpen
-            ? `8px 16px 0`
-            : `0 16px ${closedBottomPad}`,
-          display:"flex", justifyContent:"center", alignItems:"center",
-          gap:GLOVE_GAP, flexShrink:0,
-          transition:"padding 0.25s ease",
-        }}
-      >
-        {/* Pill */}
+      <div style={{
+        padding: menuIsOpen ? "8px 16px 0" : `0 16px ${closedBottomPad}`,
+        display:"flex", justifyContent:"center", alignItems:"center",
+        gap:GLOVE_GAP, flexShrink:0,
+        transition:"padding 0.25s ease",
+      }}>
+        {/* Pill — contains all carousel buttons */}
         <div style={{
           ...G.carousel,
-          borderRadius: pillBorderRadius,
+          borderRadius:pillR,
           borderBottom: menuIsOpen ? "none" : undefined,
-          height: WIDGET_H,
-          padding:`${NAV_PAD}px ${NAV_PAD+2}px`,
+          height:WIDGET_H,
+          padding:`${NAV_PAD}px ${NAV_PAD + 2}px`,
           display:"inline-flex", alignItems:"center",
-          overflow:"visible",
+          overflow:"hidden",         // ← clip buttons inside pill
           transition:"border-radius 0.25s ease",
           boxSizing:"border-box",
         }}>
@@ -560,9 +544,9 @@ function BottomBlock({ pet, evo, activeTab, isCd, getCd, onTab, onClose, petRef,
         </div>
 
         {/* Side button: Glove ↔ Down arrow */}
-        <div style={{
+        <div ref={gloveContainerRef} style={{
           width:GLOVE_SZ, height:GLOVE_SZ,
-          borderRadius:sideBtnBorderRadius,
+          borderRadius:sideBtnR,
           flexShrink:0,
           ...G.carousel,
           borderBottom: menuIsOpen ? "none" : undefined,
@@ -578,8 +562,9 @@ function BottomBlock({ pet, evo, activeTab, isCd, getCd, onTab, onClose, petRef,
                 transition={{ duration:0.12 }}
                 onClick={onClose}
                 style={{
-                  width:"100%", height:"100%",
+                  position:"absolute", inset:0,
                   display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer",
+                  ...NOTAP,
                 }}
               >
                 <div style={{ width:26, height:26, color:"rgba(0,0,0,0.50)" }}>{IC.chevronDown}</div>
@@ -588,9 +573,9 @@ function BottomBlock({ pet, evo, activeTab, isCd, getCd, onTab, onClose, petRef,
               <motion.div key="glove"
                 initial={{ scale:0.7, opacity:0 }} animate={{ scale:1, opacity:1 }} exit={{ scale:0.7, opacity:0 }}
                 transition={{ duration:0.12 }}
-                style={{ width:"100%", height:"100%", position:"relative" }}
+                style={{ position:"absolute", inset:0 }}
               >
-                <PettingGlove petRef={petRef} onStroking={onStroking} isStroking={isStroking}/>
+                <PettingGlove petRef={petRef} onStroking={onStroking} isStroking={isStroking} containerRef={gloveContainerRef}/>
               </motion.div>
             )}
           </AnimatePresence>
@@ -622,7 +607,7 @@ function BottomBlock({ pet, evo, activeTab, isCd, getCd, onTab, onClose, petRef,
       {!menuIsOpen && (
         <div style={{ height:4, marginBottom:"clamp(5px,1.5vw,8px)" }}/>
       )}
-    </motion.div>
+    </div>
   );
 }
 
@@ -681,7 +666,7 @@ export function HomePage({ petId }: Props) {
     <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
       height:"100dvh", background:"linear-gradient(135deg,#f0f4ff 0%,#fce4f0 50%,#e8f5f0 100%)" }}>
       <div style={{ width:36, height:36, color:"rgba(0,0,0,0.3)" }}>{IC.petIcon}</div>
-      <div style={{ fontSize:13, color:"rgba(0,0,0,0.3)", marginTop:10 }}>Загрузка...</div>
+      <div style={{ fontSize:13, color:"rgba(0,0,0,0.3)", marginTop:10, ...NOTAP }}>Загрузка...</div>
     </div>
   );
   if (!pet || !derived) return null;
@@ -733,6 +718,7 @@ export function HomePage({ petId }: Props) {
       position:"relative", overflow:"hidden",
       display:"flex", flexDirection:"column",
       color:"rgba(0,0,0,0.75)",
+      ...NOTAP,
     }}>
       {/* Blobs */}
       <div style={{ position:"absolute", inset:0, pointerEvents:"none", zIndex:0 }}>
@@ -746,16 +732,12 @@ export function HomePage({ petId }: Props) {
         flex:1, display:"flex", flexDirection:"column",
         position:"relative", zIndex:5, overflow:"hidden",
         minHeight:0,
-        // When menu open, pet zone gets squeezed by the bottom block growing
-        // The bottom block = WIDGET_H (nav) + 50dvh (menu)
-        // So pet zone = 100dvh - WIDGET_H - 50dvh - top padding ~ 50dvh - WIDGET_H
-        transition:"flex 0.3s ease",
       }}>
         {/* ── HEADER ── */}
         <header style={{ padding:"clamp(12px,3.5vw,20px) clamp(12px,4vw,18px) 6px",
           zIndex:10, position:"relative", display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
           <div style={{ display:"flex", alignItems:"center", gap:7, ...G.heavy,
-            borderRadius:999, height:PILL_H, padding:"0 12px 0 7px", flexShrink:0 }}>
+            borderRadius:999, height:PILL_H, padding:"0 12px 0 7px", flexShrink:0, ...NOTAP }}>
             <div style={{ width:RING_SIZE, height:RING_SIZE, borderRadius:"50%", flexShrink:0,
               background:"rgba(255,255,255,0.55)", display:"flex", alignItems:"center",
               justifyContent:"center", padding:6, color:"rgba(0,0,0,0.42)" }}>{IC.petIcon}</div>
@@ -818,7 +800,7 @@ export function HomePage({ petId }: Props) {
                 <div style={{ pointerEvents:"auto" }}>
                   {partner ? (
                     <div style={{ display:"inline-flex", alignItems:"center", gap:6,
-                      ...G.pill, borderRadius:999, padding:"5px 14px" }}>
+                      ...G.pill, borderRadius:999, padding:"5px 14px", ...NOTAP }}>
                       <div style={{ width:6, height:6, flexShrink:0,
                         color: pOnline ? "#22c55e" : "rgba(0,0,0,0.20)",
                         filter: pOnline ? "drop-shadow(0 0 4px #22c55e)" : "none" }}>{IC.dot}</div>
@@ -831,7 +813,7 @@ export function HomePage({ petId }: Props) {
                       style={{ display:"inline-flex", alignItems:"center", gap:6, ...G.pill,
                         border:"1px dashed rgba(0,0,0,0.13)", borderRadius:999, padding:"6px 16px",
                         cursor:"pointer", fontFamily:"inherit", fontSize:"clamp(11px,3vw,12px)",
-                        color:"rgba(0,0,0,0.42)", fontWeight:600 }}>
+                        color:"rgba(0,0,0,0.42)", fontWeight:600, outline:"none", ...NOTAP }}>
                       <div style={{ width:13, height:13, color:"rgba(0,0,0,0.32)" }}>{IC.users}</div>
                       Пригласить партнёра
                     </motion.button>
