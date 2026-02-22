@@ -4,18 +4,12 @@ import { motion, AnimatePresence, useDragControls, useMotionValue, useSpring } f
 import { usePetStore } from "../store/usePetStore";
 import { useMenuStore, MENU_ORDER, type MenuCategory } from "../store/useMenuStore";
 import { PetSVG } from "../components/PetSVG";
+import { CategoryMenu } from "../components/CategoryMenu";
 import { createInvite } from "../api/pets";
 import type { ActionType } from "../api/types";
 
 const tg = window.Telegram?.WebApp;
 type CSSProps = React.CSSProperties;
-
-const NOTAP: CSSProps = {
-  WebkitTapHighlightColor: "transparent",
-  WebkitTouchCallout: "none",
-  WebkitUserSelect: "none",
-  userSelect: "none",
-};
 
 /* ── Design tokens ─────────────────────────────────────────────────────────── */
 const G = {
@@ -51,67 +45,6 @@ const IC: Record<string, React.ReactNode> = {
   chevronDown: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="100%" height="100%"><polyline points="6 9 12 15 18 9"/></svg>,
 };
 
-/* ── Menu content ─────────────────────────────────────────────────────────── */
-const MENU_CONTENT: Record<MenuCategory, React.ReactNode> = {
-  feed: (
-    <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-      <p style={{ fontSize:13, color:"rgba(0,0,0,0.45)", textAlign:"center", margin:0 }}>
-        Выбери угощение для питомца
-      </p>
-      <div style={{ display:"flex", flexWrap:"wrap", gap:10, justifyContent:"center" }}>
-        {["🍎 Яблоко","🍗 Курица","🥕 Морковь","🐟 Рыба","🧁 Кекс","🍖 Мясо"].map(f => (
-          <button key={f} style={{ padding:"10px 16px", borderRadius:18,
-            background:"rgba(255,255,255,0.55)", border:"1px solid rgba(255,255,255,0.75)",
-            fontSize:13, fontWeight:600, color:"rgba(0,0,0,0.65)", cursor:"pointer",
-            fontFamily:"inherit", boxShadow:"0 2px 8px rgba(0,0,0,0.06)", outline:"none", ...NOTAP }}>{f}</button>
-        ))}
-      </div>
-    </div>
-  ),
-  play: (
-    <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-      <p style={{ fontSize:13, color:"rgba(0,0,0,0.45)", textAlign:"center", margin:0 }}>
-        Выбери игру
-      </p>
-      <div style={{ display:"flex", flexWrap:"wrap", gap:10, justifyContent:"center" }}>
-        {["🎾 Мяч","🧸 Игрушка","🎈 Шарик","🏀 Баскетбол","🎮 Игра"].map(g => (
-          <button key={g} style={{ padding:"10px 16px", borderRadius:18,
-            background:"rgba(255,255,255,0.55)", border:"1px solid rgba(255,255,255,0.75)",
-            fontSize:13, fontWeight:600, color:"rgba(0,0,0,0.65)", cursor:"pointer",
-            fontFamily:"inherit", boxShadow:"0 2px 8px rgba(0,0,0,0.06)", outline:"none", ...NOTAP }}>{g}</button>
-        ))}
-      </div>
-    </div>
-  ),
-  sleep: (
-    <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:16 }}>
-      <span style={{ fontSize:48 }}>😴</span>
-      <p style={{ fontSize:14, color:"rgba(0,0,0,0.50)", textAlign:"center", margin:0, lineHeight:1.5 }}>
-        Питомец хочет отдохнуть.<br/>Уложи его спать, чтобы восстановить силы.
-      </p>
-      <button style={{ padding:"12px 32px", borderRadius:999,
-        background:"linear-gradient(135deg,#c5b8d8,#a89cc8)", border:"none",
-        fontSize:14, fontWeight:700, color:"#fff", cursor:"pointer", fontFamily:"inherit",
-        boxShadow:"0 4px 16px rgba(197,184,216,0.45)", outline:"none", ...NOTAP }}>Спокойной ночи 🌙</button>
-    </div>
-  ),
-  shop: (
-    <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-      <p style={{ fontSize:13, color:"rgba(0,0,0,0.45)", textAlign:"center", margin:0 }}>
-        Магазин — скоро откроется!
-      </p>
-      <div style={{ display:"flex", flexWrap:"wrap", gap:10, justifyContent:"center" }}>
-        {["🎀 Бант","👑 Корона","🛁 Ванна","🏠 Домик","💎 Кристалл"].map(i => (
-          <button key={i} style={{ padding:"10px 16px", borderRadius:18,
-            background:"rgba(255,255,255,0.35)", border:"1px dashed rgba(0,0,0,0.12)",
-            fontSize:13, fontWeight:600, color:"rgba(0,0,0,0.35)",
-            cursor:"not-allowed", fontFamily:"inherit", outline:"none", ...NOTAP }}>{i}</button>
-        ))}
-      </div>
-    </div>
-  ),
-};
-
 /* ── Helpers ────────────────────────────────────────────────────────────────── */
 function fmtCd(iso: string | null): string {
   if (!iso) return "";
@@ -129,14 +62,16 @@ const MENU_TABS = new Set<string>(["feed","play","sleep","shop"]);
 const NAV_PAD   = 8;
 const BTN_W     = 50;
 const BTN_GAP   = 5;
-const VISIBLE   = 3;  // 3 buttons visible in pill
-const PILL_INNER_W = VISIBLE * BTN_W + (VISIBLE - 1) * BTN_GAP;
+// ✅ FIX 1+2: Visible = 3 buttons, viewport sized to exactly 3
+const VISIBLE   = 3;
+const VIEWPORT_W = VISIBLE * BTN_W + (VISIBLE - 1) * BTN_GAP;
 const WIDGET_H  = NAV_PAD * 2 + BTN_W;
 const PILL_H    = 50;
 const RING_SIZE = 34;
 const GLOVE_SZ  = WIDGET_H;
 const GLOVE_FLY = 52;
 const GLOVE_GAP = 10;
+const SHADOW_BLEED = 12;
 
 /* ── StatusRing ────────────────────────────────────────────────────────────── */
 function StatusRing({ value, icon }: { value: number; icon: React.ReactNode }) {
@@ -157,30 +92,25 @@ function StatusRing({ value, icon }: { value: number; icon: React.ReactNode }) {
   );
 }
 
-/* ── Carousel — clip via clip-path so shadows are NOT cut ──────────────────── */
+/* ── Carousel (scroll strip) ───────────────────────────────────────────────── */
 function Carousel({ children }: { children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   const down = useRef(false); const sx = useRef(0); const sl = useRef(0);
   return (
-    <div style={{
-      width: PILL_INNER_W,
-      // clip-path clips scroll overflow but lets shadows paint outside vertically
-      clipPath: `inset(-20px 0px -20px 0px)`,
-      overflow: "visible",
-    }}>
+    <div style={{ width:VIEWPORT_W, overflow:"visible", position:"relative" }}>
       <div ref={ref}
-        onMouseDown={e => { down.current=true; sx.current=e.pageX; sl.current=ref.current!.scrollLeft; }}
-        onMouseUp={() => { down.current=false; }}
-        onMouseLeave={() => { down.current=false; }}
-        onMouseMove={e => { if(!down.current) return; ref.current!.scrollLeft=sl.current-(e.pageX-sx.current)*1.2; }}
+        onMouseDown={e => { down.current=true; sx.current=e.pageX-ref.current!.offsetLeft; sl.current=ref.current!.scrollLeft; ref.current!.style.cursor="grabbing"; }}
+        onMouseUp={() => { down.current=false; if(ref.current) ref.current.style.cursor="grab"; }}
+        onMouseLeave={() => { down.current=false; if(ref.current) ref.current.style.cursor="grab"; }}
+        onMouseMove={e => { if(!down.current) return; ref.current!.scrollLeft=sl.current-(e.pageX-ref.current!.offsetLeft-sx.current)*1.2; }}
         style={{
-          display:"flex", gap:BTN_GAP, alignItems:"center",
-          overflowX:"auto", overflowY:"hidden",
-          scrollbarWidth:"none",
-          WebkitOverflowScrolling:"touch",
-          cursor:"grab",
-          height: BTN_W,
-          ...NOTAP,
+          display:"flex", gap:BTN_GAP,
+          marginLeft:-SHADOW_BLEED, marginRight:-SHADOW_BLEED,
+          paddingLeft:SHADOW_BLEED, paddingRight:SHADOW_BLEED,
+          paddingTop:SHADOW_BLEED, paddingBottom:SHADOW_BLEED,
+          marginTop:-SHADOW_BLEED, marginBottom:-SHADOW_BLEED,
+          overflowX:"auto", scrollbarWidth:"none",
+          WebkitOverflowScrolling:"touch", cursor:"grab", userSelect:"none",
         }}
       >{children}</div>
     </div>
@@ -194,7 +124,13 @@ function CarouselBtn({ icon, active, disabled, cdLabel, onClick }: {
   icon: React.ReactNode; active?: boolean; disabled?: boolean; cdLabel?: string; onClick?: () => void;
 }) {
   return (
-    <div style={{ flexShrink:0, width:BTN_W, height:BTN_W }}>
+    <div style={{
+      flexShrink:0, width:BTN_W, height:BTN_W,
+      filter: active
+        ? "drop-shadow(0 4px 6px rgba(100,100,150,0.22)) drop-shadow(0 1px 3px rgba(100,100,150,0.12))"
+        : "drop-shadow(0 2px 4px rgba(100,100,150,0.10))",
+      transition:"filter 0.15s",
+    }}>
       <motion.button whileTap={disabled ? {} : { scale:0.84 }} onClick={disabled ? undefined : onClick}
         style={{
           width:"100%", height:"100%", borderRadius:"50%",
@@ -202,14 +138,9 @@ function CarouselBtn({ icon, active, disabled, cdLabel, onClick }: {
           backdropFilter: active ? "blur(16px)" : undefined,
           WebkitBackdropFilter: active ? "blur(16px)" : undefined,
           border: active ? "1.5px solid rgba(255,255,255,0.95)" : "1px solid rgba(255,255,255,0.50)",
-          boxShadow: active
-            ? "0 4px 6px rgba(100,100,150,0.22), 0 1px 3px rgba(100,100,150,0.12)"
-            : "0 2px 4px rgba(100,100,150,0.10)",
-          cursor: disabled ? "not-allowed" : "pointer",
+          boxShadow:"none", cursor: disabled ? "not-allowed" : "pointer",
           display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
-          gap:2, transition:"background 0.15s, border 0.15s, box-shadow 0.15s",
-          fontFamily:"inherit", padding:0, outline:"none",
-          ...NOTAP,
+          gap:2, transition:"background 0.15s, border 0.15s", fontFamily:"inherit", padding:0,
         }}
       >
         <div style={{
@@ -270,8 +201,8 @@ function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, petDomR
       if (!tickRef.current) {
         tickRef.current = setInterval(() => {
           const c = getPetCenter();
-          const a = Math.random()*Math.PI*2;
-          onHeartAt(c.x+Math.cos(a)*50, c.y+Math.sin(a)*50);
+          const angle = Math.random()*Math.PI*2;
+          onHeartAt(c.x+Math.cos(angle)*50, c.y+Math.sin(angle)*50);
         }, 140);
       }
     } else {
@@ -284,7 +215,7 @@ function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, petDomR
     <motion.div
       drag={!disabled} dragControls={controls} dragConstraints={constraintsRef}
       dragElastic={0.10} dragMomentum={false} whileDrag={disabled ? {} : { scale:1.06 }}
-      style={{ cursor: disabled ? "default" : "grab", touchAction:"none", display:"inline-block", x:dragX, y:dragY, ...NOTAP }}
+      style={{ cursor: disabled ? "default" : "grab", touchAction:"none", display:"inline-block", x:dragX, y:dragY }}
       onPointerDown={e => { if (!disabled) controls.start(e); }}
     >
       <div style={{ display:"flex", flexDirection:"column", alignItems:"center" }}>
@@ -295,19 +226,26 @@ function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, petDomR
 }
 
 /* ── PettingGlove ──────────────────────────────────────────────────────────── */
-function PettingGlove({ petRef, onStroking, isStroking, containerRef }: {
+/* ✅ FIX 4: Rewritten glove to use a persistent overlay approach.
+   The overlay is always mounted (but invisible/non-interactive when not dragging)
+   so there's no render-gap where pointer events get lost. */
+function PettingGlove({ petRef, onStroking, isStroking }: {
   petRef: React.RefObject<HTMLDivElement|null>;
   onStroking: (v:boolean) => void;
   isStroking: boolean;
-  containerRef: React.RefObject<HTMLDivElement|null>;
 }) {
+  const circleRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const draggingRef = useRef(false);
-  const historyRef = useRef<Array<{x:number;y:number;t:number}>>([]);
-  const rawX = useMotionValue(-9999); const rawY = useMotionValue(-9999);
+  const history = useRef<Array<{x:number;y:number;t:number}>>([]);
+  const rawX = useMotionValue(-9999);
+  const rawY = useMotionValue(-9999);
   const gX = useSpring(rawX, { stiffness:600, damping:30, mass:0.3 });
   const gY = useSpring(rawY, { stiffness:600, damping:30, mass:0.3 });
   const half = GLOVE_FLY / 2;
+
+  // Persistent overlay ref — always in DOM
+  const overlayRef = useRef<HTMLDivElement>(null);
 
   const isOverPet = useCallback((cx:number, cy:number) => {
     const el = petRef.current; if (!el) return false;
@@ -316,179 +254,118 @@ function PettingGlove({ petRef, onStroking, isStroking, containerRef }: {
   }, [petRef]);
 
   const isMoving = useCallback(() => {
-    const h = historyRef.current; const now = Date.now();
+    const h = history.current; const now = Date.now();
     while (h.length>0 && now-h[0].t>200) h.shift();
     if (h.length<2) return false;
-    let d=0; for (let i=1;i<h.length;i++) d+=Math.abs(h[i].x-h[i-1].x)+Math.abs(h[i].y-h[i-1].y);
-    return d>6;
+    let dist=0;
+    for (let i=1;i<h.length;i++) dist+=Math.abs(h[i].x-h[i-1].x)+Math.abs(h[i].y-h[i-1].y);
+    return dist>6;
   }, []);
 
-  const startDrag = useCallback((cx:number, cy:number) => {
-    draggingRef.current=true; historyRef.current=[{x:cx,y:cy,t:Date.now()}];
-    const el = containerRef.current;
-    const rect = el?.getBoundingClientRect();
-    const sxv = rect ? rect.left+rect.width/2-half : cx-half;
-    const syv = rect ? rect.top+rect.height/2-half : cy-half;
-    rawX.jump(sxv); rawY.jump(syv); gX.jump(sxv); gY.jump(syv);
-    setIsDragging(true); onStroking(false);
-  }, [onStroking, rawX, rawY, gX, gY, half, containerRef]);
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    draggingRef.current = true;
+    history.current = [{x:e.clientX,y:e.clientY,t:Date.now()}];
 
-  const moveDrag = useCallback((cx:number, cy:number) => {
+    const el = circleRef.current;
+    const sx = el ? el.getBoundingClientRect().left + el.getBoundingClientRect().width/2 - half : e.clientX - half;
+    const sy = el ? el.getBoundingClientRect().top + el.getBoundingClientRect().height/2 - half : e.clientY - half;
+    rawX.jump(sx); rawY.jump(sy); gX.jump(sx); gY.jump(sy);
+
+    setIsDragging(true);
+    onStroking(false);
+
+    // Capture pointer on the overlay so all subsequent events go there
+    if (overlayRef.current) {
+      try { overlayRef.current.setPointerCapture(e.pointerId); } catch {}
+    }
+  }, [onStroking, rawX, rawY, gX, gY, half]);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!draggingRef.current) return;
-    rawX.set(cx-half); rawY.set(cy-half);
-    historyRef.current.push({x:cx,y:cy,t:Date.now()});
-    onStroking(isOverPet(cx,cy) && isMoving());
+    e.preventDefault();
+    const cx = e.clientX, cy = e.clientY;
+    rawX.set(cx - half); rawY.set(cy - half);
+    history.current.push({x:cx, y:cy, t:Date.now()});
+    onStroking(isOverPet(cx, cy) && isMoving());
   }, [isOverPet, isMoving, onStroking, rawX, rawY, half]);
 
-  const stopDrag = useCallback(() => {
-    draggingRef.current=false; historyRef.current=[];
-    setIsDragging(false); onStroking(false);
+  const handlePointerUp = useCallback((e: React.PointerEvent) => {
+    if (!draggingRef.current) return;
+    draggingRef.current = false;
+    history.current = [];
+    setIsDragging(false);
+    onStroking(false);
+    if (overlayRef.current) {
+      try { overlayRef.current.releasePointerCapture(e.pointerId); } catch {}
+    }
   }, [onStroking]);
 
   const gloveAnim = isStroking
     ? { rotate:[-15,15,-15], transition:{repeat:Infinity,duration:0.25,ease:"easeInOut" as const} }
     : { rotate:0 };
 
-  // Use global listeners for move/up when dragging
-  useEffect(() => {
-    if (!isDragging) return;
-    const onMove = (e: PointerEvent) => { moveDrag(e.clientX, e.clientY); };
-    const onUp = () => { stopDrag(); };
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
-    window.addEventListener("pointercancel", onUp);
-    return () => {
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-      window.removeEventListener("pointercancel", onUp);
-    };
-  }, [isDragging, moveDrag, stopDrag]);
-
   return (
     <>
-      {/* Touch area fills glove container */}
-      <div
-        onPointerDown={e => {
-          e.preventDefault();
-          e.stopPropagation();
-          // Release implicit capture so events go to window
-          try { (e.target as HTMLElement).releasePointerCapture(e.pointerId); } catch {}
-          startDrag(e.clientX, e.clientY);
-        }}
+      {/* The visible button */}
+      <div ref={circleRef}
+        onPointerDown={handlePointerDown}
         style={{
-          position:"absolute", inset:0, zIndex:2,
+          width:GLOVE_SZ, height:GLOVE_SZ, borderRadius:"50%", flexShrink:0,
+          ...G.carousel,
           display:"flex", alignItems:"center", justifyContent:"center",
           cursor: isDragging ? "grabbing" : "grab",
-          touchAction:"none",
-          ...NOTAP,
+          userSelect:"none", touchAction:"none",
         }}
       >
         <img src="/sprites/glove.svg" draggable={false}
           style={{ width:36, height:36, objectFit:"contain", pointerEvents:"none",
             opacity: isDragging ? 0.25 : 1, transition:"opacity 0.15s" }}/>
       </div>
-      {/* Flying glove */}
-      {isDragging && (
-        <div style={{ position:"fixed", inset:0, zIndex:999, pointerEvents:"none" }}>
+
+      {/* Persistent overlay — always in DOM, pointer-events toggled */}
+      <div
+        ref={overlayRef}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+        style={{
+          position:"fixed", inset:0, zIndex:999,
+          cursor: isDragging ? "grabbing" : "default",
+          touchAction:"none",
+          // Only intercept events when dragging
+          pointerEvents: isDragging ? "auto" : "none",
+          // Invisible
+          background:"transparent",
+        }}
+      >
+        {isDragging && (
           <motion.div animate={gloveAnim}
-            style={{ position:"fixed", top:0, left:0, width:GLOVE_FLY, height:GLOVE_FLY,
-              x:gX, y:gY, pointerEvents:"none", transformOrigin:"center center", overflow:"visible" }}>
+            style={{
+              position:"fixed", top:0, left:0, width:GLOVE_FLY, height:GLOVE_FLY,
+              x:gX, y:gY, pointerEvents:"none", transformOrigin:"center center", overflow:"visible",
+            }}>
             <img src="/sprites/glove.svg" draggable={false}
-              style={{ width:"200%", height:"200%", objectFit:"contain", position:"absolute",
+              style={{
+                width:"200%", height:"200%", objectFit:"contain", position:"absolute",
                 top:"-50%", left:"-50%",
-                filter: isStroking ? "drop-shadow(0 4px 16px rgba(249,168,212,0.6))"
-                  : "drop-shadow(0 4px 12px rgba(0,0,0,0.14))", transition:"filter 0.2s" }}/>
+                filter: isStroking
+                  ? "drop-shadow(0 4px 16px rgba(249,168,212,0.6))"
+                  : "drop-shadow(0 4px 12px rgba(0,0,0,0.14))",
+                transition:"filter 0.2s",
+              }}/>
           </motion.div>
-        </div>
-      )}
+        )}
+      </div>
     </>
   );
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
-   MenuPanel
+   BottomBlock — carousel row + menu, animated as ONE unit
 ══════════════════════════════════════════════════════════════════════════════ */
-function MenuPanel({ menuH }: { menuH: string }) {
-  const { openMenu, prevMenu, setMenu, closeMenu } = useMenuStore();
-  const touchStart = useRef<{ x:number; y:number } | null>(null);
 
-  const handleStart = useCallback((cx: number, cy: number) => {
-    touchStart.current = { x:cx, y:cy };
-  }, []);
-
-  const handleEnd = useCallback((cx: number, cy: number) => {
-    if (!touchStart.current || !openMenu) return;
-    const dx = cx - touchStart.current.x;
-    const dy = cy - touchStart.current.y;
-    touchStart.current = null;
-    if (dy > 40 && Math.abs(dy) > Math.abs(dx) * 1.3) { closeMenu(); return; }
-    if (Math.abs(dx) < 35 || Math.abs(dx) < Math.abs(dy) * 0.7) return;
-    const idx = MENU_ORDER.indexOf(openMenu);
-    if (dx < 0 && idx < MENU_ORDER.length - 1) setMenu(MENU_ORDER[idx + 1]);
-    if (dx > 0 && idx > 0) setMenu(MENU_ORDER[idx - 1]);
-  }, [openMenu, setMenu, closeMenu]);
-
-  const dir = useMemo(() => {
-    if (!prevMenu || !openMenu) return 0;
-    const pi = MENU_ORDER.indexOf(prevMenu);
-    const ni = MENU_ORDER.indexOf(openMenu);
-    if (pi === -1 || ni === -1) return 0;
-    return ni > pi ? 1 : -1;
-  }, [prevMenu, openMenu]);
-
-  return (
-    <div
-      onTouchStart={e => { const t = e.touches[0]; handleStart(t.clientX, t.clientY); }}
-      onTouchEnd={e => { const t = e.changedTouches[0]; handleEnd(t.clientX, t.clientY); }}
-      onMouseDown={e => handleStart(e.clientX, e.clientY)}
-      onMouseUp={e => handleEnd(e.clientX, e.clientY)}
-      style={{
-        width:"100%", height:menuH,
-        position:"relative", overflow:"hidden",
-        background:"rgba(255,255,255,0.60)",
-        backdropFilter:"blur(32px) saturate(180%)",
-        WebkitBackdropFilter:"blur(32px) saturate(180%)",
-        // No border-top — seamless with pill above
-        touchAction:"pan-y pinch-zoom",
-        ...NOTAP,
-      }}
-    >
-      <AnimatePresence mode="popLayout" custom={dir}>
-        {openMenu && (
-          <motion.div
-            key={openMenu}
-            custom={dir}
-            initial={{
-              x: dir !== 0 ? `${dir * 100}%` : 0,
-              y: dir === 0 ? "100%" : 0,
-              opacity: dir !== 0 ? 0.5 : 1,
-            }}
-            animate={{ x:0, y:0, opacity:1 }}
-            exit={{
-              x: dir !== 0 ? `${-dir * 100}%` : 0,
-              y: dir === 0 ? "100%" : 0,
-              opacity: dir !== 0 ? 0.5 : 1,
-            }}
-            transition={{ type:"spring", stiffness:500, damping:40, mass:0.8 }}
-            style={{
-              position:"absolute", inset:0,
-              display:"flex", flexDirection:"column",
-              overflow:"hidden",
-            }}
-          >
-            <div style={{ flex:1, overflowY:"auto", padding:"16px 16px 24px", scrollbarWidth:"none" }}>
-              {MENU_CONTENT[openMenu]}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-/* ══════════════════════════════════════════════════════════════════════════════
-   BottomBlock
-══════════════════════════════════════════════════════════════════════════════ */
 interface BottomBlockProps {
   pet: NonNullable<ReturnType<typeof usePetStore.getState>["pet"]>;
   evo: number;
@@ -505,39 +382,43 @@ interface BottomBlockProps {
 function BottomBlock({ pet, evo, activeTab, isCd, getCd, onTab, onClose, petRef, onStroking, isStroking }: BottomBlockProps) {
   const { openMenu } = useMenuStore();
   const menuIsOpen = openMenu !== null;
-  const gloveContainerRef = useRef<HTMLDivElement>(null);
 
-  const menuContentH = "50dvh";
+  const menuContentH = `calc(50dvh - ${WIDGET_H}px - env(safe-area-inset-bottom, 0px))`;
   const closedBottomPad = "clamp(24px,6.5vw,38px)";
 
-  const halfH = WIDGET_H / 2;
-  const pillR = menuIsOpen ? `${halfH}px ${halfH}px 0 0` : `${halfH}px`;
-  const sideR = GLOVE_SZ / 2;
-  const sideBtnR = menuIsOpen ? `${sideR}px ${sideR}px 0 0` : `${sideR}px`;
+  /* ✅ FIX 3: Unified container style for pill+glove — they share one visual
+     background so there's no visible line between them. We wrap both in a
+     single styled row with the carousel glass background. */
 
   return (
-    <div style={{
-      position:"relative", zIndex:10,
-      display:"flex", flexDirection:"column",
-      width:"100%", ...NOTAP,
-    }}>
-      {/* ── NAV ROW ── */}
+    <motion.div
+      initial={false}
+      animate={{ y: 0 }}
+      style={{
+        position:"relative", zIndex:10,
+        display:"flex", flexDirection:"column",
+        width:"100%",
+      }}
+    >
+      {/* ── NAV ROW — pill + glove as one seamless unit ─────────────────── */}
       <div style={{
-        padding: menuIsOpen ? "8px 16px 0" : `0 16px ${closedBottomPad}`,
+        padding: menuIsOpen
+          ? `8px 16px 0`
+          : `0 16px ${closedBottomPad}`,
         display:"flex", justifyContent:"center", alignItems:"center",
-        gap:GLOVE_GAP, flexShrink:0,
-        transition:"padding 0.25s ease",
+        gap:0, /* ✅ no gap — they sit flush */
+        flexShrink:0,
       }}>
-        {/* Pill — visible width = 3 buttons, scroll for more */}
+        {/* Unified glass container wrapping both pill and glove */}
         <div style={{
           ...G.carousel,
-          borderRadius:pillR,
-          // Remove bottom border when connected to menu
-          borderBottom: menuIsOpen ? "1px solid transparent" : undefined,
-          height:WIDGET_H,
-          padding:`${NAV_PAD}px ${NAV_PAD + 2}px`,
+          borderRadius: menuIsOpen ? `999px 999px 0 0` : 999,
+          borderBottom: menuIsOpen ? "none" : undefined,
+          height: WIDGET_H,
+          padding:`${NAV_PAD}px ${NAV_PAD+2}px`,
           display:"inline-flex", alignItems:"center",
-          overflow:"visible",  // shadows not clipped by pill itself
+          gap: GLOVE_GAP,
+          overflow:"visible",
           transition:"border-radius 0.25s ease",
           boxSizing:"border-box",
         }}>
@@ -549,63 +430,58 @@ function BottomBlock({ pet, evo, activeTab, isCd, getCd, onTab, onClose, petRef,
             <CarouselBtn icon={IC.users} active={activeTab==="partner"} onClick={() => onTab("partner")}/>
             <CarouselBtn icon={IC.settings} active={activeTab==="settings"} onClick={() => onTab("settings")}/>
           </Carousel>
-        </div>
 
-        {/* Side button: Glove ↔ Down arrow */}
-        <div ref={gloveContainerRef} style={{
-          width:GLOVE_SZ, height:GLOVE_SZ,
-          borderRadius:sideBtnR,
-          flexShrink:0,
-          ...G.carousel,
-          borderBottom: menuIsOpen ? "1px solid transparent" : undefined,
-          transition:"border-radius 0.25s ease",
-          position:"relative",
-          overflow: menuIsOpen ? "hidden" : "visible",
-        }}>
-          {/* Glove layer — always mounted, hidden when menu open */}
-          <div style={{
-            position:"absolute", inset:0,
-            opacity: menuIsOpen ? 0 : 1,
-            pointerEvents: menuIsOpen ? "none" : "auto",
-            transition:"opacity 0.12s",
-          }}>
-            <PettingGlove petRef={petRef} onStroking={onStroking} isStroking={isStroking} containerRef={gloveContainerRef}/>
-          </div>
-          {/* Close arrow layer */}
-          <div
-            onClick={menuIsOpen ? onClose : undefined}
-            style={{
-              position:"absolute", inset:0,
-              display:"flex", alignItems:"center", justifyContent:"center",
-              cursor: menuIsOpen ? "pointer" : "default",
-              opacity: menuIsOpen ? 1 : 0,
-              pointerEvents: menuIsOpen ? "auto" : "none",
-              transition:"opacity 0.12s",
-              ...NOTAP,
-            }}
-          >
-            <div style={{ width:26, height:26, color:"rgba(0,0,0,0.50)" }}>{IC.chevronDown}</div>
-          </div>
+          {/* ✅ Separator line between carousel and glove — REMOVED.
+              Glove/close button is now inside the same container. */}
+
+          {/* Glove ↔ Down arrow */}
+          <AnimatePresence mode="wait">
+            {menuIsOpen ? (
+              <motion.div key="close"
+                initial={{ scale:0.7, opacity:0 }} animate={{ scale:1, opacity:1 }} exit={{ scale:0.7, opacity:0 }}
+                transition={{ duration:0.15 }}
+                onClick={onClose}
+                style={{
+                  width:BTN_W, height:BTN_W, borderRadius:"50%", flexShrink:0,
+                  background:"rgba(255,255,255,0.45)",
+                  border:"1px solid rgba(255,255,255,0.65)",
+                  display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer",
+                }}
+              >
+                <div style={{ width:22, height:22, color:"rgba(0,0,0,0.45)" }}>{IC.chevronDown}</div>
+              </motion.div>
+            ) : (
+              <motion.div key="glove"
+                initial={{ scale:0.7, opacity:0 }} animate={{ scale:1, opacity:1 }} exit={{ scale:0.7, opacity:0 }}
+                transition={{ duration:0.15 }}>
+                <PettingGlove petRef={petRef} onStroking={onStroking} isStroking={isStroking}/>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
-      {/* ── MENU PANEL ── */}
+      {/* ── MENU PANEL ──────────────────────────────────────────────────── */}
       <AnimatePresence>
         {menuIsOpen && (
           <motion.div
-            key="menu-slide"
-            initial={{ height:0 }}
-            animate={{ height:menuContentH }}
-            exit={{ height:0 }}
-            transition={{ type:"spring", stiffness:480, damping:42, mass:0.75 }}
+            key="menu-wrapper"
+            initial={{ height: 0 }}
+            animate={{ height: menuContentH }}
+            exit={{ height: 0 }}
+            transition={{ type:"spring", stiffness:380, damping:38, mass:0.85 }}
             style={{
               overflow:"hidden",
               width:"100vw",
               marginLeft:"calc(-50vw + 50%)",
+              background:"rgba(255,255,255,0.60)",
+              backdropFilter:"blur(32px) saturate(180%)",
+              WebkitBackdropFilter:"blur(32px) saturate(180%)",
+              borderTop:"1px solid rgba(255,255,255,0.72)",
               flexShrink:0,
             }}
           >
-            <MenuPanel menuH={menuContentH}/>
+            <CategoryMenu screenW={0}/>
           </motion.div>
         )}
       </AnimatePresence>
@@ -613,7 +489,7 @@ function BottomBlock({ pet, evo, activeTab, isCd, getCd, onTab, onClose, petRef,
       {!menuIsOpen && (
         <div style={{ height:4, marginBottom:"clamp(5px,1.5vw,8px)" }}/>
       )}
-    </div>
+    </motion.div>
   );
 }
 
@@ -724,7 +600,6 @@ export function HomePage({ petId }: Props) {
       position:"relative", overflow:"hidden",
       display:"flex", flexDirection:"column",
       color:"rgba(0,0,0,0.75)",
-      ...NOTAP,
     }}>
       {/* Blobs */}
       <div style={{ position:"absolute", inset:0, pointerEvents:"none", zIndex:0 }}>
@@ -733,17 +608,19 @@ export function HomePage({ petId }: Props) {
         <div style={{ position:"absolute", bottom:"8%", left:"8%", width:"46%", paddingBottom:"46%", borderRadius:"50%", background:"radial-gradient(circle,rgba(167,243,208,0.18) 0%,transparent 70%)" }}/>
       </div>
 
-      {/* ══ PET ZONE ══ */}
+      {/* ══ PET ZONE ══════════════════════════════════════════════════════ */}
       <div ref={petZoneRef} style={{
         flex:1, display:"flex", flexDirection:"column",
         position:"relative", zIndex:5, overflow:"hidden",
         minHeight:0,
+        maxHeight: menuIsOpen ? "50dvh" : undefined,
+        transition:"max-height 0.35s cubic-bezier(0.32,0,0.67,0)",
       }}>
         {/* ── HEADER ── */}
         <header style={{ padding:"clamp(12px,3.5vw,20px) clamp(12px,4vw,18px) 6px",
           zIndex:10, position:"relative", display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
           <div style={{ display:"flex", alignItems:"center", gap:7, ...G.heavy,
-            borderRadius:999, height:PILL_H, padding:"0 12px 0 7px", flexShrink:0, ...NOTAP }}>
+            borderRadius:999, height:PILL_H, padding:"0 12px 0 7px", flexShrink:0 }}>
             <div style={{ width:RING_SIZE, height:RING_SIZE, borderRadius:"50%", flexShrink:0,
               background:"rgba(255,255,255,0.55)", display:"flex", alignItems:"center",
               justifyContent:"center", padding:6, color:"rgba(0,0,0,0.42)" }}>{IC.petIcon}</div>
@@ -806,7 +683,7 @@ export function HomePage({ petId }: Props) {
                 <div style={{ pointerEvents:"auto" }}>
                   {partner ? (
                     <div style={{ display:"inline-flex", alignItems:"center", gap:6,
-                      ...G.pill, borderRadius:999, padding:"5px 14px", ...NOTAP }}>
+                      ...G.pill, borderRadius:999, padding:"5px 14px" }}>
                       <div style={{ width:6, height:6, flexShrink:0,
                         color: pOnline ? "#22c55e" : "rgba(0,0,0,0.20)",
                         filter: pOnline ? "drop-shadow(0 0 4px #22c55e)" : "none" }}>{IC.dot}</div>
@@ -819,7 +696,7 @@ export function HomePage({ petId }: Props) {
                       style={{ display:"inline-flex", alignItems:"center", gap:6, ...G.pill,
                         border:"1px dashed rgba(0,0,0,0.13)", borderRadius:999, padding:"6px 16px",
                         cursor:"pointer", fontFamily:"inherit", fontSize:"clamp(11px,3vw,12px)",
-                        color:"rgba(0,0,0,0.42)", fontWeight:600, outline:"none", ...NOTAP }}>
+                        color:"rgba(0,0,0,0.42)", fontWeight:600 }}>
                       <div style={{ width:13, height:13, color:"rgba(0,0,0,0.32)" }}>{IC.users}</div>
                       Пригласить партнёра
                     </motion.button>
@@ -831,7 +708,7 @@ export function HomePage({ petId }: Props) {
         </div>
       </div>
 
-      {/* ══ BOTTOM BLOCK ══ */}
+      {/* ══ BOTTOM BLOCK ════════════════════════════════════════════════════ */}
       <BottomBlock
         pet={pet} evo={evo}
         activeTab={activeTab} isCd={isCd} getCd={getCd}
@@ -856,4 +733,3 @@ export function HomePage({ petId }: Props) {
     </div>
   );
 }
-
