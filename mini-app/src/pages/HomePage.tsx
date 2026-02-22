@@ -31,7 +31,7 @@ const G = {
   } as CSSProps,
   carousel: {
     background:"rgba(255,255,255,0.60)", backdropFilter:"blur(32px) saturate(180%)",
-    WebkitBackdropFilter:"blur(32px) saturate(180%)", border:"1px solid rgba(255,255,255,0.72)",
+    WebkitBackdropFilter:"blur(32px) saturate(180%)",
     boxShadow:"0 8px 32px rgba(100,100,140,0.13), 0 2px 8px rgba(100,100,140,0.08), inset 0 1.5px 0 rgba(255,255,255,0.95)",
   } as CSSProps,
 } as const;
@@ -157,16 +157,17 @@ function StatusRing({ value, icon }: { value: number; icon: React.ReactNode }) {
   );
 }
 
-/* ── Carousel — clip via clip-path so shadows are NOT cut ──────────────────── */
+/* ── Carousel — clips overflow without cutting button shadows ──────────────── */
 function Carousel({ children }: { children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   const down = useRef(false); const sx = useRef(0); const sl = useRef(0);
   return (
     <div style={{
       width: PILL_INNER_W,
-      // clip-path clips scroll overflow but lets shadows paint outside vertically
-      clipPath: `inset(-20px 0px -20px 0px)`,
-      overflow: "visible",
+      overflow: "hidden",
+      // Extra vertical space so button shadows aren't clipped
+      padding: "4px 0",
+      margin: "-4px 0",
     }}>
       <div ref={ref}
         onMouseDown={e => { down.current=true; sx.current=e.pageX; sl.current=ref.current!.scrollLeft; }}
@@ -295,14 +296,13 @@ function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, petDomR
 }
 
 /* ── PettingGlove ──────────────────────────────────────────────────────────── */
-function PettingGlove({ petRef, onStroking, isStroking, containerRef }: {
+function PettingGlove({ petRef, onStroking, isStroking }: {
   petRef: React.RefObject<HTMLDivElement|null>;
   onStroking: (v:boolean) => void;
   isStroking: boolean;
-  containerRef: React.RefObject<HTMLDivElement|null>;
 }) {
   const [isDragging, setIsDragging] = useState(false);
-  const draggingRef = useRef(false);
+  const activePointerId = useRef<number | null>(null);
   const historyRef = useRef<Array<{x:number;y:number;t:number}>>([]);
   const rawX = useMotionValue(-9999); const rawY = useMotionValue(-9999);
   const gX = useSpring(rawX, { stiffness:600, damping:30, mass:0.3 });
@@ -311,7 +311,7 @@ function PettingGlove({ petRef, onStroking, isStroking, containerRef }: {
 
   const isOverPet = useCallback((cx:number, cy:number) => {
     const el = petRef.current; if (!el) return false;
-    const r = el.getBoundingClientRect(); const pad = 24;
+    const r = el.getBoundingClientRect(); const pad = 28;
     return cx>=r.left-pad && cx<=r.right+pad && cy>=r.top-pad && cy<=r.bottom+pad;
   }, [petRef]);
 
@@ -323,58 +323,57 @@ function PettingGlove({ petRef, onStroking, isStroking, containerRef }: {
     return d>6;
   }, []);
 
-  const startDrag = useCallback((cx:number, cy:number) => {
-    draggingRef.current=true; historyRef.current=[{x:cx,y:cy,t:Date.now()}];
-    const el = containerRef.current;
-    const rect = el?.getBoundingClientRect();
-    const sxv = rect ? rect.left+rect.width/2-half : cx-half;
-    const syv = rect ? rect.top+rect.height/2-half : cy-half;
-    rawX.jump(sxv); rawY.jump(syv); gX.jump(sxv); gY.jump(syv);
-    setIsDragging(true); onStroking(false);
-  }, [onStroking, rawX, rawY, gX, gY, half, containerRef]);
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    activePointerId.current = e.pointerId;
+    historyRef.current = [{x:e.clientX, y:e.clientY, t:Date.now()}];
+    rawX.jump(e.clientX - half);
+    rawY.jump(e.clientY - half);
+    gX.jump(e.clientX - half);
+    gY.jump(e.clientY - half);
+    setIsDragging(true);
+    onStroking(false);
+  }, [rawX, rawY, gX, gY, half, onStroking]);
 
-  const moveDrag = useCallback((cx:number, cy:number) => {
-    if (!draggingRef.current) return;
-    rawX.set(cx-half); rawY.set(cy-half);
-    historyRef.current.push({x:cx,y:cy,t:Date.now()});
-    onStroking(isOverPet(cx,cy) && isMoving());
+  const handlePointerMove = useCallback((e: PointerEvent) => {
+    if (activePointerId.current === null || e.pointerId !== activePointerId.current) return;
+    e.preventDefault();
+    rawX.set(e.clientX - half);
+    rawY.set(e.clientY - half);
+    historyRef.current.push({x:e.clientX, y:e.clientY, t:Date.now()});
+    onStroking(isOverPet(e.clientX, e.clientY) && isMoving());
   }, [isOverPet, isMoving, onStroking, rawX, rawY, half]);
 
-  const stopDrag = useCallback(() => {
-    draggingRef.current=false; historyRef.current=[];
-    setIsDragging(false); onStroking(false);
+  const handlePointerUp = useCallback((e: PointerEvent) => {
+    if (activePointerId.current === null || e.pointerId !== activePointerId.current) return;
+    activePointerId.current = null;
+    historyRef.current = [];
+    setIsDragging(false);
+    onStroking(false);
   }, [onStroking]);
+
+  useEffect(() => {
+    if (!isDragging) return;
+    window.addEventListener("pointermove", handlePointerMove, { passive: false });
+    window.addEventListener("pointerup", handlePointerUp);
+    window.addEventListener("pointercancel", handlePointerUp);
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("pointercancel", handlePointerUp);
+    };
+  }, [isDragging, handlePointerMove, handlePointerUp]);
 
   const gloveAnim = isStroking
     ? { rotate:[-15,15,-15], transition:{repeat:Infinity,duration:0.25,ease:"easeInOut" as const} }
     : { rotate:0 };
 
-  // Use global listeners for move/up when dragging
-  useEffect(() => {
-    if (!isDragging) return;
-    const onMove = (e: PointerEvent) => { moveDrag(e.clientX, e.clientY); };
-    const onUp = () => { stopDrag(); };
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
-    window.addEventListener("pointercancel", onUp);
-    return () => {
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-      window.removeEventListener("pointercancel", onUp);
-    };
-  }, [isDragging, moveDrag, stopDrag]);
-
   return (
     <>
-      {/* Touch area fills glove container */}
+      {/* Touch trigger area — fills the glove button */}
       <div
-        onPointerDown={e => {
-          e.preventDefault();
-          e.stopPropagation();
-          // Release implicit capture so events go to window
-          try { (e.target as HTMLElement).releasePointerCapture(e.pointerId); } catch {}
-          startDrag(e.clientX, e.clientY);
-        }}
+        onPointerDown={handlePointerDown}
         style={{
           position:"absolute", inset:0, zIndex:2,
           display:"flex", alignItems:"center", justifyContent:"center",
@@ -387,7 +386,8 @@ function PettingGlove({ petRef, onStroking, isStroking, containerRef }: {
           style={{ width:36, height:36, objectFit:"contain", pointerEvents:"none",
             opacity: isDragging ? 0.25 : 1, transition:"opacity 0.15s" }}/>
       </div>
-      {/* Flying glove */}
+
+      {/* Flying glove — rendered in a fixed portal so it's never clipped */}
       {isDragging && (
         <div style={{ position:"fixed", inset:0, zIndex:999, pointerEvents:"none" }}>
           <motion.div animate={gloveAnim}
@@ -448,7 +448,6 @@ function MenuPanel({ menuH }: { menuH: string }) {
         background:"rgba(255,255,255,0.60)",
         backdropFilter:"blur(32px) saturate(180%)",
         WebkitBackdropFilter:"blur(32px) saturate(180%)",
-        // No border-top — seamless with pill above
         touchAction:"pan-y pinch-zoom",
         ...NOTAP,
       }}
@@ -502,18 +501,26 @@ interface BottomBlockProps {
   isStroking: boolean;
 }
 
-function BottomBlock({ pet, evo, activeTab, isCd, getCd, onTab, onClose, petRef, onStroking, isStroking }: BottomBlockProps) {
+function BottomBlock({ pet, evo: _evo, activeTab, isCd, getCd, onTab, onClose, petRef, onStroking, isStroking }: BottomBlockProps) {
   const { openMenu } = useMenuStore();
   const menuIsOpen = openMenu !== null;
-  const gloveContainerRef = useRef<HTMLDivElement>(null);
 
   const menuContentH = "50dvh";
   const closedBottomPad = "clamp(24px,6.5vw,38px)";
 
   const halfH = WIDGET_H / 2;
+  // When menu is open: flat bottom (square corners where connected to menu panel)
+  // When closed: fully rounded pill
   const pillR = menuIsOpen ? `${halfH}px ${halfH}px 0 0` : `${halfH}px`;
   const sideR = GLOVE_SZ / 2;
   const sideBtnR = menuIsOpen ? `${sideR}px ${sideR}px 0 0` : `${sideR}px`;
+
+  // Border style: show full border when closed, hide bottom border when open
+  // to seamlessly connect with menu panel below
+  const pillBorder = menuIsOpen
+    ? "1px solid rgba(255,255,255,0.72)"
+    : "1px solid rgba(255,255,255,0.72)";
+  const pillBorderBottom = menuIsOpen ? "none" : undefined;
 
   return (
     <div style={{
@@ -524,21 +531,21 @@ function BottomBlock({ pet, evo, activeTab, isCd, getCd, onTab, onClose, petRef,
       {/* ── NAV ROW ── */}
       <div style={{
         padding: menuIsOpen ? "8px 16px 0" : `0 16px ${closedBottomPad}`,
-        display:"flex", justifyContent:"center", alignItems:"center",
+        display:"flex", justifyContent:"center", alignItems:"flex-end",
         gap:GLOVE_GAP, flexShrink:0,
         transition:"padding 0.25s ease",
       }}>
-        {/* Pill — visible width = 3 buttons, scroll for more */}
+        {/* Pill */}
         <div style={{
           ...G.carousel,
-          borderRadius:pillR,
-          // Remove bottom border when connected to menu
-          borderBottom: menuIsOpen ? "1px solid transparent" : undefined,
+          border: pillBorder,
+          borderBottom: pillBorderBottom,
+          borderRadius: pillR,
           height:WIDGET_H,
           padding:`${NAV_PAD}px ${NAV_PAD + 2}px`,
           display:"inline-flex", alignItems:"center",
-          overflow:"visible",  // shadows not clipped by pill itself
-          transition:"border-radius 0.25s ease",
+          overflow:"visible",
+          transition:"border-radius 0.25s ease, border-bottom 0.25s ease",
           boxSizing:"border-box",
         }}>
           <Carousel>
@@ -552,24 +559,25 @@ function BottomBlock({ pet, evo, activeTab, isCd, getCd, onTab, onClose, petRef,
         </div>
 
         {/* Side button: Glove ↔ Down arrow */}
-        <div ref={gloveContainerRef} style={{
+        <div style={{
           width:GLOVE_SZ, height:GLOVE_SZ,
           borderRadius:sideBtnR,
           flexShrink:0,
           ...G.carousel,
-          borderBottom: menuIsOpen ? "1px solid transparent" : undefined,
-          transition:"border-radius 0.25s ease",
+          border: pillBorder,
+          borderBottom: pillBorderBottom,
+          transition:"border-radius 0.25s ease, border-bottom 0.25s ease",
           position:"relative",
-          overflow: menuIsOpen ? "hidden" : "visible",
+          overflow:"hidden",
         }}>
-          {/* Glove layer — always mounted, hidden when menu open */}
+          {/* Glove layer */}
           <div style={{
             position:"absolute", inset:0,
             opacity: menuIsOpen ? 0 : 1,
             pointerEvents: menuIsOpen ? "none" : "auto",
             transition:"opacity 0.12s",
           }}>
-            <PettingGlove petRef={petRef} onStroking={onStroking} isStroking={isStroking} containerRef={gloveContainerRef}/>
+            <PettingGlove petRef={petRef} onStroking={onStroking} isStroking={isStroking}/>
           </div>
           {/* Close arrow layer */}
           <div
@@ -589,7 +597,7 @@ function BottomBlock({ pet, evo, activeTab, isCd, getCd, onTab, onClose, petRef,
         </div>
       </div>
 
-      {/* ── MENU PANEL ── */}
+      {/* ── MENU PANEL — seamlessly connected, no border gap ── */}
       <AnimatePresence>
         {menuIsOpen && (
           <motion.div
@@ -856,4 +864,3 @@ export function HomePage({ petId }: Props) {
     </div>
   );
 }
-
