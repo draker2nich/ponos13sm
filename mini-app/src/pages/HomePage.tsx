@@ -1,6 +1,6 @@
 // mini-app/src/pages/HomePage.tsx
 import { useEffect, useCallback, useState, useRef, useMemo } from "react";
-import { motion, AnimatePresence, useDragControls, useMotionValue, useSpring, useAnimationControls } from "framer-motion";
+import { motion, AnimatePresence, useDragControls, useMotionValue, useSpring } from "framer-motion";
 import { usePetStore } from "../store/usePetStore";
 import { useMenuStore, MENU_ORDER, type MenuCategory } from "../store/useMenuStore";
 import { PetSVG } from "../components/PetSVG";
@@ -460,15 +460,7 @@ function MenuPanel({ menuH }: { menuH: string }) {
               overflow:"hidden",
             }}
           >
-            <div style={{
-              padding:"14px 20px 10px", flexShrink:0,
-              borderBottom:"1px solid rgba(0,0,0,0.05)",
-            }}>
-              <span style={{ fontSize:13, fontWeight:700, color:"rgba(0,0,0,0.55)", letterSpacing:"0.04em" }}>
-                {MENU_TITLES[openMenu]}
-              </span>
-            </div>
-            <div style={{ flex:1, overflowY:"auto", padding:"16px", scrollbarWidth:"none" }}>
+            <div style={{ flex:1, overflowY:"auto", padding:"16px 16px 24px", scrollbarWidth:"none" }}>
               {MENU_CONTENT[openMenu]}
             </div>
           </motion.div>
@@ -509,15 +501,16 @@ function BottomBlock({ pet, evo, activeTab, isCd, getCd, onTab, onClose, petRef,
   const menuContentH = `50dvh`;
   const closedBottomPad = "clamp(24px,6.5vw,38px)";
 
-  // The nav row (pill + side button) border radii
-  // Top: always PILL_R. Bottom: 0 when open, PILL_R when closed.
+  // Border radii: top always rounded, bottom = 0 when menu open
+  const halfH = WIDGET_H / 2;
   const pillBorderRadius = menuIsOpen
-    ? `${PILL_R}px ${PILL_R}px 0 0`
-    : `${PILL_R}px`;
+    ? `${halfH}px ${halfH}px 0 0`
+    : `${halfH}px`;
 
+  const sideBtnR = GLOVE_SZ / 2;
   const sideBtnBorderRadius = menuIsOpen
-    ? `${GLOVE_R}px ${GLOVE_R}px 0 0`
-    : `${GLOVE_R}px`;
+    ? `${sideBtnR}px ${sideBtnR}px 0 0`
+    : `${sideBtnR}px`;
 
   return (
     <motion.div
@@ -568,13 +561,15 @@ function BottomBlock({ pet, evo, activeTab, isCd, getCd, onTab, onClose, petRef,
 
         {/* Side button: Glove ↔ Down arrow */}
         <div style={{
-          width:GLOVE_SZ, height:GLOVE_SZ, borderRadius:sideBtnBorderRadius,
+          width:GLOVE_SZ, height:GLOVE_SZ,
+          borderRadius:sideBtnBorderRadius,
           flexShrink:0,
           ...G.carousel,
           borderBottom: menuIsOpen ? "none" : undefined,
           display:"flex", alignItems:"center", justifyContent:"center",
           transition:"border-radius 0.25s ease",
           overflow:"hidden",
+          position:"relative",
         }}>
           <AnimatePresence mode="wait">
             {menuIsOpen ? (
@@ -593,7 +588,7 @@ function BottomBlock({ pet, evo, activeTab, isCd, getCd, onTab, onClose, petRef,
               <motion.div key="glove"
                 initial={{ scale:0.7, opacity:0 }} animate={{ scale:1, opacity:1 }} exit={{ scale:0.7, opacity:0 }}
                 transition={{ duration:0.12 }}
-                style={{ width:"100%", height:"100%" }}
+                style={{ width:"100%", height:"100%", position:"relative" }}
               >
                 <PettingGlove petRef={petRef} onStroking={onStroking} isStroking={isStroking}/>
               </motion.div>
