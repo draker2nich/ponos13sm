@@ -18,6 +18,14 @@ const NOTAP: CSSProps = {
 };
 
 /* ── Design tokens ─────────────────────────────────────────────────────────── */
+const GLASS: CSSProps = {
+  background: "rgba(255,255,255,0.60)",
+  backdropFilter: "blur(32px) saturate(180%)",
+  WebkitBackdropFilter: "blur(32px) saturate(180%)",
+  border: "1px solid rgba(255,255,255,0.72)",
+  boxShadow: "0 8px 32px rgba(100,100,140,0.13), 0 2px 8px rgba(100,100,140,0.08), inset 0 1.5px 0 rgba(255,255,255,0.95)",
+};
+
 const G = {
   heavy: {
     background:"rgba(255,255,255,0.55)", backdropFilter:"blur(32px) saturate(180%)",
@@ -28,11 +36,6 @@ const G = {
     background:"rgba(255,255,255,0.38)", backdropFilter:"blur(14px)",
     WebkitBackdropFilter:"blur(14px)", border:"1px solid rgba(255,255,255,0.55)",
     boxShadow:"0 2px 10px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.7)",
-  } as CSSProps,
-  carousel: {
-    background:"rgba(255,255,255,0.60)", backdropFilter:"blur(32px) saturate(180%)",
-    WebkitBackdropFilter:"blur(32px) saturate(180%)",
-    boxShadow:"0 8px 32px rgba(100,100,140,0.13), 0 2px 8px rgba(100,100,140,0.08), inset 0 1.5px 0 rgba(255,255,255,0.95)",
   } as CSSProps,
 } as const;
 
@@ -55,30 +58,20 @@ const IC: Record<string, React.ReactNode> = {
 const MENU_CONTENT: Record<MenuCategory, React.ReactNode> = {
   feed: (
     <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-      <p style={{ fontSize:13, color:"rgba(0,0,0,0.45)", textAlign:"center", margin:0 }}>
-        Выбери угощение для питомца
-      </p>
+      <p style={{ fontSize:13, color:"rgba(0,0,0,0.45)", textAlign:"center", margin:0 }}>Выбери угощение для питомца</p>
       <div style={{ display:"flex", flexWrap:"wrap", gap:10, justifyContent:"center" }}>
         {["🍎 Яблоко","🍗 Курица","🥕 Морковь","🐟 Рыба","🧁 Кекс","🍖 Мясо"].map(f => (
-          <button key={f} style={{ padding:"10px 16px", borderRadius:18,
-            background:"rgba(255,255,255,0.55)", border:"1px solid rgba(255,255,255,0.75)",
-            fontSize:13, fontWeight:600, color:"rgba(0,0,0,0.65)", cursor:"pointer",
-            fontFamily:"inherit", boxShadow:"0 2px 8px rgba(0,0,0,0.06)", outline:"none", ...NOTAP }}>{f}</button>
+          <button key={f} style={{ padding:"10px 16px", borderRadius:18, background:"rgba(255,255,255,0.55)", border:"1px solid rgba(255,255,255,0.75)", fontSize:13, fontWeight:600, color:"rgba(0,0,0,0.65)", cursor:"pointer", fontFamily:"inherit", outline:"none", ...NOTAP }}>{f}</button>
         ))}
       </div>
     </div>
   ),
   play: (
     <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-      <p style={{ fontSize:13, color:"rgba(0,0,0,0.45)", textAlign:"center", margin:0 }}>
-        Выбери игру
-      </p>
+      <p style={{ fontSize:13, color:"rgba(0,0,0,0.45)", textAlign:"center", margin:0 }}>Выбери игру</p>
       <div style={{ display:"flex", flexWrap:"wrap", gap:10, justifyContent:"center" }}>
         {["🎾 Мяч","🧸 Игрушка","🎈 Шарик","🏀 Баскетбол","🎮 Игра"].map(g => (
-          <button key={g} style={{ padding:"10px 16px", borderRadius:18,
-            background:"rgba(255,255,255,0.55)", border:"1px solid rgba(255,255,255,0.75)",
-            fontSize:13, fontWeight:600, color:"rgba(0,0,0,0.65)", cursor:"pointer",
-            fontFamily:"inherit", boxShadow:"0 2px 8px rgba(0,0,0,0.06)", outline:"none", ...NOTAP }}>{g}</button>
+          <button key={g} style={{ padding:"10px 16px", borderRadius:18, background:"rgba(255,255,255,0.55)", border:"1px solid rgba(255,255,255,0.75)", fontSize:13, fontWeight:600, color:"rgba(0,0,0,0.65)", cursor:"pointer", fontFamily:"inherit", outline:"none", ...NOTAP }}>{g}</button>
         ))}
       </div>
     </div>
@@ -86,26 +79,16 @@ const MENU_CONTENT: Record<MenuCategory, React.ReactNode> = {
   sleep: (
     <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:16 }}>
       <span style={{ fontSize:48 }}>😴</span>
-      <p style={{ fontSize:14, color:"rgba(0,0,0,0.50)", textAlign:"center", margin:0, lineHeight:1.5 }}>
-        Питомец хочет отдохнуть.<br/>Уложи его спать, чтобы восстановить силы.
-      </p>
-      <button style={{ padding:"12px 32px", borderRadius:999,
-        background:"linear-gradient(135deg,#c5b8d8,#a89cc8)", border:"none",
-        fontSize:14, fontWeight:700, color:"#fff", cursor:"pointer", fontFamily:"inherit",
-        boxShadow:"0 4px 16px rgba(197,184,216,0.45)", outline:"none", ...NOTAP }}>Спокойной ночи 🌙</button>
+      <p style={{ fontSize:14, color:"rgba(0,0,0,0.50)", textAlign:"center", margin:0, lineHeight:1.5 }}>Питомец хочет отдохнуть.<br/>Уложи его спать, чтобы восстановить силы.</p>
+      <button style={{ padding:"12px 32px", borderRadius:999, background:"linear-gradient(135deg,#c5b8d8,#a89cc8)", border:"none", fontSize:14, fontWeight:700, color:"#fff", cursor:"pointer", fontFamily:"inherit", outline:"none", ...NOTAP }}>Спокойной ночи 🌙</button>
     </div>
   ),
   shop: (
     <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-      <p style={{ fontSize:13, color:"rgba(0,0,0,0.45)", textAlign:"center", margin:0 }}>
-        Магазин — скоро откроется!
-      </p>
+      <p style={{ fontSize:13, color:"rgba(0,0,0,0.45)", textAlign:"center", margin:0 }}>Магазин — скоро откроется!</p>
       <div style={{ display:"flex", flexWrap:"wrap", gap:10, justifyContent:"center" }}>
         {["🎀 Бант","👑 Корона","🛁 Ванна","🏠 Домик","💎 Кристалл"].map(i => (
-          <button key={i} style={{ padding:"10px 16px", borderRadius:18,
-            background:"rgba(255,255,255,0.35)", border:"1px dashed rgba(0,0,0,0.12)",
-            fontSize:13, fontWeight:600, color:"rgba(0,0,0,0.35)",
-            cursor:"not-allowed", fontFamily:"inherit", outline:"none", ...NOTAP }}>{i}</button>
+          <button key={i} style={{ padding:"10px 16px", borderRadius:18, background:"rgba(255,255,255,0.35)", border:"1px dashed rgba(0,0,0,0.12)", fontSize:13, fontWeight:600, color:"rgba(0,0,0,0.35)", cursor:"not-allowed", fontFamily:"inherit", outline:"none", ...NOTAP }}>{i}</button>
         ))}
       </div>
     </div>
@@ -123,20 +106,22 @@ function fmtCd(iso: string | null): string {
 }
 const cdActive = (iso: string | null) => !!iso && new Date(iso).getTime() > Date.now();
 const toDeg = (v: number) => Math.round(Math.max(0, Math.min(100, v)) / 100 * 360);
-
 const MENU_TABS = new Set<string>(["feed","play","sleep","shop"]);
 
+/* ── Layout constants ──────────────────────────────────────────────────────── */
 const NAV_PAD   = 8;
 const BTN_W     = 50;
 const BTN_GAP   = 5;
-const VISIBLE   = 3;  // 3 buttons visible in pill
-const PILL_INNER_W = VISIBLE * BTN_W + (VISIBLE - 1) * BTN_GAP;
-const WIDGET_H  = NAV_PAD * 2 + BTN_W;
+const VISIBLE   = 3;
+const SPAD      = 10;   // shadow padding in Carousel
+const PILL_INNER_W = VISIBLE * BTN_W + (VISIBLE - 1) * BTN_GAP;   // 160
+const WIDGET_H  = NAV_PAD * 2 + BTN_W;   // 66
 const PILL_H    = 50;
 const RING_SIZE = 34;
 const GLOVE_SZ  = WIDGET_H;
 const GLOVE_FLY = 52;
 const GLOVE_GAP = 10;
+const HALF_H    = WIDGET_H / 2;   // 33
 
 /* ── StatusRing ────────────────────────────────────────────────────────────── */
 function StatusRing({ value, icon }: { value: number; icon: React.ReactNode }) {
@@ -157,7 +142,9 @@ function StatusRing({ value, icon }: { value: number; icon: React.ReactNode }) {
   );
 }
 
-/* ── Carousel — clips overflow without cutting button shadows ──────────────── */
+/* ── Carousel ──────────────────────────────────────────────────────────────── */
+// Vertical SPAD padding lets button shadows paint without being clipped.
+// overflow:hidden on the outer wrapper clips at the padding-box edge (SPAD px outside content).
 function Carousel({ children }: { children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   const down = useRef(false); const sx = useRef(0); const sl = useRef(0);
@@ -165,22 +152,23 @@ function Carousel({ children }: { children: React.ReactNode }) {
     <div style={{
       width: PILL_INNER_W,
       overflow: "hidden",
-      // Extra vertical space so button shadows aren't clipped
-      padding: "4px 0",
-      margin: "-4px 0",
+      paddingBlock: SPAD,
+      marginBlock: -SPAD,
     }}>
-      <div ref={ref}
+      <div
+        ref={ref}
         onMouseDown={e => { down.current=true; sx.current=e.pageX; sl.current=ref.current!.scrollLeft; }}
-        onMouseUp={() => { down.current=false; }}
-        onMouseLeave={() => { down.current=false; }}
+        onMouseUp={()  => { down.current=false; }}
+        onMouseLeave={()=> { down.current=false; }}
         onMouseMove={e => { if(!down.current) return; ref.current!.scrollLeft=sl.current-(e.pageX-sx.current)*1.2; }}
         style={{
           display:"flex", gap:BTN_GAP, alignItems:"center",
-          overflowX:"auto", overflowY:"hidden",
+          overflowX:"auto",
+          height: BTN_W + SPAD * 2,
+          padding: `${SPAD}px 0`,
           scrollbarWidth:"none",
           WebkitOverflowScrolling:"touch",
           cursor:"grab",
-          height: BTN_W,
           ...NOTAP,
         }}
       >{children}</div>
@@ -260,10 +248,9 @@ function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, petDomR
   const dragY = useMotionValue(0);
 
   const getPetCenter = useCallback(() => {
-    const el = petDomRef.current;
-    if (!el) return { x:0, y:0 };
+    const el = petDomRef.current; if (!el) return { x:0, y:0 };
     const r = el.getBoundingClientRect();
-    return { x:r.left+r.width/2, y:r.top+r.height/2 };
+    return { x: r.left+r.width/2, y: r.top+r.height/2 };
   }, [petDomRef]);
 
   useEffect(() => {
@@ -324,33 +311,26 @@ function PettingGlove({ petRef, onStroking, isStroking }: {
   }, []);
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+    e.preventDefault(); e.stopPropagation();
     activePointerId.current = e.pointerId;
     historyRef.current = [{x:e.clientX, y:e.clientY, t:Date.now()}];
-    rawX.jump(e.clientX - half);
-    rawY.jump(e.clientY - half);
-    gX.jump(e.clientX - half);
-    gY.jump(e.clientY - half);
-    setIsDragging(true);
-    onStroking(false);
+    rawX.jump(e.clientX - half); rawY.jump(e.clientY - half);
+    gX.jump(e.clientX - half);   gY.jump(e.clientY - half);
+    setIsDragging(true); onStroking(false);
   }, [rawX, rawY, gX, gY, half, onStroking]);
 
   const handlePointerMove = useCallback((e: PointerEvent) => {
     if (activePointerId.current === null || e.pointerId !== activePointerId.current) return;
     e.preventDefault();
-    rawX.set(e.clientX - half);
-    rawY.set(e.clientY - half);
+    rawX.set(e.clientX - half); rawY.set(e.clientY - half);
     historyRef.current.push({x:e.clientX, y:e.clientY, t:Date.now()});
     onStroking(isOverPet(e.clientX, e.clientY) && isMoving());
   }, [isOverPet, isMoving, onStroking, rawX, rawY, half]);
 
   const handlePointerUp = useCallback((e: PointerEvent) => {
     if (activePointerId.current === null || e.pointerId !== activePointerId.current) return;
-    activePointerId.current = null;
-    historyRef.current = [];
-    setIsDragging(false);
-    onStroking(false);
+    activePointerId.current = null; historyRef.current = [];
+    setIsDragging(false); onStroking(false);
   }, [onStroking]);
 
   useEffect(() => {
@@ -371,23 +351,19 @@ function PettingGlove({ petRef, onStroking, isStroking }: {
 
   return (
     <>
-      {/* Touch trigger area — fills the glove button */}
       <div
         onPointerDown={handlePointerDown}
         style={{
           position:"absolute", inset:0, zIndex:2,
           display:"flex", alignItems:"center", justifyContent:"center",
           cursor: isDragging ? "grabbing" : "grab",
-          touchAction:"none",
-          ...NOTAP,
+          touchAction:"none", ...NOTAP,
         }}
       >
         <img src="/sprites/glove.svg" draggable={false}
           style={{ width:36, height:36, objectFit:"contain", pointerEvents:"none",
             opacity: isDragging ? 0.25 : 1, transition:"opacity 0.15s" }}/>
       </div>
-
-      {/* Flying glove — rendered in a fixed portal so it's never clipped */}
       {isDragging && (
         <div style={{ position:"fixed", inset:0, zIndex:999, pointerEvents:"none" }}>
           <motion.div animate={gloveAnim}
@@ -396,8 +372,10 @@ function PettingGlove({ petRef, onStroking, isStroking }: {
             <img src="/sprites/glove.svg" draggable={false}
               style={{ width:"200%", height:"200%", objectFit:"contain", position:"absolute",
                 top:"-50%", left:"-50%",
-                filter: isStroking ? "drop-shadow(0 4px 16px rgba(249,168,212,0.6))"
-                  : "drop-shadow(0 4px 12px rgba(0,0,0,0.14))", transition:"filter 0.2s" }}/>
+                filter: isStroking
+                  ? "drop-shadow(0 4px 16px rgba(249,168,212,0.6))"
+                  : "drop-shadow(0 4px 12px rgba(0,0,0,0.14))",
+                transition:"filter 0.2s" }}/>
           </motion.div>
         </div>
       )}
@@ -406,48 +384,41 @@ function PettingGlove({ petRef, onStroking, isStroking }: {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
-   MenuPanel
+   MenuPanel — no own background, parent card provides the glass effect
 ══════════════════════════════════════════════════════════════════════════════ */
 function MenuPanel({ menuH }: { menuH: string }) {
   const { openMenu, prevMenu, setMenu, closeMenu } = useMenuStore();
   const touchStart = useRef<{ x:number; y:number } | null>(null);
 
-  const handleStart = useCallback((cx: number, cy: number) => {
-    touchStart.current = { x:cx, y:cy };
-  }, []);
-
-  const handleEnd = useCallback((cx: number, cy: number) => {
+  const handleStart = useCallback((cx:number, cy:number) => { touchStart.current = { x:cx, y:cy }; }, []);
+  const handleEnd   = useCallback((cx:number, cy:number) => {
     if (!touchStart.current || !openMenu) return;
     const dx = cx - touchStart.current.x;
     const dy = cy - touchStart.current.y;
     touchStart.current = null;
-    if (dy > 40 && Math.abs(dy) > Math.abs(dx) * 1.3) { closeMenu(); return; }
-    if (Math.abs(dx) < 35 || Math.abs(dx) < Math.abs(dy) * 0.7) return;
+    if (dy > 40 && Math.abs(dy) > Math.abs(dx)*1.3) { closeMenu(); return; }
+    if (Math.abs(dx) < 35 || Math.abs(dx) < Math.abs(dy)*0.7) return;
     const idx = MENU_ORDER.indexOf(openMenu);
-    if (dx < 0 && idx < MENU_ORDER.length - 1) setMenu(MENU_ORDER[idx + 1]);
-    if (dx > 0 && idx > 0) setMenu(MENU_ORDER[idx - 1]);
+    if (dx < 0 && idx < MENU_ORDER.length-1) setMenu(MENU_ORDER[idx+1]);
+    if (dx > 0 && idx > 0)                   setMenu(MENU_ORDER[idx-1]);
   }, [openMenu, setMenu, closeMenu]);
 
   const dir = useMemo(() => {
     if (!prevMenu || !openMenu) return 0;
-    const pi = MENU_ORDER.indexOf(prevMenu);
-    const ni = MENU_ORDER.indexOf(openMenu);
+    const pi = MENU_ORDER.indexOf(prevMenu), ni = MENU_ORDER.indexOf(openMenu);
     if (pi === -1 || ni === -1) return 0;
     return ni > pi ? 1 : -1;
   }, [prevMenu, openMenu]);
 
   return (
     <div
-      onTouchStart={e => { const t = e.touches[0]; handleStart(t.clientX, t.clientY); }}
-      onTouchEnd={e => { const t = e.changedTouches[0]; handleEnd(t.clientX, t.clientY); }}
-      onMouseDown={e => handleStart(e.clientX, e.clientY)}
-      onMouseUp={e => handleEnd(e.clientX, e.clientY)}
+      onTouchStart={e => { const t=e.touches[0]; handleStart(t.clientX,t.clientY); }}
+      onTouchEnd={e   => { const t=e.changedTouches[0]; handleEnd(t.clientX,t.clientY); }}
+      onMouseDown={e  => handleStart(e.clientX,e.clientY)}
+      onMouseUp={e    => handleEnd(e.clientX,e.clientY)}
       style={{
         width:"100%", height:menuH,
         position:"relative", overflow:"hidden",
-        background:"rgba(255,255,255,0.60)",
-        backdropFilter:"blur(32px) saturate(180%)",
-        WebkitBackdropFilter:"blur(32px) saturate(180%)",
         touchAction:"pan-y pinch-zoom",
         ...NOTAP,
       }}
@@ -457,23 +428,11 @@ function MenuPanel({ menuH }: { menuH: string }) {
           <motion.div
             key={openMenu}
             custom={dir}
-            initial={{
-              x: dir !== 0 ? `${dir * 100}%` : 0,
-              y: dir === 0 ? "100%" : 0,
-              opacity: dir !== 0 ? 0.5 : 1,
-            }}
+            initial={{ x: dir!==0 ? `${dir*100}%` : 0, y: dir===0 ? "100%" : 0, opacity: dir!==0 ? 0.5 : 1 }}
             animate={{ x:0, y:0, opacity:1 }}
-            exit={{
-              x: dir !== 0 ? `${-dir * 100}%` : 0,
-              y: dir === 0 ? "100%" : 0,
-              opacity: dir !== 0 ? 0.5 : 1,
-            }}
+            exit={{ x: dir!==0 ? `${-dir*100}%` : 0, y: dir===0 ? "100%" : 0, opacity: dir!==0 ? 0.5 : 1 }}
             transition={{ type:"spring", stiffness:500, damping:40, mass:0.8 }}
-            style={{
-              position:"absolute", inset:0,
-              display:"flex", flexDirection:"column",
-              overflow:"hidden",
-            }}
+            style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", overflow:"hidden" }}
           >
             <div style={{ flex:1, overflowY:"auto", padding:"16px 16px 24px", scrollbarWidth:"none" }}>
               {MENU_CONTENT[openMenu]}
@@ -486,7 +445,7 @@ function MenuPanel({ menuH }: { menuH: string }) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
-   BottomBlock
+   BottomBlock — unified glass card when menu is open
 ══════════════════════════════════════════════════════════════════════════════ */
 interface BottomBlockProps {
   pet: NonNullable<ReturnType<typeof usePetStore.getState>["pet"]>;
@@ -504,123 +463,117 @@ interface BottomBlockProps {
 function BottomBlock({ pet, evo: _evo, activeTab, isCd, getCd, onTab, onClose, petRef, onStroking, isStroking }: BottomBlockProps) {
   const { openMenu } = useMenuStore();
   const menuIsOpen = openMenu !== null;
-
-  const menuContentH = "50dvh";
   const closedBottomPad = "clamp(24px,6.5vw,38px)";
 
-  const halfH = WIDGET_H / 2;
-  // When menu is open: flat bottom (square corners where connected to menu panel)
-  // When closed: fully rounded pill
-  const pillR = menuIsOpen ? `${halfH}px ${halfH}px 0 0` : `${halfH}px`;
-  const sideR = GLOVE_SZ / 2;
-  const sideBtnR = menuIsOpen ? `${sideR}px ${sideR}px 0 0` : `${sideR}px`;
-
-  // Border style: show full border when closed, hide bottom border when open
-  // to seamlessly connect with menu panel below
-  const pillBorder = menuIsOpen
-    ? "1px solid rgba(255,255,255,0.72)"
-    : "1px solid rgba(255,255,255,0.72)";
-  const pillBorderBottom = menuIsOpen ? "none" : undefined;
+  // Pill/glove get own GLASS style when menu is closed; become transparent when inside the card.
+  const widgetStyle: CSSProps = menuIsOpen
+    ? { background: "rgba(255,255,255,0.10)" }
+    : { ...GLASS };
 
   return (
-    <div style={{
-      position:"relative", zIndex:10,
-      display:"flex", flexDirection:"column",
-      width:"100%", ...NOTAP,
-    }}>
-      {/* ── NAV ROW ── */}
-      <div style={{
-        padding: menuIsOpen ? "8px 16px 0" : `0 16px ${closedBottomPad}`,
-        display:"flex", justifyContent:"center", alignItems:"flex-end",
-        gap:GLOVE_GAP, flexShrink:0,
-        transition:"padding 0.25s ease",
-      }}>
-        {/* Pill */}
-        <div style={{
-          ...G.carousel,
-          border: pillBorder,
-          borderBottom: pillBorderBottom,
-          borderRadius: pillR,
-          height:WIDGET_H,
-          padding:`${NAV_PAD}px ${NAV_PAD + 2}px`,
-          display:"inline-flex", alignItems:"center",
-          overflow:"visible",
-          transition:"border-radius 0.25s ease, border-bottom 0.25s ease",
-          boxSizing:"border-box",
-        }}>
-          <Carousel>
-            <CarouselBtn icon={IC.food}  active={activeTab==="feed"}  disabled={isCd("feed")} cdLabel={fmtCd(getCd("feed"))} onClick={() => onTab("feed")}/>
-            <CarouselBtn icon={IC.game}  active={activeTab==="play"}  disabled={isCd("play")} cdLabel={fmtCd(getCd("play"))} onClick={() => onTab("play")}/>
-            <CarouselBtn icon={IC.shop}  active={activeTab==="shop"}  onClick={() => onTab("shop")}/>
-            <CarouselBtn icon={IC.moon}  active={activeTab==="sleep"} onClick={() => onTab("sleep")}/>
-            <CarouselBtn icon={IC.users} active={activeTab==="partner"} onClick={() => onTab("partner")}/>
-            <CarouselBtn icon={IC.settings} active={activeTab==="settings"} onClick={() => onTab("settings")}/>
-          </Carousel>
-        </div>
+    <div style={{ position:"relative", zIndex:10, display:"flex", flexDirection:"column", width:"100%", ...NOTAP }}>
 
-        {/* Side button: Glove ↔ Down arrow */}
+      {/* ── Full-width container that becomes the glass card when open ── */}
+      <div style={{
+        width:"100vw",
+        marginLeft:"calc(-50vw + 50%)",
+        display:"flex", flexDirection:"column", flexShrink:0,
+        // Transparent (no pointer blocking) when closed, full card when open
+        pointerEvents: menuIsOpen ? "auto" : "none",
+        ...(menuIsOpen ? {
+          ...GLASS,
+          borderBottom: "none",
+          borderRadius: `${HALF_H}px ${HALF_H}px 0 0`,
+          overflow: "hidden",
+        } : {}),
+      }}>
+
+        {/* ── Nav row ── */}
         <div style={{
-          width:GLOVE_SZ, height:GLOVE_SZ,
-          borderRadius:sideBtnR,
-          flexShrink:0,
-          ...G.carousel,
-          border: pillBorder,
-          borderBottom: pillBorderBottom,
-          transition:"border-radius 0.25s ease, border-bottom 0.25s ease",
-          position:"relative",
-          overflow:"hidden",
+          pointerEvents:"auto",
+          padding: menuIsOpen ? `8px 16px 0` : `0 16px ${closedBottomPad}`,
+          display:"flex", justifyContent:"center", alignItems:"flex-end",
+          gap:GLOVE_GAP, flexShrink:0,
+          transition:"padding 0.25s ease",
         }}>
-          {/* Glove layer */}
+
+          {/* Pill */}
           <div style={{
-            position:"absolute", inset:0,
-            opacity: menuIsOpen ? 0 : 1,
-            pointerEvents: menuIsOpen ? "none" : "auto",
-            transition:"opacity 0.12s",
+            ...widgetStyle,
+            // Keep pill border only when closed; inside the card it's borderless
+            ...(menuIsOpen ? {} : {}),
+            borderRadius: `${HALF_H}px`,
+            height: WIDGET_H,
+            padding:`${NAV_PAD}px ${NAV_PAD+2}px`,
+            display:"inline-flex", alignItems:"center",
+            overflow:"visible",
+            boxSizing:"border-box",
+            transition:"background 0.25s, box-shadow 0.25s, border 0.25s",
           }}>
-            <PettingGlove petRef={petRef} onStroking={onStroking} isStroking={isStroking}/>
+            <Carousel>
+              <CarouselBtn icon={IC.food}  active={activeTab==="feed"}  disabled={isCd("feed")} cdLabel={fmtCd(getCd("feed"))} onClick={() => onTab("feed")}/>
+              <CarouselBtn icon={IC.game}  active={activeTab==="play"}  disabled={isCd("play")} cdLabel={fmtCd(getCd("play"))} onClick={() => onTab("play")}/>
+              <CarouselBtn icon={IC.shop}  active={activeTab==="shop"}  onClick={() => onTab("shop")}/>
+              <CarouselBtn icon={IC.moon}  active={activeTab==="sleep"} onClick={() => onTab("sleep")}/>
+              <CarouselBtn icon={IC.users} active={activeTab==="partner"} onClick={() => onTab("partner")}/>
+              <CarouselBtn icon={IC.settings} active={activeTab==="settings"} onClick={() => onTab("settings")}/>
+            </Carousel>
           </div>
-          {/* Close arrow layer */}
-          <div
-            onClick={menuIsOpen ? onClose : undefined}
-            style={{
+
+          {/* Side button */}
+          <div style={{
+            width:GLOVE_SZ, height:GLOVE_SZ,
+            borderRadius:`${GLOVE_SZ/2}px`,
+            flexShrink:0,
+            ...widgetStyle,
+            position:"relative",
+            overflow:"hidden",
+            transition:"background 0.25s, box-shadow 0.25s, border 0.25s",
+          }}>
+            {/* Glove */}
+            <div style={{
+              position:"absolute", inset:0,
+              opacity: menuIsOpen ? 0 : 1,
+              pointerEvents: menuIsOpen ? "none" : "auto",
+              transition:"opacity 0.15s",
+            }}>
+              <PettingGlove petRef={petRef} onStroking={onStroking} isStroking={isStroking}/>
+            </div>
+            {/* Chevron */}
+            <div onClick={menuIsOpen ? onClose : undefined} style={{
               position:"absolute", inset:0,
               display:"flex", alignItems:"center", justifyContent:"center",
               cursor: menuIsOpen ? "pointer" : "default",
               opacity: menuIsOpen ? 1 : 0,
               pointerEvents: menuIsOpen ? "auto" : "none",
-              transition:"opacity 0.12s",
+              transition:"opacity 0.15s",
               ...NOTAP,
-            }}
-          >
-            <div style={{ width:26, height:26, color:"rgba(0,0,0,0.50)" }}>{IC.chevronDown}</div>
+            }}>
+              <div style={{ width:26, height:26, color:"rgba(0,0,0,0.50)" }}>{IC.chevronDown}</div>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* ── MENU PANEL — seamlessly connected, no border gap ── */}
-      <AnimatePresence>
-        {menuIsOpen && (
-          <motion.div
-            key="menu-slide"
-            initial={{ height:0 }}
-            animate={{ height:menuContentH }}
-            exit={{ height:0 }}
-            transition={{ type:"spring", stiffness:480, damping:42, mass:0.75 }}
-            style={{
-              overflow:"hidden",
-              width:"100vw",
-              marginLeft:"calc(-50vw + 50%)",
-              flexShrink:0,
-            }}
-          >
-            <MenuPanel menuH={menuContentH}/>
-          </motion.div>
+        {/* ── Menu content (slides in below nav row, inside the same card) ── */}
+        <AnimatePresence>
+          {menuIsOpen && (
+            <motion.div
+              key="menu-slide"
+              initial={{ height:0 }}
+              animate={{ height:"50dvh" }}
+              exit={{ height:0 }}
+              transition={{ type:"spring", stiffness:480, damping:42, mass:0.75 }}
+              style={{ overflow:"hidden", flexShrink:0 }}
+            >
+              <MenuPanel menuH="50dvh"/>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {!menuIsOpen && (
+          <div style={{ pointerEvents:"auto", height:4, marginBottom:"clamp(5px,1.5vw,8px)" }}/>
         )}
-      </AnimatePresence>
-
-      {!menuIsOpen && (
-        <div style={{ height:4, marginBottom:"clamp(5px,1.5vw,8px)" }}/>
-      )}
+      </div>
     </div>
   );
 }
@@ -651,15 +604,19 @@ export function HomePage({ petId }: Props) {
   useEffect(() => { const id = setInterval(refresh, 60_000); return () => clearInterval(id); }, [refresh]);
   useEffect(() => {
     const h = () => { if (!document.hidden) refresh(); };
-    document.addEventListener("visibilitychange", h);
-    return () => document.removeEventListener("visibilitychange", h);
+    document.addEventListener("visibilitychange", h); return () => document.removeEventListener("visibilitychange", h);
   }, [refresh]);
+
+  // ── Sync carousel active highlight when menu category changes via swipe ──
+  useEffect(() => {
+    if (openMenu !== null && MENU_TABS.has(openMenu)) setActiveTab(openMenu as TabId);
+    if (openMenu === null) setActiveTab(null);
+  }, [openMenu]);
 
   const handleStroking = useCallback((v:boolean) => setIsStroking(v), []);
   const spawnHeart = useCallback((x:number, y:number) => {
     const id = nextHeart.current++;
-    const angle = Math.random()*Math.PI*2;
-    const dist = 40+Math.random()*30;
+    const angle = Math.random()*Math.PI*2; const dist = 40+Math.random()*30;
     setHearts(h => [...h.slice(-12), { id, x, y, angle, dist }]);
     setTimeout(() => setHearts(h => h.filter(hh => hh.id !== id)), 900);
   }, []);
@@ -693,18 +650,14 @@ export function HomePage({ petId }: Props) {
     setFloatText(t); setFloatShow(true);
     setTimeout(() => setFloatShow(false), 1400);
   };
-
   const doAction = async (action: ActionType, msg: string) => {
-    if (isCd(action)) return;
-    await performAction(action); showFloat(msg);
+    if (isCd(action)) return; await performAction(action); showFloat(msg);
   };
-
   const handleInvite = async () => {
     try { const inv = await createInvite(pet.id); tg?.showAlert?.(`Ссылка:\n${inv.link}`); }
     catch { tg?.showAlert?.("Не удалось создать ссылку"); }
   };
-
-  const handleClose = () => { closeMenu(); setActiveTab(null); };
+  const handleClose = () => { closeMenu(); };
 
   const handleTab = (tab: TabId) => {
     if (MENU_TABS.has(tab)) {
@@ -715,8 +668,7 @@ export function HomePage({ petId }: Props) {
       if (tab === "play") doAction("play", "+25 🎾");
       return;
     }
-    setActiveTab(tab);
-    closeMenu();
+    setActiveTab(tab); closeMenu();
     switch (tab) {
       case "pet":      doAction("pet", "+15 🤍"); break;
       case "partner":  handleInvite(); break;
@@ -731,8 +683,7 @@ export function HomePage({ petId }: Props) {
       fontFamily:"'Inter',system-ui,sans-serif",
       position:"relative", overflow:"hidden",
       display:"flex", flexDirection:"column",
-      color:"rgba(0,0,0,0.75)",
-      ...NOTAP,
+      color:"rgba(0,0,0,0.75)", ...NOTAP,
     }}>
       {/* Blobs */}
       <div style={{ position:"absolute", inset:0, pointerEvents:"none", zIndex:0 }}>
@@ -742,12 +693,9 @@ export function HomePage({ petId }: Props) {
       </div>
 
       {/* ══ PET ZONE ══ */}
-      <div ref={petZoneRef} style={{
-        flex:1, display:"flex", flexDirection:"column",
-        position:"relative", zIndex:5, overflow:"hidden",
-        minHeight:0,
-      }}>
-        {/* ── HEADER ── */}
+      <div ref={petZoneRef} style={{ flex:1, display:"flex", flexDirection:"column", position:"relative", zIndex:5, overflow:"hidden", minHeight:0 }}>
+
+        {/* ── Header ── */}
         <header style={{ padding:"clamp(12px,3.5vw,20px) clamp(12px,4vw,18px) 6px",
           zIndex:10, position:"relative", display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
           <div style={{ display:"flex", alignItems:"center", gap:7, ...G.heavy,
@@ -779,14 +727,14 @@ export function HomePage({ petId }: Props) {
           <div style={{ flex:1 }}/>
           <div style={{ ...G.heavy, borderRadius:999, height:PILL_H, padding:"0 10px",
             display:"flex", gap:4, alignItems:"center", flexShrink:0 }}>
-            <StatusRing value={pet.hunger} icon={IC.food}/>
+            <StatusRing value={pet.hunger}    icon={IC.food}/>
             <StatusRing value={pet.happiness} icon={IC.game}/>
-            <StatusRing value={sleepVal} icon={IC.moon}/>
-            <StatusRing value={pet.health} icon={IC.wash}/>
+            <StatusRing value={sleepVal}      icon={IC.moon}/>
+            <StatusRing value={pet.health}    icon={IC.wash}/>
           </div>
         </header>
 
-        {/* ── PET CENTERED ── */}
+        {/* ── Pet centered ── */}
         <div style={{ flex:1, display:"flex", flexDirection:"column",
           alignItems:"center", justifyContent:"center",
           position:"relative", overflow:"hidden" }}>
@@ -839,7 +787,7 @@ export function HomePage({ petId }: Props) {
         </div>
       </div>
 
-      {/* ══ BOTTOM BLOCK ══ */}
+      {/* ══ Bottom block ══ */}
       <BottomBlock
         pet={pet} evo={evo}
         activeTab={activeTab} isCd={isCd} getCd={getCd}
