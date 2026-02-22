@@ -5,15 +5,14 @@ import type { ActionType } from "../api/types";
 
 export type TabId = ActionType | "shop" | "sleep" | "wash" | "partner" | "settings";
 
-/* ── Layout constants (shared with BottomBlock) ── */
 export const NAV_PAD  = 8;
 export const BTN_W    = 50;
 export const BTN_GAP  = 5;
 export const VISIBLE  = 3;
-export const SPAD     = 12; // shadow padding — must be >= box-shadow spread
+export const SPAD     = 14; // увеличен для крайних теней
 
-// Inner scrollable content width (3 buttons visible)
-export const PILL_INNER_W = VISIBLE * BTN_W + (VISIBLE - 1) * BTN_GAP; // 160
+// PILL_INNER_W теперь включает горизонтальный padding для теней
+export const PILL_INNER_W = VISIBLE * BTN_W + (VISIBLE - 1) * BTN_GAP + SPAD * 2; // 188
 
 export const NOTAP: React.CSSProperties = {
   WebkitTapHighlightColor: "transparent",
@@ -22,12 +21,9 @@ export const NOTAP: React.CSSProperties = {
   userSelect: "none",
 };
 
-/* ════════════════════════════════════════════
-   Carousel — overflow visible so shadows paint
-   ════════════════════════════════════════════ */
 interface CarouselProps {
   children: React.ReactNode;
-  activeIndex: number; // 0-based index of the active button
+  activeIndex: number;
   totalCount: number;
 }
 
@@ -37,38 +33,29 @@ export function Carousel({ children, activeIndex, totalCount }: CarouselProps) {
   const sx   = useRef(0);
   const sl   = useRef(0);
 
-  // Scroll so the active button is centered (or clamped at edges)
+  // Скроллим так чтобы активная кнопка была по центру видимой области
+  // Видимая область кнопок = PILL_INNER_W - SPAD*2 = 3 кнопки
   const scrollToActive = useCallback((idx: number, smooth: boolean) => {
     const el = scrollRef.current;
     if (!el) return;
-
-    // Target: center of the active button should align with center of the 3-button viewport
-    const centerOffset = PILL_INNER_W / 2 - BTN_W / 2; // 55
+    const visibleW = VISIBLE * BTN_W + (VISIBLE - 1) * BTN_GAP;
+    const centerOffset = visibleW / 2 - BTN_W / 2;
     const targetScroll = idx * (BTN_W + BTN_GAP) - centerOffset;
-
-    // Clamp to valid scroll range
     const maxScroll = (totalCount - VISIBLE) * (BTN_W + BTN_GAP);
     const clamped = Math.max(0, Math.min(maxScroll, targetScroll));
-
     el.scrollTo({ left: clamped, behavior: smooth ? "smooth" : "instant" });
   }, [totalCount]);
 
-  // Scroll on mount without animation
   useEffect(() => { scrollToActive(activeIndex, false); }, []); // eslint-disable-line
-
-  // Scroll with animation on active change
   useEffect(() => { scrollToActive(activeIndex, true); }, [activeIndex, scrollToActive]);
 
   return (
-    /*
-     * Outer wrapper: clip the HORIZONTAL overflow so we don't expand the pill,
-     * but add VERTICAL overflow via negative margins so shadows aren't clipped.
-     */
+    // Внешний wrapper: ширина = PILL_INNER_W (включает SPAD по краям)
+    // overflow: hidden по горизонтали, visible по вертикали для теней
     <div style={{
       width: PILL_INNER_W,
       overflowX: "hidden",
       overflowY: "visible",
-      // Pull in extra vertical space so shadows paint above/below
       marginBlock: -SPAD,
       paddingBlock: SPAD,
     }}>
@@ -83,14 +70,15 @@ export function Carousel({ children, activeIndex, totalCount }: CarouselProps) {
           gap: BTN_GAP,
           alignItems: "center",
           overflowX: "auto",
-          // Give each row the button height + vertical shadow room
           height: BTN_W + SPAD * 2,
-          padding: `${SPAD}px 0`,
+          // Горизонтальный padding = SPAD, чтобы тени крайних кнопок не резались
+          paddingInline: SPAD,
+          paddingBlock: SPAD,
           scrollbarWidth: "none",
           WebkitOverflowScrolling: "touch",
           cursor: "grab",
-          // Prevent the inner scroll from clipping shadows in the Y axis
           overflowY: "visible",
+          boxSizing: "border-box",
           ...NOTAP,
         }}
       >
@@ -100,9 +88,6 @@ export function Carousel({ children, activeIndex, totalCount }: CarouselProps) {
   );
 }
 
-/* ════════════════════════════════════════════
-   CarouselBtn
-   ════════════════════════════════════════════ */
 export function CarouselBtn({ icon, active, disabled, cdLabel, onClick }: {
   icon: React.ReactNode;
   active?: boolean;

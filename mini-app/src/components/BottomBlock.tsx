@@ -70,10 +70,6 @@ export function BottomBlock({
     ? { background: "rgba(255,255,255,0.10)" }
     : { ...GLASS };
 
-  // Extra horizontal padding so pill clip doesn't eat button shadows
-  const SPAD_H = 12;
-  const pillOuterW = PILL_INNER_W + SPAD_H * 2;
-
   return (
     <div style={{ position: "relative", zIndex: 10, display: "flex", flexDirection: "column", width: "100%", ...NOTAP }}>
       <div style={{
@@ -103,7 +99,7 @@ export function BottomBlock({
             ...widgetStyle,
             borderRadius: `${HALF_H}px`,
             height: WIDGET_H,
-            width: pillOuterW,
+            width: PILL_INNER_W,
             display: "inline-flex",
             alignItems: "center",
             justifyContent: "center",
