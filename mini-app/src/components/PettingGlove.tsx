@@ -1,9 +1,10 @@
 // mini-app/src/components/PettingGlove.tsx
 import { useState, useRef, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { motion, useMotionValue, useSpring } from "framer-motion";
 import { NOTAP } from "./NavCarousel";
 
-export const GLOVE_FLY = 96; // размер летящей перчатки
+export const GLOVE_FLY = 96;
 
 interface Props {
   petRef: React.RefObject<HTMLDivElement | null>;
@@ -17,7 +18,6 @@ export function PettingGlove({ petRef, onStroking, isStroking }: Props) {
   const historyRef = useRef<Array<{ x: number; y: number; t: number }>>([]);
   const half = GLOVE_FLY / 2;
 
-  // Храним позицию левого-верхнего угла перчатки = cursor - half
   const rawX = useMotionValue(-9999);
   const rawY = useMotionValue(-9999);
   const gX = useSpring(rawX, { stiffness: 700, damping: 32, mass: 0.25 });
@@ -44,7 +44,6 @@ export function PettingGlove({ petRef, onStroking, isStroking }: Props) {
   }, []);
 
   const setPos = useCallback((cx: number, cy: number) => {
-    // top-left угла = центр курсора - half
     rawX.set(cx - half);
     rawY.set(cy - half);
   }, [rawX, rawY, half]);
@@ -54,7 +53,6 @@ export function PettingGlove({ petRef, onStroking, isStroking }: Props) {
     e.stopPropagation();
     activePointerId.current = e.pointerId;
     historyRef.current = [{ x: e.clientX, y: e.clientY, t: Date.now() }];
-    // Прыжок без пружины, чтобы перчатка появилась мгновенно под пальцем
     rawX.jump(e.clientX - half);
     rawY.jump(e.clientY - half);
     gX.jump(e.clientX - half);
@@ -77,7 +75,6 @@ export function PettingGlove({ petRef, onStroking, isStroking }: Props) {
     historyRef.current = [];
     setIsDragging(false);
     onStroking(false);
-    // Убираем перчатку за экран
     rawX.set(-9999);
     rawY.set(-9999);
   }, [onStroking, rawX, rawY]);
@@ -86,11 +83,11 @@ export function PettingGlove({ petRef, onStroking, isStroking }: Props) {
     if (!isDragging) return;
     window.addEventListener("pointermove",  handlePointerMove,  { passive: false });
     window.addEventListener("pointerup",    handlePointerUp);
-    window.addEventListener("pointercancel",handlePointerUp);
+    window.addEventListener("pointercancel", handlePointerUp);
     return () => {
       window.removeEventListener("pointermove",  handlePointerMove);
       window.removeEventListener("pointerup",    handlePointerUp);
-      window.removeEventListener("pointercancel",handlePointerUp);
+      window.removeEventListener("pointercancel", handlePointerUp);
     };
   }, [isDragging, handlePointerMove, handlePointerUp]);
 
@@ -100,7 +97,7 @@ export function PettingGlove({ petRef, onStroking, isStroking }: Props) {
 
   return (
     <>
-      {/* ── Статичная перчатка в кружке ── */}
+      {/* Статичная перчатка в кружке */}
       <div
         onPointerDown={handlePointerDown}
         style={{
@@ -114,7 +111,6 @@ export function PettingGlove({ petRef, onStroking, isStroking }: Props) {
           src="/sprites/glove.svg"
           draggable={false}
           style={{
-            // в 1.5 раза больше — кружок WIDGET_H=66, занимаем ~60px
             width: 60, height: 60,
             objectFit: "contain",
             pointerEvents: "none",
@@ -124,13 +120,11 @@ export function PettingGlove({ petRef, onStroking, isStroking }: Props) {
         />
       </div>
 
-      {/* ── Летящая перчатка — портал в body через position:fixed ── */}
-      {isDragging && (
+      {/* Летящая перчатка — через createPortal в body */}
+      {isDragging && createPortal(
         <motion.div
           animate={gloveAnim}
           style={{
-            // Рендерим через fixed, position задаём явно через top/left = 0
-            // и смещаем через x/y (motion values) — это надёжнее чем translateX
             position: "fixed",
             top: 0,
             left: 0,
@@ -138,7 +132,7 @@ export function PettingGlove({ petRef, onStroking, isStroking }: Props) {
             height: GLOVE_FLY,
             x: gX,
             y: gY,
-            zIndex: 9999,
+            zIndex: 99999,
             pointerEvents: "none",
             transformOrigin: "center center",
           }}
@@ -157,7 +151,8 @@ export function PettingGlove({ petRef, onStroking, isStroking }: Props) {
               transition: "filter 0.15s",
             }}
           />
-        </motion.div>
+        </motion.div>,
+        document.body
       )}
     </>
   );

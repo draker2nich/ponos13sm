@@ -1,7 +1,7 @@
 // mini-app/src/components/BottomBlock.tsx
 import { AnimatePresence, motion } from "framer-motion";
-import { useMenuStore, MENU_ORDER, type MenuCategory } from "../store/useMenuStore";
-import { Carousel, CarouselBtn, NOTAP, NAV_PAD, BTN_W, BTN_GAP, PILL_INNER_W, type TabId } from "./NavCarousel";
+import { useMenuStore, type MenuCategory } from "../store/useMenuStore";
+import { Carousel, CarouselBtn, NOTAP, NAV_PAD, BTN_W, PILL_INNER_W, type TabId } from "./NavCarousel";
 import { MenuPanel } from "./MenuPanel";
 import { PettingGlove } from "./PettingGlove";
 import { IC } from "./icons";
@@ -33,9 +33,7 @@ function fmtCd(iso: string | null): string {
 }
 const cdActive = (iso: string | null) => !!iso && new Date(iso).getTime() > Date.now();
 
-/* ════════════════════════════════════════════
-   Props
-   ════════════════════════════════════════════ */
+/* ════════════════════════════════════════════ */
 interface Props {
   pet: Pet;
   evo: number;
@@ -50,9 +48,6 @@ interface Props {
   isStroking: boolean;
 }
 
-/* ════════════════════════════════════════════
-   BottomBlock
-   ════════════════════════════════════════════ */
 export function BottomBlock({
   pet, sleepVal,
   activeTab,
@@ -89,7 +84,7 @@ export function BottomBlock({
         <div style={{
           pointerEvents: "auto",
           padding: menuIsOpen ? `8px 16px 0` : `0 16px ${closedBottomPad}`,
-          display: "flex", justifyContent: "center", alignItems: "center", // ← center вместо flex-end
+          display: "flex", justifyContent: "center", alignItems: "center",
           gap: GLOVE_GAP, flexShrink: 0,
           transition: "padding 0.25s ease",
         }}>
@@ -104,11 +99,9 @@ export function BottomBlock({
             alignItems: "center",
             justifyContent: "center",
             overflowX: "hidden",
-            overflowY: "visible",
+            overflowY: "hidden",
             boxSizing: "border-box",
             transition: "background 0.25s, box-shadow 0.25s, border 0.25s",
-            marginBlock: -NAV_PAD,
-            paddingBlock: NAV_PAD,
           }}>
             <Carousel activeIndex={activeIndex} totalCount={ALL_TABS.length}>
               <CarouselBtn icon={IC.food}  active={activeTab === "feed"}  disabled={isCd("feed")} cdLabel={fmtCd(getCd("feed"))} onClick={() => onTab("feed")} />
@@ -121,15 +114,15 @@ export function BottomBlock({
             </Carousel>
           </div>
 
-          {/* ── Side glove / chevron — same height as pill ── */}
+          {/* ── Side glove / chevron ── */}
           <div style={{
             width: GLOVE_SZ,
-            height: WIDGET_H,        // ← точно = WIDGET_H, без marginBlock
+            height: WIDGET_H,
             borderRadius: `${GLOVE_SZ / 2}px`,
             flexShrink: 0,
             ...widgetStyle,
             position: "relative",
-            overflow: "hidden",
+            overflow: menuIsOpen ? "hidden" : "visible",
             transition: "background 0.25s, box-shadow 0.25s, border 0.25s",
           }}>
             {/* Glove */}
@@ -159,7 +152,7 @@ export function BottomBlock({
           </div>
         </div>
 
-        {/* ── Menu content ── (без status rings) */}
+        {/* ── Menu content ── */}
         <AnimatePresence>
           {menuIsOpen && (
             <motion.div

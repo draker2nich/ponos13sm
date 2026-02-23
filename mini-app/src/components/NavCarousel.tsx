@@ -9,10 +9,9 @@ export const NAV_PAD  = 8;
 export const BTN_W    = 50;
 export const BTN_GAP  = 5;
 export const VISIBLE  = 3;
-export const SPAD     = 14; // увеличен для крайних теней
+export const SPAD     = 14;
 
-// PILL_INNER_W теперь включает горизонтальный padding для теней
-export const PILL_INNER_W = VISIBLE * BTN_W + (VISIBLE - 1) * BTN_GAP + SPAD * 2; // 188
+export const PILL_INNER_W = VISIBLE * BTN_W + (VISIBLE - 1) * BTN_GAP + SPAD * 2;
 
 export const NOTAP: React.CSSProperties = {
   WebkitTapHighlightColor: "transparent",
@@ -33,8 +32,6 @@ export function Carousel({ children, activeIndex, totalCount }: CarouselProps) {
   const sx   = useRef(0);
   const sl   = useRef(0);
 
-  // Скроллим так чтобы активная кнопка была по центру видимой области
-  // Видимая область кнопок = PILL_INNER_W - SPAD*2 = 3 кнопки
   const scrollToActive = useCallback((idx: number, smooth: boolean) => {
     const el = scrollRef.current;
     if (!el) return;
@@ -46,18 +43,14 @@ export function Carousel({ children, activeIndex, totalCount }: CarouselProps) {
     el.scrollTo({ left: clamped, behavior: smooth ? "smooth" : "instant" });
   }, [totalCount]);
 
-  useEffect(() => { scrollToActive(activeIndex, false); }, []); // eslint-disable-line
+  useEffect(() => { scrollToActive(activeIndex, false); }, []);
   useEffect(() => { scrollToActive(activeIndex, true); }, [activeIndex, scrollToActive]);
 
   return (
-    // Внешний wrapper: ширина = PILL_INNER_W (включает SPAD по краям)
-    // overflow: hidden по горизонтали, visible по вертикали для теней
     <div style={{
       width: PILL_INNER_W,
       overflowX: "hidden",
-      overflowY: "visible",
-      marginBlock: -SPAD,
-      paddingBlock: SPAD,
+      overflowY: "hidden",
     }}>
       <div
         ref={scrollRef}
@@ -70,15 +63,15 @@ export function Carousel({ children, activeIndex, totalCount }: CarouselProps) {
           gap: BTN_GAP,
           alignItems: "center",
           overflowX: "auto",
+          overflowY: "hidden",
           height: BTN_W + SPAD * 2,
-          // Горизонтальный padding = SPAD, чтобы тени крайних кнопок не резались
           paddingInline: SPAD,
           paddingBlock: SPAD,
           scrollbarWidth: "none",
           WebkitOverflowScrolling: "touch",
           cursor: "grab",
-          overflowY: "visible",
           boxSizing: "border-box",
+          touchAction: "pan-x",
           ...NOTAP,
         }}
       >
