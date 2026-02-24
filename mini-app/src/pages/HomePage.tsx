@@ -120,59 +120,71 @@ function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, petDomR
   const controls = useDragControls();
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Позиция питомца (смещение от natural position)
+  // Свободный drag
   const dragX = useMotionValue(0);
   const dragY = useMotionValue(0);
 
-  // Для якорной анимации
-  const anchoredX = useSpring(0, { stiffness: 300, damping: 30, mass: 0.8 });
-  const anchoredY = useSpring(0, { stiffness: 300, damping: 30, mass: 0.8 });
+  // Анимируемая позиция (используется и для якоря, и для возврата)
+  const springCfg = { stiffness: 300, damping: 30, mass: 0.8 };
+  const animX = useSpring(0, springCfg);
+  const animY = useSpring(0, springCfg);
 
-  // Храним natural center для расчёта offset
   const naturalCenter = useRef<{ x: number; y: number } | null>(null);
-  const wasAnchored = useRef(false);
+  const prevDisabled = useRef(false);
+  const savedDragOffset = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  // Рассчитать natural center (позиция без смещения)
+  // Измерить natural center (без учёта текущего transform-смещения)
   const measureNatural = useCallback(() => {
     const el = petDomRef.current;
     if (!el) return;
     const r = el.getBoundingClientRect();
-    // Текущий transform учитывает dragX/dragY, убираем его
-    const curDx = dragX.get();
-    const curDy = dragY.get();
+    // Вычитаем текущее смещение, чтобы получить «чистый» центр
+    const curX = animX.get();
+    const curY = animY.get();
     naturalCenter.current = {
-      x: r.left + r.width / 2 - curDx,
-      y: r.top + r.height / 2 - curDy,
+      x: r.left + r.width / 2 - curX,
+      y: r.top + r.height / 2 - curY,
     };
-  }, [petDomRef, dragX, dragY]);
+  }, [petDomRef, animX, animY]);
 
-  // При переходе в anchored / unanchored
   useEffect(() => {
-    if (disabled && anchorPoint) {
-      // Измеряем natural center перед анимацией
+    const becameAnchored = disabled && anchorPoint && !prevDisabled.current;
+    const becameFree = !disabled && prevDisabled.current;
+
+    if (becameAnchored) {
+      // Сохраняем текущий drag-offset перед переходом в anchored
+      savedDragOffset.current = { x: dragX.get(), y: dragY.get() };
+
+      // Измеряем natural center с учётом текущего drag-смещения
       measureNatural();
       const nc = naturalCenter.current;
-      if (nc) {
-        const container = constraintsRef.current;
-        if (container) {
-          const cr = container.getBoundingClientRect();
-          // anchorPoint — относительно контейнера
-          const targetScreenX = cr.left + anchorPoint.x;
-          const targetScreenY = cr.top + anchorPoint.y;
-          const offsetX = targetScreenX - nc.x;
-          const offsetY = targetScreenY - nc.y;
-          anchoredX.set(offsetX);
-          anchoredY.set(offsetY);
-        }
+      const container = constraintsRef.current;
+      if (nc && container && anchorPoint) {
+        const cr = container.getBoundingClientRect();
+        const targetX = cr.left + anchorPoint.x;
+        const targetY = cr.top + anchorPoint.y;
+        // Смещение от natural center до якоря
+        const offsetX = targetX - nc.x;
+        const offsetY = targetY - nc.y;
+        // Стартуем spring с текущего drag-offset, анимируем к якорю
+        animX.jump(savedDragOffset.current.x);
+        animY.jump(savedDragOffset.current.y);
+        animX.set(offsetX);
+        animY.set(offsetY);
       }
-      wasAnchored.current = true;
-    } else if (!disabled && wasAnchored.current) {
-      // Возврат из якорной позиции — плавно к 0
-      anchoredX.set(0);
-      anchoredY.set(0);
-      wasAnchored.current = false;
     }
-  }, [disabled, anchorPoint, measureNatural, constraintsRef, anchoredX, anchoredY]);
+
+    if (becameFree) {
+      // Возвращаемся из якоря — анимируем spring к (0,0) = исходный центр
+      // dragX/dragY тоже сбрасываем
+      dragX.jump(0);
+      dragY.jump(0);
+      animX.set(0);
+      animY.set(0);
+    }
+
+    prevDisabled.current = disabled;
+  }, [disabled, anchorPoint, measureNatural, constraintsRef, animX, animY, dragX, dragY]);
 
   const getPetCenter = useCallback(() => {
     const el = petDomRef.current;
@@ -196,9 +208,9 @@ function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, petDomR
     return () => { if (tickRef.current) { clearInterval(tickRef.current); tickRef.current = null; } };
   }, [isStroking, disabled, getPetCenter, onHeartAt]);
 
-  // Выбираем x/y в зависимости от режима
-  const finalX = useTransform(() => disabled ? anchoredX.get() : dragX.get());
-  const finalY = useTransform(() => disabled ? anchoredY.get() : dragY.get());
+  // В anchored-режиме используем spring, в свободном — drag
+  const finalX = useTransform(() => disabled ? animX.get() : dragX.get());
+  const finalY = useTransform(() => disabled ? animY.get() : dragY.get());
 
   return (
     <motion.div
