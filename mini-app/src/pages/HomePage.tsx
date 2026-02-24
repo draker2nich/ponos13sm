@@ -1,10 +1,10 @@
 // mini-app/src/pages/HomePage.tsx
-import { useEffect, useCallback, useState, useRef, useMemo } from "react";
-import { motion, AnimatePresence, useDragControls, useMotionValue } from "framer-motion";
+import { useEffect, useCallback, useState, useRef, useMemo, useLayoutEffect } from "react";
+import { motion, AnimatePresence, useDragControls, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { usePetStore } from "../store/usePetStore";
 import { useMenuStore, MENU_ORDER, type MenuCategory } from "../store/useMenuStore";
 import { PetSVG } from "../components/PetSVG";
-import { BottomBlock, cdActive, HALF_H } from "../components/BottomBlock";
+import { BottomBlock, cdActive, HALF_H, WIDGET_H, GLOVE_GAP } from "../components/BottomBlock";
 import { IC } from "../components/icons";
 import { NOTAP, type TabId } from "../components/NavCarousel";
 import type { ActionType } from "../api/types";
@@ -73,18 +73,106 @@ function FloatAnim({ show, text }: { show: boolean; text: string }) {
 
 interface HeartFx { id: number; x: number; y: number; angle: number; dist: number }
 
-function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, petDomRef, disabled }: {
+/* ── Anchor calculation ── */
+interface AnchorPoint { x: number; y: number }
+
+function calcAnchor(
+  headerRef: React.RefObject<HTMLElement | null>,
+  navRef: React.RefObject<HTMLElement | null>,
+  containerRef: React.RefObject<HTMLElement | null>,
+): AnchorPoint | null {
+  const header = headerRef.current;
+  const nav = navRef.current;
+  const container = containerRef.current;
+  if (!header || !nav || !container) return null;
+
+  const containerRect = container.getBoundingClientRect();
+  const headerRect = header.getBoundingClientRect();
+  const navRect = nav.getBoundingClientRect();
+
+  // Верхняя граница = низ хедера
+  const topY = headerRect.bottom;
+  // Нижняя граница = верх навигации (50% от высоты меню + виджет карусели)
+  // При открытом меню навигация поднимается, navRect.top даёт актуальную позицию
+  const bottomY = navRect.top;
+
+  // Центр по X = ширина контейнера / 2
+  const centerX = containerRect.left + containerRect.width / 2;
+  // Центр по Y = середина между хедером и навигацией
+  const centerY = topY + (bottomY - topY) / 2;
+
+  return {
+    x: centerX - containerRect.left,
+    y: centerY - containerRect.top,
+  };
+}
+
+/* ── DraggablePet with anchor support ── */
+function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, petDomRef, disabled, anchorPoint }: {
   children: React.ReactNode;
   constraintsRef: React.RefObject<HTMLElement | null>;
   isStroking: boolean;
   onHeartAt: (x: number, y: number) => void;
   petDomRef: React.RefObject<HTMLDivElement | null>;
   disabled: boolean;
+  anchorPoint: AnchorPoint | null;
 }) {
   const controls = useDragControls();
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Позиция питомца (смещение от natural position)
   const dragX = useMotionValue(0);
   const dragY = useMotionValue(0);
+
+  // Для якорной анимации
+  const anchoredX = useSpring(0, { stiffness: 300, damping: 30, mass: 0.8 });
+  const anchoredY = useSpring(0, { stiffness: 300, damping: 30, mass: 0.8 });
+
+  // Храним natural center для расчёта offset
+  const naturalCenter = useRef<{ x: number; y: number } | null>(null);
+  const wasAnchored = useRef(false);
+
+  // Рассчитать natural center (позиция без смещения)
+  const measureNatural = useCallback(() => {
+    const el = petDomRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    // Текущий transform учитывает dragX/dragY, убираем его
+    const curDx = dragX.get();
+    const curDy = dragY.get();
+    naturalCenter.current = {
+      x: r.left + r.width / 2 - curDx,
+      y: r.top + r.height / 2 - curDy,
+    };
+  }, [petDomRef, dragX, dragY]);
+
+  // При переходе в anchored / unanchored
+  useEffect(() => {
+    if (disabled && anchorPoint) {
+      // Измеряем natural center перед анимацией
+      measureNatural();
+      const nc = naturalCenter.current;
+      if (nc) {
+        const container = constraintsRef.current;
+        if (container) {
+          const cr = container.getBoundingClientRect();
+          // anchorPoint — относительно контейнера
+          const targetScreenX = cr.left + anchorPoint.x;
+          const targetScreenY = cr.top + anchorPoint.y;
+          const offsetX = targetScreenX - nc.x;
+          const offsetY = targetScreenY - nc.y;
+          anchoredX.set(offsetX);
+          anchoredY.set(offsetY);
+        }
+      }
+      wasAnchored.current = true;
+    } else if (!disabled && wasAnchored.current) {
+      // Возврат из якорной позиции — плавно к 0
+      anchoredX.set(0);
+      anchoredY.set(0);
+      wasAnchored.current = false;
+    }
+  }, [disabled, anchorPoint, measureNatural, constraintsRef, anchoredX, anchoredY]);
 
   const getPetCenter = useCallback(() => {
     const el = petDomRef.current;
@@ -108,12 +196,26 @@ function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, petDomR
     return () => { if (tickRef.current) { clearInterval(tickRef.current); tickRef.current = null; } };
   }, [isStroking, disabled, getPetCenter, onHeartAt]);
 
+  // Выбираем x/y в зависимости от режима
+  const finalX = useTransform(() => disabled ? anchoredX.get() : dragX.get());
+  const finalY = useTransform(() => disabled ? anchoredY.get() : dragY.get());
+
   return (
     <motion.div
-      drag={!disabled} dragControls={controls} dragConstraints={constraintsRef}
-      dragElastic={0.10} dragMomentum={false}
+      drag={!disabled}
+      dragControls={controls}
+      dragConstraints={constraintsRef}
+      dragElastic={0.10}
+      dragMomentum={false}
       whileDrag={disabled ? {} : { scale: 1.06 }}
-      style={{ cursor: disabled ? "default" : "grab", touchAction: "none", display: "inline-block", x: dragX, y: dragY, ...NOTAP }}
+      style={{
+        cursor: disabled ? "default" : "grab",
+        touchAction: "none",
+        display: "inline-block",
+        x: finalX,
+        y: finalY,
+        ...NOTAP,
+      }}
       onPointerDown={e => { if (!disabled) controls.start(e); }}
     >
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
@@ -137,10 +239,14 @@ export function HomePage({ petId }: Props) {
   const [floatShow, setFloatShow] = useState(false);
   const [isStroking, setIsStroking] = useState(false);
   const [hearts, setHearts] = useState<HeartFx[]>([]);
+  const [anchorPoint, setAnchorPoint] = useState<AnchorPoint | null>(null);
   const nextHeart = useRef(0);
 
   const petZoneRef = useRef<HTMLDivElement>(null);
   const petDomRef  = useRef<HTMLDivElement>(null);
+  const headerRef  = useRef<HTMLElement>(null);
+  const navRowRef  = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const menuIsOpen = openMenu !== null;
 
@@ -157,6 +263,31 @@ export function HomePage({ petId }: Props) {
     if (openMenu !== null && MENU_TABS.has(openMenu)) setActiveTab(openMenu as TabId);
     if (openMenu === null) setActiveTab(null);
   }, [openMenu]);
+
+  // Рассчитываем anchor point при открытии/закрытии меню
+  useEffect(() => {
+    if (menuIsOpen) {
+      // Даём время на анимацию открытия меню (spring ~200ms), потом считаем
+      const timer = setTimeout(() => {
+        const anchor = calcAnchor(headerRef, navRowRef, containerRef);
+        setAnchorPoint(anchor);
+      }, 50);
+      return () => clearTimeout(timer);
+    } else {
+      setAnchorPoint(null);
+    }
+  }, [menuIsOpen]);
+
+  // Пересчитываем anchor при resize
+  useEffect(() => {
+    if (!menuIsOpen) return;
+    const onResize = () => {
+      const anchor = calcAnchor(headerRef, navRowRef, containerRef);
+      setAnchorPoint(anchor);
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [menuIsOpen]);
 
   const handleStroking = useCallback((v: boolean) => setIsStroking(v), []);
   const spawnHeart = useCallback((x: number, y: number) => {
@@ -209,17 +340,14 @@ export function HomePage({ petId }: Props) {
   const handleClose = () => closeMenu();
 
   const handleTab = (tab: TabId) => {
-    // Все табы открывают меню
     if (MENU_TABS.has(tab)) {
       if (activeTab === tab && menuIsOpen) { handleClose(); return; }
       setActiveTab(tab);
       setMenu(tab as MenuCategory);
-      // Триггерим действие сразу при открытии
       if (tab === "feed") doAction("feed", "+30 🍎");
       if (tab === "play") doAction("play", "+25 🎾");
       return;
     }
-    // Fallback для неизвестных табов
     setActiveTab(tab);
     closeMenu();
   };
@@ -235,14 +363,17 @@ export function HomePage({ petId }: Props) {
   };
 
   return (
-    <div style={{
-      maxWidth: 480, margin: "0 auto", height: "100dvh", minHeight: 560,
-      background: "linear-gradient(150deg,#eef2ff 0%,#fce7f3 45%,#ecfdf5 100%)",
-      fontFamily: "'Inter',system-ui,sans-serif",
-      position: "relative", overflow: "hidden",
-      display: "flex", flexDirection: "column",
-      color: "rgba(0,0,0,0.75)", ...NOTAP,
-    }}>
+    <div
+      ref={containerRef}
+      style={{
+        maxWidth: 480, margin: "0 auto", height: "100dvh", minHeight: 560,
+        background: "linear-gradient(150deg,#eef2ff 0%,#fce7f3 45%,#ecfdf5 100%)",
+        fontFamily: "'Inter',system-ui,sans-serif",
+        position: "relative", overflow: "hidden",
+        display: "flex", flexDirection: "column",
+        color: "rgba(0,0,0,0.75)", ...NOTAP,
+      }}
+    >
       {/* Blobs */}
       <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 0 }}>
         <div style={{ position: "absolute", top: "-12%", left: "-18%", width: "55%", paddingBottom: "55%", borderRadius: "50%", background: "radial-gradient(circle,rgba(196,181,253,0.22) 0%,transparent 70%)" }} />
@@ -254,11 +385,14 @@ export function HomePage({ petId }: Props) {
       <div ref={petZoneRef} style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative", zIndex: 5, overflow: "hidden", minHeight: 0 }}>
 
         {/* ── Header ── */}
-        <header style={{
-          padding: "clamp(12px,3.5vw,20px) clamp(12px,4vw,18px) 6px",
-          zIndex: 10, position: "relative",
-          display: "flex", alignItems: "center", gap: 8, flexShrink: 0,
-        }}>
+        <header
+          ref={headerRef}
+          style={{
+            padding: "clamp(12px,3.5vw,20px) clamp(12px,4vw,18px) 6px",
+            zIndex: 10, position: "relative",
+            display: "flex", alignItems: "center", gap: 8, flexShrink: 0,
+          }}
+        >
           {/* Name + level + streak pill */}
           <div style={{
             display: "flex", alignItems: "center", gap: 7,
@@ -320,8 +454,12 @@ export function HomePage({ petId }: Props) {
           <div style={{ position: "relative" }}>
             <FloatAnim show={floatShow} text={floatText} />
             <DraggablePet
-              constraintsRef={petZoneRef} isStroking={isStroking}
-              onHeartAt={spawnHeart} petDomRef={petDomRef} disabled={menuIsOpen}
+              constraintsRef={petZoneRef}
+              isStroking={isStroking}
+              onHeartAt={spawnHeart}
+              petDomRef={petDomRef}
+              disabled={menuIsOpen}
+              anchorPoint={menuIsOpen ? anchorPoint : null}
             >
               <div ref={petDomRef} style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
                 <PetSVG
@@ -398,6 +536,7 @@ export function HomePage({ petId }: Props) {
         activeTab={activeTab} isCd={isCd} getCd={getCd}
         onTab={handleTab} onClose={handleClose}
         petRef={petDomRef} onStroking={handleStroking} isStroking={isStroking}
+        navRowRef={navRowRef}
       />
 
       {/* Home indicator */}
@@ -419,9 +558,6 @@ export function HomePage({ petId }: Props) {
           }}
         >🩷</motion.div>
       ))}
-
-      {/* Hidden: expose handleInviteFromMenu for MenuPanel via context or prop if needed */}
-      {/* For now partner menu has its own button; wire up via store or callback as needed */}
     </div>
   );
 }

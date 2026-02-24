@@ -46,6 +46,7 @@ interface Props {
   petRef: React.RefObject<HTMLDivElement | null>;
   onStroking: (v: boolean) => void;
   isStroking: boolean;
+  navRowRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 export function BottomBlock({
@@ -54,6 +55,7 @@ export function BottomBlock({
   isCd, getCd,
   onTab, onClose,
   petRef, onStroking, isStroking,
+  navRowRef,
 }: Props) {
   const { openMenu } = useMenuStore();
   const menuIsOpen = openMenu !== null;
@@ -81,13 +83,16 @@ export function BottomBlock({
       }}>
 
         {/* ── Nav row ── */}
-        <div style={{
-          pointerEvents: "auto",
-          padding: menuIsOpen ? `8px 16px 0` : `0 16px ${closedBottomPad}`,
-          display: "flex", justifyContent: "center", alignItems: "center",
-          gap: GLOVE_GAP, flexShrink: 0,
-          transition: "padding 0.25s ease",
-        }}>
+        <div
+          ref={navRowRef as React.RefObject<HTMLDivElement>}
+          style={{
+            pointerEvents: "auto",
+            padding: menuIsOpen ? `8px 16px 0` : `0 16px ${closedBottomPad}`,
+            display: "flex", justifyContent: "center", alignItems: "center",
+            gap: GLOVE_GAP, flexShrink: 0,
+            transition: "padding 0.25s ease",
+          }}
+        >
 
           {/* ── Pill ── */}
           <div style={{
