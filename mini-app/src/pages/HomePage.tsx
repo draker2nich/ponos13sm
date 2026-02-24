@@ -1,5 +1,5 @@
 // mini-app/src/pages/HomePage.tsx
-import { useEffect, useCallback, useState, useRef, useMemo } from "react";
+import { useEffect, useCallback, useState, useRef, useMemo, type RefObject } from "react";
 import { motion, AnimatePresence, useMotionValue, animate as fmAnimate } from "framer-motion";
 import { usePetStore } from "../store/usePetStore";
 import { useMenuStore, MENU_ORDER, type MenuCategory } from "../store/useMenuStore";
@@ -93,6 +93,32 @@ function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, petDomR
   const prevAnchored = useRef(false);
   const animRef = useRef<{ stopX?: () => void; stopY?: () => void }>({});
 
+  // Ключ для принудительного пересоздания motion.div после возврата из якоря
+  // Это полностью сбрасывает внутреннее состояние drag constraints в framer-motion
+  const [dragKey, setDragKey] = useState(0);
+
+  // Вычислить pixel-based constraints (для petZoneRef)
+  const calcPixelConstraints = useCallback(() => {
+    const zone = constraintsRef.current;
+    const el = petDomRef.current;
+    if (!zone || !el) return { top: 0, left: 0, right: 0, bottom: 0 };
+    const zr = zone.getBoundingClientRect();
+    const er = el.getBoundingClientRect();
+    // el rect уже учитывает текущий x/y offset, вычтем
+    const cx = x.get();
+    const cy = y.get();
+    const naturalLeft = er.left - cx;
+    const naturalTop = er.top - cy;
+    const naturalRight = naturalLeft + er.width;
+    const naturalBottom = naturalTop + er.height;
+    return {
+      top: zr.top - naturalTop,
+      left: zr.left - naturalLeft,
+      right: zr.right - naturalRight,
+      bottom: zr.bottom - naturalBottom,
+    };
+  }, [constraintsRef, petDomRef, x, y]);
+
   // Вычислить offset от natural center до якорной точки
   const calcOffset = useCallback(() => {
     const el = petDomRef.current;
@@ -106,11 +132,9 @@ function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, petDomR
     const navR = nav.getBoundingClientRect();
     const elR = el.getBoundingClientRect();
 
-    // Якорь: центр между низом хедера и верхом навигации
     const anchorScreenX = contR.left + contR.width / 2;
     const anchorScreenY = headerR.bottom + (navR.top - headerR.bottom) / 2;
 
-    // Текущий центр питомца на экране (без учёта текущего motionValue смещения)
     const curX = x.get();
     const curY = y.get();
     const naturalCX = elR.left + elR.width / 2 - curX;
@@ -126,15 +150,11 @@ function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, petDomR
     const justAnchored = anchored && !prevAnchored.current;
     const justFreed = !anchored && prevAnchored.current;
 
-    // Остановить предыдущие анимации
     animRef.current.stopX?.();
     animRef.current.stopY?.();
 
     if (justAnchored) {
-      // Нужно подождать один кадр, чтобы DOM меню начал рендериться
-      // и navRowRef.top отражал будущую позицию
       requestAnimationFrame(() => {
-        // Пересчитаем через небольшой delay, когда spring меню уже стартовал
         setTimeout(() => {
           const off = calcOffset();
           if (off) {
@@ -147,8 +167,18 @@ function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, petDomR
     }
 
     if (justFreed) {
-      // Плавно вернуть к (0,0) = natural position
-      const cx = fmAnimate(x, 0, SPRING);
+      // Анимируем к (0,0), по завершении пересоздаём motion.div
+      // чтобы framer-motion полностью сбросил drag state и constraints
+      const cx = fmAnimate(x, 0, {
+        ...SPRING,
+        onComplete: () => {
+          // Гарантируем точный 0
+          x.jump(0);
+          y.jump(0);
+          // Пересоздаём motion.div для сброса drag constraints
+          setDragKey(k => k + 1);
+        },
+      });
       const cy = fmAnimate(y, 0, SPRING);
       animRef.current = { stopX: cx.stop, stopY: cy.stop };
     }
@@ -179,7 +209,6 @@ function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, petDomR
     return () => { if (tickRef.current) { clearInterval(tickRef.current); tickRef.current = null; } };
   }, [isStroking, anchored, getPetCenter, onHeartAt]);
 
-  // При начале drag сбрасываем любые текущие анимации
   const handleDragStart = useCallback(() => {
     animRef.current.stopX?.();
     animRef.current.stopY?.();
@@ -187,6 +216,7 @@ function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, petDomR
 
   return (
     <motion.div
+      key={dragKey}
       drag={!anchored}
       dragConstraints={constraintsRef}
       dragElastic={0.10}
