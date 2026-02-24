@@ -1,10 +1,10 @@
 // mini-app/src/pages/HomePage.tsx
-import { useEffect, useCallback, useState, useRef, useMemo, useLayoutEffect } from "react";
-import { motion, AnimatePresence, useDragControls, useMotionValue, useSpring, useTransform } from "framer-motion";
+import { useEffect, useCallback, useState, useRef, useMemo } from "react";
+import { motion, AnimatePresence, useMotionValue, animate as fmAnimate } from "framer-motion";
 import { usePetStore } from "../store/usePetStore";
 import { useMenuStore, MENU_ORDER, type MenuCategory } from "../store/useMenuStore";
 import { PetSVG } from "../components/PetSVG";
-import { BottomBlock, cdActive, HALF_H, WIDGET_H, GLOVE_GAP } from "../components/BottomBlock";
+import { BottomBlock, cdActive } from "../components/BottomBlock";
 import { IC } from "../components/icons";
 import { NOTAP, type TabId } from "../components/NavCarousel";
 import type { ActionType } from "../api/types";
@@ -12,7 +12,6 @@ import type { ActionType } from "../api/types";
 const tg = window.Telegram?.WebApp;
 type CSSProps = React.CSSProperties;
 
-/* ── Design tokens ── */
 const G = {
   heavy: {
     background: "rgba(255,255,255,0.55)", backdropFilter: "blur(32px) saturate(180%)",
@@ -26,9 +25,9 @@ const G = {
   } as CSSProps,
 };
 
-const PILL_H    = 50;
-const RING_SIZE = 34;
+const PILL_H = 50, RING_SIZE = 34;
 const MENU_TABS = new Set<string>(MENU_ORDER);
+const SPRING = { type: "spring" as const, stiffness: 280, damping: 28, mass: 0.75 };
 
 function toDeg(v: number) { return Math.round(Math.max(0, Math.min(100, v)) / 100 * 360); }
 
@@ -73,119 +72,91 @@ function FloatAnim({ show, text }: { show: boolean; text: string }) {
 
 interface HeartFx { id: number; x: number; y: number; angle: number; dist: number }
 
-/* ── Anchor calculation ── */
-interface AnchorPoint { x: number; y: number }
-
-function calcAnchor(
-  headerRef: React.RefObject<HTMLElement | null>,
-  navRef: React.RefObject<HTMLElement | null>,
-  containerRef: React.RefObject<HTMLElement | null>,
-): AnchorPoint | null {
-  const header = headerRef.current;
-  const nav = navRef.current;
-  const container = containerRef.current;
-  if (!header || !nav || !container) return null;
-
-  const containerRect = container.getBoundingClientRect();
-  const headerRect = header.getBoundingClientRect();
-  const navRect = nav.getBoundingClientRect();
-
-  // Верхняя граница = низ хедера
-  const topY = headerRect.bottom;
-  // Нижняя граница = верх навигации (50% от высоты меню + виджет карусели)
-  // При открытом меню навигация поднимается, navRect.top даёт актуальную позицию
-  const bottomY = navRect.top;
-
-  // Центр по X = ширина контейнера / 2
-  const centerX = containerRect.left + containerRect.width / 2;
-  // Центр по Y = середина между хедером и навигацией
-  const centerY = topY + (bottomY - topY) / 2;
-
-  return {
-    x: centerX - containerRect.left,
-    y: centerY - containerRect.top,
-  };
-}
-
-/* ── DraggablePet with anchor support ── */
-function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, petDomRef, disabled, anchorPoint }: {
+/* ══════════════════════════════════════
+   DraggablePet — единый motion.div
+   с переключением drag ↔ anchor
+   ══════════════════════════════════════ */
+function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, petDomRef, anchored, headerRef, navRowRef, containerRef }: {
   children: React.ReactNode;
   constraintsRef: React.RefObject<HTMLElement | null>;
   isStroking: boolean;
   onHeartAt: (x: number, y: number) => void;
   petDomRef: React.RefObject<HTMLDivElement | null>;
-  disabled: boolean;
-  anchorPoint: AnchorPoint | null;
+  anchored: boolean;
+  headerRef: React.RefObject<HTMLElement | null>;
+  navRowRef: React.RefObject<HTMLDivElement | null>;
+  containerRef: React.RefObject<HTMLDivElement | null>;
 }) {
-  const controls = useDragControls();
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const prevAnchored = useRef(false);
+  const animRef = useRef<{ stopX?: () => void; stopY?: () => void }>({});
 
-  // Свободный drag
-  const dragX = useMotionValue(0);
-  const dragY = useMotionValue(0);
-
-  // Анимируемая позиция (используется и для якоря, и для возврата)
-  const springCfg = { stiffness: 300, damping: 30, mass: 0.8 };
-  const animX = useSpring(0, springCfg);
-  const animY = useSpring(0, springCfg);
-
-  const naturalCenter = useRef<{ x: number; y: number } | null>(null);
-  const prevDisabled = useRef(false);
-  const savedDragOffset = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-
-  // Измерить natural center (без учёта текущего transform-смещения)
-  const measureNatural = useCallback(() => {
+  // Вычислить offset от natural center до якорной точки
+  const calcOffset = useCallback(() => {
     const el = petDomRef.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    // Вычитаем текущее смещение, чтобы получить «чистый» центр
-    const curX = animX.get();
-    const curY = animY.get();
-    naturalCenter.current = {
-      x: r.left + r.width / 2 - curX,
-      y: r.top + r.height / 2 - curY,
+    const header = headerRef.current;
+    const nav = navRowRef.current;
+    const cont = containerRef.current;
+    if (!el || !header || !nav || !cont) return null;
+
+    const contR = cont.getBoundingClientRect();
+    const headerR = header.getBoundingClientRect();
+    const navR = nav.getBoundingClientRect();
+    const elR = el.getBoundingClientRect();
+
+    // Якорь: центр между низом хедера и верхом навигации
+    const anchorScreenX = contR.left + contR.width / 2;
+    const anchorScreenY = headerR.bottom + (navR.top - headerR.bottom) / 2;
+
+    // Текущий центр питомца на экране (без учёта текущего motionValue смещения)
+    const curX = x.get();
+    const curY = y.get();
+    const naturalCX = elR.left + elR.width / 2 - curX;
+    const naturalCY = elR.top + elR.height / 2 - curY;
+
+    return {
+      x: anchorScreenX - naturalCX,
+      y: anchorScreenY - naturalCY,
     };
-  }, [petDomRef, animX, animY]);
+  }, [petDomRef, headerRef, navRowRef, containerRef, x, y]);
 
   useEffect(() => {
-    const becameAnchored = disabled && anchorPoint && !prevDisabled.current;
-    const becameFree = !disabled && prevDisabled.current;
+    const justAnchored = anchored && !prevAnchored.current;
+    const justFreed = !anchored && prevAnchored.current;
 
-    if (becameAnchored) {
-      // Сохраняем текущий drag-offset перед переходом в anchored
-      savedDragOffset.current = { x: dragX.get(), y: dragY.get() };
+    // Остановить предыдущие анимации
+    animRef.current.stopX?.();
+    animRef.current.stopY?.();
 
-      // Измеряем natural center с учётом текущего drag-смещения
-      measureNatural();
-      const nc = naturalCenter.current;
-      const container = constraintsRef.current;
-      if (nc && container && anchorPoint) {
-        const cr = container.getBoundingClientRect();
-        const targetX = cr.left + anchorPoint.x;
-        const targetY = cr.top + anchorPoint.y;
-        // Смещение от natural center до якоря
-        const offsetX = targetX - nc.x;
-        const offsetY = targetY - nc.y;
-        // Стартуем spring с текущего drag-offset, анимируем к якорю
-        animX.jump(savedDragOffset.current.x);
-        animY.jump(savedDragOffset.current.y);
-        animX.set(offsetX);
-        animY.set(offsetY);
-      }
+    if (justAnchored) {
+      // Нужно подождать один кадр, чтобы DOM меню начал рендериться
+      // и navRowRef.top отражал будущую позицию
+      requestAnimationFrame(() => {
+        // Пересчитаем через небольшой delay, когда spring меню уже стартовал
+        setTimeout(() => {
+          const off = calcOffset();
+          if (off) {
+            const cx = fmAnimate(x, off.x, SPRING);
+            const cy = fmAnimate(y, off.y, SPRING);
+            animRef.current = { stopX: cx.stop, stopY: cy.stop };
+          }
+        }, 80);
+      });
     }
 
-    if (becameFree) {
-      // Возвращаемся из якоря — анимируем spring к (0,0) = исходный центр
-      // dragX/dragY тоже сбрасываем
-      dragX.jump(0);
-      dragY.jump(0);
-      animX.set(0);
-      animY.set(0);
+    if (justFreed) {
+      // Плавно вернуть к (0,0) = natural position
+      const cx = fmAnimate(x, 0, SPRING);
+      const cy = fmAnimate(y, 0, SPRING);
+      animRef.current = { stopX: cx.stop, stopY: cy.stop };
     }
 
-    prevDisabled.current = disabled;
-  }, [disabled, anchorPoint, measureNatural, constraintsRef, animX, animY, dragX, dragY]);
+    prevAnchored.current = anchored;
+  }, [anchored, calcOffset, x, y]);
 
+  // Сердечки при глажке
   const getPetCenter = useCallback(() => {
     const el = petDomRef.current;
     if (!el) return { x: 0, y: 0 };
@@ -194,7 +165,7 @@ function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, petDomR
   }, [petDomRef]);
 
   useEffect(() => {
-    if (isStroking && !disabled) {
+    if (isStroking && !anchored) {
       if (!tickRef.current) {
         tickRef.current = setInterval(() => {
           const c = getPetCenter();
@@ -206,29 +177,29 @@ function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, petDomR
       if (tickRef.current) { clearInterval(tickRef.current); tickRef.current = null; }
     }
     return () => { if (tickRef.current) { clearInterval(tickRef.current); tickRef.current = null; } };
-  }, [isStroking, disabled, getPetCenter, onHeartAt]);
+  }, [isStroking, anchored, getPetCenter, onHeartAt]);
 
-  // В anchored-режиме используем spring, в свободном — drag
-  const finalX = useTransform(() => disabled ? animX.get() : dragX.get());
-  const finalY = useTransform(() => disabled ? animY.get() : dragY.get());
+  // При начале drag сбрасываем любые текущие анимации
+  const handleDragStart = useCallback(() => {
+    animRef.current.stopX?.();
+    animRef.current.stopY?.();
+  }, []);
 
   return (
     <motion.div
-      drag={!disabled}
-      dragControls={controls}
+      drag={!anchored}
       dragConstraints={constraintsRef}
       dragElastic={0.10}
       dragMomentum={false}
-      whileDrag={disabled ? {} : { scale: 1.06 }}
+      onDragStart={handleDragStart}
+      whileDrag={anchored ? {} : { scale: 1.06 }}
       style={{
-        cursor: disabled ? "default" : "grab",
+        cursor: anchored ? "default" : "grab",
         touchAction: "none",
         display: "inline-block",
-        x: finalX,
-        y: finalY,
+        x, y,
         ...NOTAP,
       }}
-      onPointerDown={e => { if (!disabled) controls.start(e); }}
     >
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
         {children}
@@ -251,13 +222,12 @@ export function HomePage({ petId }: Props) {
   const [floatShow, setFloatShow] = useState(false);
   const [isStroking, setIsStroking] = useState(false);
   const [hearts, setHearts] = useState<HeartFx[]>([]);
-  const [anchorPoint, setAnchorPoint] = useState<AnchorPoint | null>(null);
   const nextHeart = useRef(0);
 
   const petZoneRef = useRef<HTMLDivElement>(null);
-  const petDomRef  = useRef<HTMLDivElement>(null);
-  const headerRef  = useRef<HTMLElement>(null);
-  const navRowRef  = useRef<HTMLDivElement>(null);
+  const petDomRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLElement>(null);
+  const navRowRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const menuIsOpen = openMenu !== null;
@@ -275,31 +245,6 @@ export function HomePage({ petId }: Props) {
     if (openMenu !== null && MENU_TABS.has(openMenu)) setActiveTab(openMenu as TabId);
     if (openMenu === null) setActiveTab(null);
   }, [openMenu]);
-
-  // Рассчитываем anchor point при открытии/закрытии меню
-  useEffect(() => {
-    if (menuIsOpen) {
-      // Даём время на анимацию открытия меню (spring ~200ms), потом считаем
-      const timer = setTimeout(() => {
-        const anchor = calcAnchor(headerRef, navRowRef, containerRef);
-        setAnchorPoint(anchor);
-      }, 50);
-      return () => clearTimeout(timer);
-    } else {
-      setAnchorPoint(null);
-    }
-  }, [menuIsOpen]);
-
-  // Пересчитываем anchor при resize
-  useEffect(() => {
-    if (!menuIsOpen) return;
-    const onResize = () => {
-      const anchor = calcAnchor(headerRef, navRowRef, containerRef);
-      setAnchorPoint(anchor);
-    };
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, [menuIsOpen]);
 
   const handleStroking = useCallback((v: boolean) => setIsStroking(v), []);
   const spawnHeart = useCallback((x: number, y: number) => {
@@ -337,7 +282,7 @@ export function HomePage({ petId }: Props) {
 
   const { evo, xpPct, partner, pMins, pOnline, sleepVal } = derived;
   const getCd = (a: string) => pet.cooldowns.find(c => c.action === a)?.available_at ?? null;
-  const isCd  = (a: string) => cdActive(getCd(a));
+  const isCd = (a: string) => cdActive(getCd(a));
 
   const showFloat = (t: string) => {
     setFloatText(t); setFloatShow(true);
@@ -350,7 +295,6 @@ export function HomePage({ petId }: Props) {
   };
 
   const handleClose = () => closeMenu();
-
   const handleTab = (tab: TabId) => {
     if (MENU_TABS.has(tab)) {
       if (activeTab === tab && menuIsOpen) { handleClose(); return; }
@@ -362,16 +306,6 @@ export function HomePage({ petId }: Props) {
     }
     setActiveTab(tab);
     closeMenu();
-  };
-
-  const handleInviteFromMenu = async () => {
-    try {
-      const { createInvite } = await import("../api/pets");
-      const inv = await createInvite(pet.id);
-      tg?.showAlert?.(`Ссылка:\n${inv.link}`);
-    } catch {
-      tg?.showAlert?.("Не удалось создать ссылку");
-    }
   };
 
   return (
@@ -405,7 +339,6 @@ export function HomePage({ petId }: Props) {
             display: "flex", alignItems: "center", gap: 8, flexShrink: 0,
           }}
         >
-          {/* Name + level + streak pill */}
           <div style={{
             display: "flex", alignItems: "center", gap: 7,
             ...G.heavy, borderRadius: 999, height: PILL_H, padding: "0 12px 0 7px",
@@ -442,18 +375,15 @@ export function HomePage({ petId }: Props) {
               </div>
             )}
           </div>
-
           <div style={{ flex: 1 }} />
-
-          {/* Status rings */}
           <div style={{
             ...G.heavy, borderRadius: 999, height: PILL_H, padding: "0 10px",
             display: "flex", gap: 4, alignItems: "center", flexShrink: 0,
           }}>
-            <StatusRing value={pet.hunger}    icon={IC.food} />
+            <StatusRing value={pet.hunger} icon={IC.food} />
             <StatusRing value={pet.happiness} icon={IC.game} />
-            <StatusRing value={sleepVal}      icon={IC.moon} />
-            <StatusRing value={pet.health}    icon={IC.wash} />
+            <StatusRing value={sleepVal} icon={IC.moon} />
+            <StatusRing value={pet.health} icon={IC.wash} />
           </div>
         </header>
 
@@ -470,8 +400,10 @@ export function HomePage({ petId }: Props) {
               isStroking={isStroking}
               onHeartAt={spawnHeart}
               petDomRef={petDomRef}
-              disabled={menuIsOpen}
-              anchorPoint={menuIsOpen ? anchorPoint : null}
+              anchored={menuIsOpen}
+              headerRef={headerRef}
+              navRowRef={navRowRef}
+              containerRef={containerRef}
             >
               <div ref={petDomRef} style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
                 <PetSVG
