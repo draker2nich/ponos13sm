@@ -1,8 +1,13 @@
 // mini-app/src/components/MenuPanel.tsx
-import { useRef, useMemo, useCallback } from "react";
+import { useRef, useMemo, useCallback, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { createPortal } from "react-dom";
 import { useMenuStore, MENU_ORDER, type MenuCategory } from "../store/useMenuStore";
+import { useCoinStore } from "../store/useCoinStore";
 import { NOTAP } from "./NavCarousel";
+import { HeartbeatGame } from "./HeartbeatGame";
+import { BasketballGame } from "./BasketballGame";
+import { FlappyPawGame } from "./FlappyPawGame";
 import type { Pet } from "../api/types";
 
 /* ── Styles ── */
@@ -36,6 +41,18 @@ const dangerBtn: React.CSSProperties = {
   color: "#fff", cursor: "pointer", fontFamily: "inherit", outline: "none", ...NOTAP,
 };
 
+const gameBtn: React.CSSProperties = {
+  padding: "14px 16px", borderRadius: 20,
+  background: "rgba(255,255,255,0.55)",
+  border: "1px solid rgba(255,255,255,0.75)",
+  fontSize: 13, fontWeight: 600, color: "rgba(0,0,0,0.65)",
+  cursor: "pointer", fontFamily: "inherit", outline: "none",
+  display: "flex", alignItems: "center", gap: 10,
+  width: "100%", textAlign: "left",
+  transition: "background 0.15s",
+  ...NOTAP,
+};
+
 /* ── Stat row ── */
 function StatRow({ label, value, color }: { label: string; value: number; color: string }) {
   const v = Math.max(0, Math.min(100, value));
@@ -55,8 +72,15 @@ function StatRow({ label, value, color }: { label: string; value: number; color:
   );
 }
 
+/* ── Game portal wrapper ── */
+type GameType = "heartbeat" | "basketball" | "flappy" | null;
+
 /* ── Per-category content ── */
-function menuContent(cat: MenuCategory, pet: Pet, sleepVal: number): React.ReactNode {
+function MenuContent({ cat, pet, sleepVal, onOpenGame }: {
+  cat: MenuCategory; pet: Pet; sleepVal: number; onOpenGame: (g: GameType) => void;
+}) {
+  const coins = useCoinStore(s => s.coins);
+
   switch (cat) {
     case "feed":
       return (
@@ -75,20 +99,70 @@ function menuContent(cat: MenuCategory, pet: Pet, sleepVal: number): React.React
     case "play":
       return (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <p style={{ fontSize: 13, color: "rgba(0,0,0,0.45)", textAlign: "center", margin: 0 }}>
-            Выбери игру
-          </p>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center" }}>
-            {["🎾 Мяч", "🧸 Игрушка", "🎈 Шарик", "🏀 Баскетбол", "🎮 Игра"].map(g => (
-              <button key={g} style={itemBtn}>{g}</button>
-            ))}
+          {/* Coin balance */}
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+            padding: "8px 16px", borderRadius: 999,
+            background: "linear-gradient(135deg, rgba(255,215,0,0.12), rgba(255,215,0,0.05))",
+            border: "1px solid rgba(255,215,0,0.25)",
+            alignSelf: "center",
+          }}>
+            <span style={{ fontSize: 18 }}>🪙</span>
+            <span style={{ fontSize: 16, fontWeight: 800, color: "rgba(180,140,20,0.85)" }}>{coins}</span>
           </div>
+
+          <p style={{ fontSize: 13, color: "rgba(0,0,0,0.45)", textAlign: "center", margin: 0 }}>
+            Играй в мини-игры и зарабатывай монетки!
+          </p>
+
+          <button style={gameBtn} onClick={() => onOpenGame("heartbeat")}>
+            <span style={{ fontSize: 28 }}>💓</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700 }}>Heartbeat</div>
+              <div style={{ fontSize: 11, color: "rgba(0,0,0,0.4)", marginTop: 2 }}>
+                Тапай в ритм сердца питомца
+              </div>
+            </div>
+            <span style={{ fontSize: 11, color: "rgba(180,140,20,0.7)", fontWeight: 700 }}>🪙</span>
+          </button>
+
+          <button style={gameBtn} onClick={() => onOpenGame("basketball")}>
+            <span style={{ fontSize: 28 }}>🏀</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700 }}>Баскетбол</div>
+              <div style={{ fontSize: 11, color: "rgba(0,0,0,0.4)", marginTop: 2 }}>
+                Забрасывай мячи свайпом
+              </div>
+            </div>
+            <span style={{ fontSize: 11, color: "rgba(180,140,20,0.7)", fontWeight: 700 }}>🪙</span>
+          </button>
+
+          <button style={gameBtn} onClick={() => onOpenGame("flappy")}>
+            <span style={{ fontSize: 28 }}>🐾</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700 }}>Flappy Paw</div>
+              <div style={{ fontSize: 11, color: "rgba(0,0,0,0.4)", marginTop: 2 }}>
+                Лети через препятствия, собирай монеты
+              </div>
+            </div>
+            <span style={{ fontSize: 11, color: "rgba(180,140,20,0.7)", fontWeight: 700 }}>🪙</span>
+          </button>
         </div>
       );
 
     case "shop":
       return (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+            padding: "8px 16px", borderRadius: 999,
+            background: "linear-gradient(135deg, rgba(255,215,0,0.12), rgba(255,215,0,0.05))",
+            border: "1px solid rgba(255,215,0,0.25)",
+            alignSelf: "center",
+          }}>
+            <span style={{ fontSize: 18 }}>🪙</span>
+            <span style={{ fontSize: 16, fontWeight: 800, color: "rgba(180,140,20,0.85)" }}>{coins}</span>
+          </div>
           <p style={{ fontSize: 13, color: "rgba(0,0,0,0.45)", textAlign: "center", margin: 0 }}>
             Магазин — скоро откроется!
           </p>
@@ -144,9 +218,7 @@ function menuContent(cat: MenuCategory, pet: Pet, sleepVal: number): React.React
               }}>
                 <span style={{ fontSize: 24 }}>👤</span>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(0,0,0,0.65)" }}>
-                    Партнёр подключён
-                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(0,0,0,0.65)" }}>Партнёр подключён</div>
                   <div style={{ fontSize: 11, color: "rgba(0,0,0,0.35)", marginTop: 2 }}>
                     {pet.owners.filter(o => !o.is_creator).length} совладелец
                   </div>
@@ -162,21 +234,19 @@ function menuContent(cat: MenuCategory, pet: Pet, sleepVal: number): React.React
     case "settings":
       return (
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          {/* Pet info */}
           <div style={{
             padding: "14px 16px", borderRadius: 18,
             background: "rgba(255,255,255,0.55)",
             border: "1px solid rgba(255,255,255,0.75)",
             display: "flex", flexDirection: "column", gap: 8,
           }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(0,0,0,0.60)", marginBottom: 2 }}>
-              {pet.name}
-            </div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(0,0,0,0.60)", marginBottom: 2 }}>{pet.name}</div>
             <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
               {[
                 { label: "Уровень", value: `${pet.level}` },
                 { label: "Возраст", value: `${pet.age_days} дн.` },
                 { label: "Стрик", value: `🔥 ${pet.streak}` },
+                { label: "Монеты", value: `🪙 ${coins}` },
                 { label: "Опыт", value: `${pet.experience} / ${pet.level * 100}` },
               ].map(({ label, value }) => (
                 <div key={label}>
@@ -186,15 +256,11 @@ function menuContent(cat: MenuCategory, pet: Pet, sleepVal: number): React.React
               ))}
             </div>
           </div>
-
-          {/* Stats */}
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <StatRow label="Сытость 🍎"  value={pet.hunger}    color="#f59e0b" />
-            <StatRow label="Счастье 🎾"  value={pet.happiness} color="#34d399" />
-            <StatRow label="Здоровье 🛁" value={pet.health}    color="#60a5fa" />
+            <StatRow label="Сытость 🍎" value={pet.hunger} color="#f59e0b" />
+            <StatRow label="Счастье 🎾" value={pet.happiness} color="#34d399" />
+            <StatRow label="Здоровье 🛁" value={pet.health} color="#60a5fa" />
           </div>
-
-          {/* Danger zone */}
           <div style={{ display: "flex", justifyContent: "center", marginTop: 4 }}>
             <button style={dangerBtn}>Сбросить питомца 🗑</button>
           </div>
@@ -209,14 +275,11 @@ function menuContent(cat: MenuCategory, pet: Pet, sleepVal: number): React.React
 /* ════════════════════════════════════════════
    MenuPanel
    ════════════════════════════════════════════ */
-interface Props {
-  menuH: string;
-  pet: Pet;
-  sleepVal: number;
-}
+interface Props { menuH: string; pet: Pet; sleepVal: number }
 
 export function MenuPanel({ menuH, pet, sleepVal }: Props) {
   const { openMenu, prevMenu, setMenu, closeMenu } = useMenuStore();
+  const [activeGame, setActiveGame] = useState<GameType>(null);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
 
   const handleStart = useCallback((cx: number, cy: number) => {
@@ -245,35 +308,52 @@ export function MenuPanel({ menuH, pet, sleepVal }: Props) {
   }, [prevMenu, openMenu]);
 
   return (
-    <div
-      onTouchStart={e => { const t = e.touches[0]; handleStart(t.clientX, t.clientY); }}
-      onTouchEnd={e   => { const t = e.changedTouches[0]; handleEnd(t.clientX, t.clientY); }}
-      onMouseDown={e  => handleStart(e.clientX, e.clientY)}
-      onMouseUp={e    => handleEnd(e.clientX, e.clientY)}
-      style={{
-        width: "100%", height: menuH,
-        position: "relative", overflow: "hidden",
-        touchAction: "pan-y pinch-zoom",
-        ...NOTAP,
-      }}
-    >
-      <AnimatePresence mode="popLayout" custom={dir}>
-        {openMenu && (
-          <motion.div
-            key={openMenu}
-            custom={dir}
-            initial={{ x: dir !== 0 ? `${dir * 100}%` : 0, y: dir === 0 ? "100%" : 0, opacity: dir !== 0 ? 0.5 : 1 }}
-            animate={{ x: 0, y: 0, opacity: 1 }}
-            exit={{ x: dir !== 0 ? `${-dir * 100}%` : 0, y: dir === 0 ? "100%" : 0, opacity: dir !== 0 ? 0.5 : 1 }}
-            transition={{ type: "spring", stiffness: 500, damping: 40, mass: 0.8 }}
-            style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}
-          >
-            <div style={{ flex: 1, overflowY: "auto", padding: "16px 16px 24px", scrollbarWidth: "none" }}>
-              {menuContent(openMenu as MenuCategory, pet, sleepVal)}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+    <>
+      <div
+        onTouchStart={e => { const t = e.touches[0]; handleStart(t.clientX, t.clientY); }}
+        onTouchEnd={e => { const t = e.changedTouches[0]; handleEnd(t.clientX, t.clientY); }}
+        onMouseDown={e => handleStart(e.clientX, e.clientY)}
+        onMouseUp={e => handleEnd(e.clientX, e.clientY)}
+        style={{
+          width: "100%", height: menuH,
+          position: "relative", overflow: "hidden",
+          touchAction: "pan-y pinch-zoom",
+          ...NOTAP,
+        }}
+      >
+        <AnimatePresence mode="popLayout" custom={dir}>
+          {openMenu && (
+            <motion.div
+              key={openMenu}
+              custom={dir}
+              initial={{ x: dir !== 0 ? `${dir * 100}%` : 0, y: dir === 0 ? "100%" : 0, opacity: dir !== 0 ? 0.5 : 1 }}
+              animate={{ x: 0, y: 0, opacity: 1 }}
+              exit={{ x: dir !== 0 ? `${-dir * 100}%` : 0, y: dir === 0 ? "100%" : 0, opacity: dir !== 0 ? 0.5 : 1 }}
+              transition={{ type: "spring", stiffness: 500, damping: 40, mass: 0.8 }}
+              style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}
+            >
+              <div style={{ flex: 1, overflowY: "auto", padding: "16px 16px 24px", scrollbarWidth: "none" }}>
+                <MenuContent
+                  cat={openMenu as MenuCategory}
+                  pet={pet}
+                  sleepVal={sleepVal}
+                  onOpenGame={setActiveGame}
+                />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Game portals — rendered outside menu for fullscreen */}
+      {activeGame && createPortal(
+        <AnimatePresence>
+          {activeGame === "heartbeat" && <HeartbeatGame onClose={() => setActiveGame(null)} />}
+          {activeGame === "basketball" && <BasketballGame onClose={() => setActiveGame(null)} />}
+          {activeGame === "flappy" && <FlappyPawGame onClose={() => setActiveGame(null)} />}
+        </AnimatePresence>,
+        document.body
+      )}
+    </>
   );
 }
