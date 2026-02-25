@@ -8,6 +8,8 @@ import { NOTAP } from "./NavCarousel";
 import { HeartbeatGame } from "./HeartbeatGame";
 import { BasketballGame } from "./BasketballGame";
 import { FlappyPawGame } from "./FlappyPawGame";
+import { MemoryMatchGame } from "./MemoryMatchGame";
+import { BubblePopGame } from "./BubblePopGame";
 import type { Pet } from "../api/types";
 
 /* ── Styles ── */
@@ -72,8 +74,7 @@ function StatRow({ label, value, color }: { label: string; value: number; color:
   );
 }
 
-/* ── Game portal wrapper ── */
-type GameType = "heartbeat" | "basketball" | "flappy" | null;
+type GameType = "heartbeat" | "basketball" | "flappy" | "memory" | "bubble" | null;
 
 /* ── Per-category content ── */
 function MenuContent({ cat, pet, sleepVal, onOpenGame }: {
@@ -98,30 +99,25 @@ function MenuContent({ cat, pet, sleepVal, onOpenGame }: {
 
     case "play":
       return (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {/* Coin balance */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <div style={{
             display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
             padding: "8px 16px", borderRadius: 999,
             background: "linear-gradient(135deg, rgba(255,215,0,0.12), rgba(255,215,0,0.05))",
-            border: "1px solid rgba(255,215,0,0.25)",
-            alignSelf: "center",
+            border: "1px solid rgba(255,215,0,0.25)", alignSelf: "center",
           }}>
             <span style={{ fontSize: 18 }}>🪙</span>
             <span style={{ fontSize: 16, fontWeight: 800, color: "rgba(180,140,20,0.85)" }}>{coins}</span>
           </div>
-
           <p style={{ fontSize: 13, color: "rgba(0,0,0,0.45)", textAlign: "center", margin: 0 }}>
-            Играй в мини-игры и зарабатывай монетки!
+            Играй и зарабатывай монетки!
           </p>
 
           <button style={gameBtn} onClick={() => onOpenGame("heartbeat")}>
             <span style={{ fontSize: 28 }}>💓</span>
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 700 }}>Heartbeat</div>
-              <div style={{ fontSize: 11, color: "rgba(0,0,0,0.4)", marginTop: 2 }}>
-                Тапай в ритм сердца питомца
-              </div>
+              <div style={{ fontSize: 11, color: "rgba(0,0,0,0.4)", marginTop: 2 }}>Тапай в ритм • Fever mode • 30с</div>
             </div>
             <span style={{ fontSize: 11, color: "rgba(180,140,20,0.7)", fontWeight: 700 }}>🪙</span>
           </button>
@@ -130,9 +126,7 @@ function MenuContent({ cat, pet, sleepVal, onOpenGame }: {
             <span style={{ fontSize: 28 }}>🏀</span>
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 700 }}>Баскетбол</div>
-              <div style={{ fontSize: 11, color: "rgba(0,0,0,0.4)", marginTop: 2 }}>
-                Забрасывай мячи свайпом
-              </div>
+              <div style={{ fontSize: 11, color: "rgba(0,0,0,0.4)", marginTop: 2 }}>Ветер • Сужение корзины • 30с</div>
             </div>
             <span style={{ fontSize: 11, color: "rgba(180,140,20,0.7)", fontWeight: 700 }}>🪙</span>
           </button>
@@ -141,9 +135,25 @@ function MenuContent({ cat, pet, sleepVal, onOpenGame }: {
             <span style={{ fontSize: 28 }}>🐾</span>
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 700 }}>Flappy Paw</div>
-              <div style={{ fontSize: 11, color: "rgba(0,0,0,0.4)", marginTop: 2 }}>
-                Лети через препятствия, собирай монеты
-              </div>
+              <div style={{ fontSize: 11, color: "rgba(0,0,0,0.4)", marginTop: 2 }}>Ускорение • Магниты • Движ. трубы</div>
+            </div>
+            <span style={{ fontSize: 11, color: "rgba(180,140,20,0.7)", fontWeight: 700 }}>🪙</span>
+          </button>
+
+          <button style={gameBtn} onClick={() => onOpenGame("memory")}>
+            <span style={{ fontSize: 28 }}>🧠</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700 }}>Memory Match</div>
+              <div style={{ fontSize: 11, color: "rgba(0,0,0,0.4)", marginTop: 2 }}>Найди пары • 5 уровней</div>
+            </div>
+            <span style={{ fontSize: 11, color: "rgba(180,140,20,0.7)", fontWeight: 700 }}>🪙</span>
+          </button>
+
+          <button style={gameBtn} onClick={() => onOpenGame("bubble")}>
+            <span style={{ fontSize: 28 }}>🫧</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700 }}>Bubble Pop</div>
+              <div style={{ fontSize: 11, color: "rgba(0,0,0,0.4)", marginTop: 2 }}>Лопай пузыри • Избегай бомб</div>
             </div>
             <span style={{ fontSize: 11, color: "rgba(180,140,20,0.7)", fontWeight: 700 }}>🪙</span>
           </button>
@@ -157,15 +167,12 @@ function MenuContent({ cat, pet, sleepVal, onOpenGame }: {
             display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
             padding: "8px 16px", borderRadius: 999,
             background: "linear-gradient(135deg, rgba(255,215,0,0.12), rgba(255,215,0,0.05))",
-            border: "1px solid rgba(255,215,0,0.25)",
-            alignSelf: "center",
+            border: "1px solid rgba(255,215,0,0.25)", alignSelf: "center",
           }}>
             <span style={{ fontSize: 18 }}>🪙</span>
             <span style={{ fontSize: 16, fontWeight: 800, color: "rgba(180,140,20,0.85)" }}>{coins}</span>
           </div>
-          <p style={{ fontSize: 13, color: "rgba(0,0,0,0.45)", textAlign: "center", margin: 0 }}>
-            Магазин — скоро откроется!
-          </p>
+          <p style={{ fontSize: 13, color: "rgba(0,0,0,0.45)", textAlign: "center", margin: 0 }}>Магазин — скоро откроется!</p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center" }}>
             {["🎀 Бант", "👑 Корона", "🛁 Ванна", "🏠 Домик", "💎 Кристалл"].map(i => (
               <button key={i} style={itemBtnDisabled}>{i}</button>
@@ -209,19 +216,16 @@ function MenuContent({ cat, pet, sleepVal, onOpenGame }: {
             Пригласи друга ухаживать<br />за питомцем вместе!
           </p>
           {pet.owners.length > 1 ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%" }}>
-              <div style={{
-                display: "flex", alignItems: "center", gap: 10,
-                padding: "12px 16px", borderRadius: 16,
-                background: "rgba(255,255,255,0.55)",
-                border: "1px solid rgba(255,255,255,0.75)",
-              }}>
-                <span style={{ fontSize: 24 }}>👤</span>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(0,0,0,0.65)" }}>Партнёр подключён</div>
-                  <div style={{ fontSize: 11, color: "rgba(0,0,0,0.35)", marginTop: 2 }}>
-                    {pet.owners.filter(o => !o.is_creator).length} совладелец
-                  </div>
+            <div style={{
+              display: "flex", alignItems: "center", gap: 10,
+              padding: "12px 16px", borderRadius: 16,
+              background: "rgba(255,255,255,0.55)", border: "1px solid rgba(255,255,255,0.75)",
+            }}>
+              <span style={{ fontSize: 24 }}>👤</span>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(0,0,0,0.65)" }}>Партнёр подключён</div>
+                <div style={{ fontSize: 11, color: "rgba(0,0,0,0.35)", marginTop: 2 }}>
+                  {pet.owners.filter(o => !o.is_creator).length} совладелец
                 </div>
               </div>
             </div>
@@ -236,8 +240,7 @@ function MenuContent({ cat, pet, sleepVal, onOpenGame }: {
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div style={{
             padding: "14px 16px", borderRadius: 18,
-            background: "rgba(255,255,255,0.55)",
-            border: "1px solid rgba(255,255,255,0.75)",
+            background: "rgba(255,255,255,0.55)", border: "1px solid rgba(255,255,255,0.75)",
             display: "flex", flexDirection: "column", gap: 8,
           }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(0,0,0,0.60)", marginBottom: 2 }}>{pet.name}</div>
@@ -246,7 +249,7 @@ function MenuContent({ cat, pet, sleepVal, onOpenGame }: {
                 { label: "Уровень", value: `${pet.level}` },
                 { label: "Возраст", value: `${pet.age_days} дн.` },
                 { label: "Стрик", value: `🔥 ${pet.streak}` },
-                { label: "Монеты", value: `🪙 ${coins}` },
+                { label: "Монеты", value: `🪙 ${useCoinStore.getState().coins}` },
                 { label: "Опыт", value: `${pet.experience} / ${pet.level * 100}` },
               ].map(({ label, value }) => (
                 <div key={label}>
@@ -345,12 +348,14 @@ export function MenuPanel({ menuH, pet, sleepVal }: Props) {
         </AnimatePresence>
       </div>
 
-      {/* Game portals — rendered outside menu for fullscreen */}
+      {/* Game portals */}
       {activeGame && createPortal(
         <AnimatePresence>
           {activeGame === "heartbeat" && <HeartbeatGame onClose={() => setActiveGame(null)} />}
           {activeGame === "basketball" && <BasketballGame onClose={() => setActiveGame(null)} />}
           {activeGame === "flappy" && <FlappyPawGame onClose={() => setActiveGame(null)} />}
+          {activeGame === "memory" && <MemoryMatchGame onClose={() => setActiveGame(null)} />}
+          {activeGame === "bubble" && <BubblePopGame onClose={() => setActiveGame(null)} />}
         </AnimatePresence>,
         document.body
       )}
