@@ -9,7 +9,7 @@ import { HeartbeatGame } from "./HeartbeatGame";
 import { BasketballGame } from "./BasketballGame";
 import { FlappyPawGame } from "./FlappyPawGame";
 import { MemoryMatchGame } from "./MemoryMatchGame";
-import { BubblePopGame } from "./BubblePopGame";
+import { FruitNinjaGame } from "./FruitNinjaGame";
 import type { Pet } from "../api/types";
 
 /* ── Styles ── */
@@ -74,7 +74,7 @@ function StatRow({ label, value, color }: { label: string; value: number; color:
   );
 }
 
-type GameType = "heartbeat" | "basketball" | "flappy" | "memory" | "bubble" | null;
+type GameType = "heartbeat" | "basketball" | "flappy" | "memory" | "fruitninja" | null;
 
 /* ── Per-category content ── */
 function MenuContent({ cat, pet, sleepVal, onOpenGame }: {
@@ -149,11 +149,11 @@ function MenuContent({ cat, pet, sleepVal, onOpenGame }: {
             <span style={{ fontSize: 11, color: "rgba(180,140,20,0.7)", fontWeight: 700 }}>🪙</span>
           </button>
 
-          <button style={gameBtn} onClick={() => onOpenGame("bubble")}>
-            <span style={{ fontSize: 28 }}>🫧</span>
+          <button style={gameBtn} onClick={() => onOpenGame("fruitninja")}>
+            <span style={{ fontSize: 28 }}>🗡️</span>
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700 }}>Bubble Pop</div>
-              <div style={{ fontSize: 11, color: "rgba(0,0,0,0.4)", marginTop: 2 }}>Лопай пузыри • Избегай бомб</div>
+              <div style={{ fontWeight: 700 }}>Fruit Ninja</div>
+              <div style={{ fontSize: 11, color: "rgba(0,0,0,0.4)", marginTop: 2 }}>Разрезай фрукты • Избегай бомб</div>
             </div>
             <span style={{ fontSize: 11, color: "rgba(180,140,20,0.7)", fontWeight: 700 }}>🪙</span>
           </button>
@@ -355,7 +355,7 @@ export function MenuPanel({ menuH, pet, sleepVal }: Props) {
           {activeGame === "basketball" && <BasketballGame onClose={() => setActiveGame(null)} />}
           {activeGame === "flappy" && <FlappyPawGame onClose={() => setActiveGame(null)} />}
           {activeGame === "memory" && <MemoryMatchGame onClose={() => setActiveGame(null)} />}
-          {activeGame === "bubble" && <BubblePopGame onClose={() => setActiveGame(null)} />}
+          {activeGame === "fruitninja" && <FruitNinjaGame onClose={() => setActiveGame(null)} />}
         </AnimatePresence>,
         document.body
       )}
