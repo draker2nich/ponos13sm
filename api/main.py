@@ -48,15 +48,36 @@ async def health():
 
 # ─── Статика и SPA ───────────────────────────────────────────────────────────
 DIST = Path(__file__).parent.parent / "mini-app" / "dist"
+STATIC = Path(__file__).parent.parent / "static"
+LANDING = STATIC / "landing.html"
 
+# Mini-app static assets
 if DIST.exists():
     if (DIST / "assets").exists():
         app.mount("/assets", StaticFiles(directory=DIST / "assets"), name="assets")
-
-    # Переименуй папку public/pets → public/sprites (или любое другое имя)
     if (DIST / "sprites").exists():
         app.mount("/sprites", StaticFiles(directory=DIST / "sprites"), name="sprites")
 
-    @app.get("/{full_path:path}")
-    async def spa_fallback(request: Request, full_path: str):
+
+# Landing page на корне домена (для браузерного доступа)
+@app.get("/")
+async def landing_page():
+    if LANDING.exists():
+        return FileResponse(LANDING, media_type="text/html")
+    # Fallback: если лендинга нет, показываем mini-app
+    if DIST.exists() and (DIST / "index.html").exists():
         return FileResponse(DIST / "index.html")
+    return {"message": "Pet Together API is running"}
+
+
+# SPA fallback для mini-app роутов (всё кроме /api, /health, /assets, /sprites)
+@app.get("/{full_path:path}")
+async def spa_fallback(request: Request, full_path: str):
+    # Не ловим API-пути
+    if full_path.startswith(("pets", "invites", "health")):
+        return {"detail": "Not found"}
+
+    if DIST.exists() and (DIST / "index.html").exists():
+        return FileResponse(DIST / "index.html")
+
+    return {"detail": "Not found"}

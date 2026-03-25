@@ -13,7 +13,6 @@ html, body, #root {
 }
 
 body { overflow-x: hidden; }
-
 button { font-family: inherit; }
 
 /* ── Kill mobile tap highlight & text selection globally ── */
@@ -22,7 +21,6 @@ button { font-family: inherit; }
   -webkit-touch-callout: none;
 }
 
-/* Prevent text/SVG selection app-wide */
 #root {
   -webkit-user-select: none;
   -moz-user-select: none;
@@ -30,7 +28,6 @@ button { font-family: inherit; }
   user-select: none;
 }
 
-/* Allow selection only in explicit inputs */
 input, textarea {
   -webkit-user-select: text;
   -moz-user-select: text;
@@ -38,7 +35,6 @@ input, textarea {
   user-select: text;
 }
 
-/* Kill focus outlines on touch (keep for keyboard a11y via :focus-visible) */
 button:focus:not(:focus-visible),
 div:focus:not(:focus-visible),
 a:focus:not(:focus-visible) {
@@ -61,3 +57,15 @@ a:focus:not(:focus-visible) {
 /* Hide scrollbar globally */
 ::-webkit-scrollbar { display: none; }
 * { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ── GPU-accelerated heart float animation ── */
+@keyframes heart-float {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) scale(0.5);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--hx, 0), var(--hy, -40px)) scale(1.1);
+  }
+}

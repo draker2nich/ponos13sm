@@ -1,15 +1,9 @@
 // mini-app/src/components/MenuPanel.tsx
 import { useRef, useMemo, useCallback, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { createPortal } from "react-dom";
 import { useMenuStore, MENU_ORDER, type MenuCategory } from "../store/useMenuStore";
 import { useCoinStore } from "../store/useCoinStore";
 import { NOTAP } from "./NavCarousel";
-import { HeartbeatGame } from "./HeartbeatGame";
-import { BasketballGame } from "./BasketballGame";
-import { FlappyPawGame } from "./FlappyPawGame";
-import { MemoryMatchGame } from "./MemoryMatchGame";
-import { FruitNinjaGame } from "./FruitNinjaGame";
 import type { Pet } from "../api/types";
 
 /* ── Styles ── */
@@ -43,18 +37,6 @@ const dangerBtn: React.CSSProperties = {
   color: "#fff", cursor: "pointer", fontFamily: "inherit", outline: "none", ...NOTAP,
 };
 
-const gameBtn: React.CSSProperties = {
-  padding: "14px 16px", borderRadius: 20,
-  background: "rgba(255,255,255,0.55)",
-  border: "1px solid rgba(255,255,255,0.75)",
-  fontSize: 13, fontWeight: 600, color: "rgba(0,0,0,0.65)",
-  cursor: "pointer", fontFamily: "inherit", outline: "none",
-  display: "flex", alignItems: "center", gap: 10,
-  width: "100%", textAlign: "left",
-  transition: "background 0.15s",
-  ...NOTAP,
-};
-
 /* ── Stat row ── */
 function StatRow({ label, value, color }: { label: string; value: number; color: string }) {
   const v = Math.max(0, Math.min(100, value));
@@ -74,11 +56,9 @@ function StatRow({ label, value, color }: { label: string; value: number; color:
   );
 }
 
-type GameType = "heartbeat" | "basketball" | "flappy" | "memory" | "fruitninja" | null;
-
 /* ── Per-category content ── */
-function MenuContent({ cat, pet, sleepVal, onOpenGame }: {
-  cat: MenuCategory; pet: Pet; sleepVal: number; onOpenGame: (g: GameType) => void;
+function MenuContent({ cat, pet, sleepVal }: {
+  cat: MenuCategory; pet: Pet; sleepVal: number;
 }) {
   const coins = useCoinStore(s => s.coins);
 
@@ -99,64 +79,20 @@ function MenuContent({ cat, pet, sleepVal, onOpenGame }: {
 
     case "play":
       return (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "center" }}>
           <div style={{
             display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
             padding: "8px 16px", borderRadius: 999,
             background: "linear-gradient(135deg, rgba(255,215,0,0.12), rgba(255,215,0,0.05))",
-            border: "1px solid rgba(255,215,0,0.25)", alignSelf: "center",
+            border: "1px solid rgba(255,215,0,0.25)",
           }}>
             <span style={{ fontSize: 18 }}>🪙</span>
             <span style={{ fontSize: 16, fontWeight: 800, color: "rgba(180,140,20,0.85)" }}>{coins}</span>
           </div>
-          <p style={{ fontSize: 13, color: "rgba(0,0,0,0.45)", textAlign: "center", margin: 0 }}>
-            Играй и зарабатывай монетки!
+          <span style={{ fontSize: 48 }}>🎮</span>
+          <p style={{ fontSize: 14, color: "rgba(0,0,0,0.45)", textAlign: "center", margin: 0, lineHeight: 1.5 }}>
+            Игры скоро появятся!<br />Следи за обновлениями.
           </p>
-
-          <button style={gameBtn} onClick={() => onOpenGame("heartbeat")}>
-            <span style={{ fontSize: 28 }}>💓</span>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700 }}>Heartbeat</div>
-              <div style={{ fontSize: 11, color: "rgba(0,0,0,0.4)", marginTop: 2 }}>Тапай в ритм • Fever mode • 30с</div>
-            </div>
-            <span style={{ fontSize: 11, color: "rgba(180,140,20,0.7)", fontWeight: 700 }}>🪙</span>
-          </button>
-
-          <button style={gameBtn} onClick={() => onOpenGame("basketball")}>
-            <span style={{ fontSize: 28 }}>🏀</span>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700 }}>Баскетбол</div>
-              <div style={{ fontSize: 11, color: "rgba(0,0,0,0.4)", marginTop: 2 }}>Ветер • Сужение корзины • 30с</div>
-            </div>
-            <span style={{ fontSize: 11, color: "rgba(180,140,20,0.7)", fontWeight: 700 }}>🪙</span>
-          </button>
-
-          <button style={gameBtn} onClick={() => onOpenGame("flappy")}>
-            <span style={{ fontSize: 28 }}>🐾</span>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700 }}>Flappy Paw</div>
-              <div style={{ fontSize: 11, color: "rgba(0,0,0,0.4)", marginTop: 2 }}>Ускорение • Магниты • Движ. трубы</div>
-            </div>
-            <span style={{ fontSize: 11, color: "rgba(180,140,20,0.7)", fontWeight: 700 }}>🪙</span>
-          </button>
-
-          <button style={gameBtn} onClick={() => onOpenGame("memory")}>
-            <span style={{ fontSize: 28 }}>🧠</span>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700 }}>Memory Match</div>
-              <div style={{ fontSize: 11, color: "rgba(0,0,0,0.4)", marginTop: 2 }}>Найди пары • 5 уровней</div>
-            </div>
-            <span style={{ fontSize: 11, color: "rgba(180,140,20,0.7)", fontWeight: 700 }}>🪙</span>
-          </button>
-
-          <button style={gameBtn} onClick={() => onOpenGame("fruitninja")}>
-            <span style={{ fontSize: 28 }}>🗡️</span>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700 }}>Fruit Ninja</div>
-              <div style={{ fontSize: 11, color: "rgba(0,0,0,0.4)", marginTop: 2 }}>Разрезай фрукты • Избегай бомб</div>
-            </div>
-            <span style={{ fontSize: 11, color: "rgba(180,140,20,0.7)", fontWeight: 700 }}>🪙</span>
-          </button>
         </div>
       );
 
@@ -282,7 +218,6 @@ interface Props { menuH: string; pet: Pet; sleepVal: number }
 
 export function MenuPanel({ menuH, pet, sleepVal }: Props) {
   const { openMenu, prevMenu, setMenu, closeMenu } = useMenuStore();
-  const [activeGame, setActiveGame] = useState<GameType>(null);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
 
   const handleStart = useCallback((cx: number, cy: number) => {
@@ -311,54 +246,35 @@ export function MenuPanel({ menuH, pet, sleepVal }: Props) {
   }, [prevMenu, openMenu]);
 
   return (
-    <>
-      <div
-        onTouchStart={e => { const t = e.touches[0]; handleStart(t.clientX, t.clientY); }}
-        onTouchEnd={e => { const t = e.changedTouches[0]; handleEnd(t.clientX, t.clientY); }}
-        onMouseDown={e => handleStart(e.clientX, e.clientY)}
-        onMouseUp={e => handleEnd(e.clientX, e.clientY)}
-        style={{
-          width: "100%", height: menuH,
-          position: "relative", overflow: "hidden",
-          touchAction: "pan-y pinch-zoom",
-          ...NOTAP,
-        }}
-      >
-        <AnimatePresence mode="popLayout" custom={dir}>
-          {openMenu && (
-            <motion.div
-              key={openMenu}
-              custom={dir}
-              initial={{ x: dir !== 0 ? `${dir * 100}%` : 0, y: dir === 0 ? "100%" : 0, opacity: dir !== 0 ? 0.5 : 1 }}
-              animate={{ x: 0, y: 0, opacity: 1 }}
-              exit={{ x: dir !== 0 ? `${-dir * 100}%` : 0, y: dir === 0 ? "100%" : 0, opacity: dir !== 0 ? 0.5 : 1 }}
-              transition={{ type: "spring", stiffness: 500, damping: 40, mass: 0.8 }}
-              style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}
-            >
-              <div style={{ flex: 1, overflowY: "auto", padding: "16px 16px 24px", scrollbarWidth: "none" }}>
-                <MenuContent
-                  cat={openMenu as MenuCategory}
-                  pet={pet}
-                  sleepVal={sleepVal}
-                  onOpenGame={setActiveGame}
-                />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      {/* Game portals */}
-      {activeGame && createPortal(
-        <AnimatePresence>
-          {activeGame === "heartbeat" && <HeartbeatGame onClose={() => setActiveGame(null)} />}
-          {activeGame === "basketball" && <BasketballGame onClose={() => setActiveGame(null)} />}
-          {activeGame === "flappy" && <FlappyPawGame onClose={() => setActiveGame(null)} />}
-          {activeGame === "memory" && <MemoryMatchGame onClose={() => setActiveGame(null)} />}
-          {activeGame === "fruitninja" && <FruitNinjaGame onClose={() => setActiveGame(null)} />}
-        </AnimatePresence>,
-        document.body
-      )}
-    </>
+    <div
+      onTouchStart={e => { const t = e.touches[0]; handleStart(t.clientX, t.clientY); }}
+      onTouchEnd={e => { const t = e.changedTouches[0]; handleEnd(t.clientX, t.clientY); }}
+      onMouseDown={e => handleStart(e.clientX, e.clientY)}
+      onMouseUp={e => handleEnd(e.clientX, e.clientY)}
+      style={{
+        width: "100%", height: menuH,
+        position: "relative", overflow: "hidden",
+        touchAction: "pan-y pinch-zoom",
+        ...NOTAP,
+      }}
+    >
+      <AnimatePresence mode="popLayout" custom={dir}>
+        {openMenu && (
+          <motion.div
+            key={openMenu}
+            custom={dir}
+            initial={{ x: dir !== 0 ? `${dir * 100}%` : 0, y: dir === 0 ? "100%" : 0, opacity: dir !== 0 ? 0.5 : 1 }}
+            animate={{ x: 0, y: 0, opacity: 1 }}
+            exit={{ x: dir !== 0 ? `${-dir * 100}%` : 0, y: dir === 0 ? "100%" : 0, opacity: dir !== 0 ? 0.5 : 1 }}
+            transition={{ type: "spring", stiffness: 500, damping: 40, mass: 0.8 }}
+            style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}
+          >
+            <div style={{ flex: 1, overflowY: "auto", padding: "16px 16px 24px", scrollbarWidth: "none" }}>
+              <MenuContent cat={openMenu as MenuCategory} pet={pet} sleepVal={sleepVal} />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }

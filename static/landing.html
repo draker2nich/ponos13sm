@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pet Together — Виртуальный питомец для двоих</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #07070c;
+      --surface: rgba(255,255,255,0.04);
+      --border: rgba(255,255,255,0.08);
+      --text: rgba(255,255,255,0.87);
+      --text-dim: rgba(255,255,255,0.45);
+      --accent: #818cf8;
+      --accent-glow: rgba(129,140,248,0.25);
+      --pink: #f9a8d4;
+      --green: #6ee7b7;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    /* ── Ambient blobs ── */
+    .blobs {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      overflow: hidden;
+    }
+    .blob {
+      position: absolute; border-radius: 50%;
+      filter: blur(80px);
+      animation: drift 20s ease-in-out infinite alternate;
+    }
+    .blob-1 { width: 500px; height: 500px; top: -10%; left: -10%; background: rgba(129,140,248,0.12); }
+    .blob-2 { width: 400px; height: 400px; top: 30%; right: -8%; background: rgba(249,168,212,0.10); animation-delay: -7s; }
+    .blob-3 { width: 350px; height: 350px; bottom: -5%; left: 20%; background: rgba(110,231,183,0.08); animation-delay: -14s; }
+
+    @keyframes drift {
+      0%   { transform: translate(0, 0) scale(1); }
+      100% { transform: translate(40px, -30px) scale(1.08); }
+    }
+
+    /* ── Layout ── */
+    .container {
+      position: relative; z-index: 1;
+      max-width: 720px; margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* ── Nav ── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      background: rgba(7,7,12,0.75);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-inner {
+      max-width: 720px; margin: 0 auto;
+      padding: 16px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .logo { display: flex; align-items: center; gap: 8; text-decoration: none; }
+    .logo-icon { font-size: 24px; }
+    .logo-text { font-size: 16px; font-weight: 800; color: var(--text); letter-spacing: -0.02em; }
+
+    .nav-cta {
+      padding: 10px 22px; border-radius: 12px; border: none;
+      background: var(--accent); color: #fff;
+      font-size: 13px; font-weight: 700; font-family: inherit;
+      cursor: pointer; text-decoration: none;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .nav-cta:hover { transform: translateY(-1px); box-shadow: 0 4px 20px var(--accent-glow); }
+
+    /* ── Hero ── */
+    .hero {
+      text-align: center;
+      padding: 80px 0 60px;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 16px; border-radius: 999;
+      background: var(--surface); border: 1px solid var(--border);
+      font-size: 12px; font-weight: 600; color: var(--text-dim);
+      margin-bottom: 24px;
+    }
+    .hero h1 {
+      font-size: clamp(32px, 7vw, 52px);
+      font-weight: 900; letter-spacing: -0.03em;
+      line-height: 1.1; margin-bottom: 16px;
+    }
+    .hero h1 .gradient {
+      background: linear-gradient(135deg, var(--accent), var(--pink));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero p {
+      font-size: clamp(15px, 3.5vw, 18px);
+      color: var(--text-dim); line-height: 1.6;
+      max-width: 480px; margin: 0 auto 32px;
+    }
+    .hero-cta {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 16px 36px; border-radius: 16px; border: none;
+      background: linear-gradient(135deg, var(--accent), #a78bfa);
+      color: #fff; font-size: 16px; font-weight: 700; font-family: inherit;
+      cursor: pointer; text-decoration: none;
+      transition: transform 0.15s, box-shadow 0.2s;
+      box-shadow: 0 4px 24px var(--accent-glow);
+    }
+    .hero-cta:hover { transform: translateY(-2px); box-shadow: 0 8px 32px var(--accent-glow); }
+
+    /* ── Pet preview ── */
+    .pet-preview {
+      display: flex; justify-content: center;
+      padding: 40px 0 20px; gap: 24px; flex-wrap: wrap;
+    }
+    .pet-card {
+      width: 100px; height: 120px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 24px;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+    .pet-card:hover { transform: translateY(-4px); border-color: rgba(255,255,255,0.15); }
+    .pet-card .emoji { font-size: 40px; }
+    .pet-card .label { font-size: 11px; font-weight: 600; color: var(--text-dim); }
+
+    /* ── Features ── */
+    .features {
+      padding: 60px 0;
+      display: grid; grid-template-columns: 1fr; gap: 16px;
+    }
+    @media (min-width: 500px) { .features { grid-template-columns: 1fr 1fr; } }
+
+    .feature {
+      padding: 24px; border-radius: 20px;
+      background: var(--surface); border: 1px solid var(--border);
+      transition: border-color 0.2s;
+    }
+    .feature:hover { border-color: rgba(255,255,255,0.12); }
+    .feature .icon { font-size: 28px; margin-bottom: 12px; }
+    .feature h3 { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+    .feature p { font-size: 13px; color: var(--text-dim); line-height: 1.5; }
+
+    /* ── How it works ── */
+    .steps {
+      padding: 40px 0 60px; text-align: center;
+    }
+    .steps h2 {
+      font-size: clamp(22px, 5vw, 30px); font-weight: 800;
+      margin-bottom: 32px; letter-spacing: -0.02em;
+    }
+    .step-list {
+      display: flex; flex-direction: column; gap: 20px;
+      max-width: 400px; margin: 0 auto;
+    }
+    .step {
+      display: flex; align-items: center; gap: 16px; text-align: left;
+    }
+    .step-num {
+      width: 40px; height: 40px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; font-size: 16px; font-weight: 800; color: var(--accent);
+    }
+    .step-text { font-size: 14px; color: var(--text-dim); line-height: 1.5; }
+    .step-text strong { color: var(--text); }
+
+    /* ── Footer ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 32px 24px; text-align: center;
+    }
+    footer p { font-size: 12px; color: rgba(255,255,255,0.25); }
+
+    /* ── Fade-in on scroll ── */
+    .reveal {
+      opacity: 0; transform: translateY(20px);
+      transition: opacity 0.5s ease, transform 0.5s ease;
+    }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+  </style>
+</head>
+<body>
+
+<div class="blobs">
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+</div>
+
+<nav>
+  <div class="nav-inner">
+    <a href="/" class="logo">
+      <span class="logo-icon">🐾</span>
+      <span class="logo-text">Pet Together</span>
+    </a>
+    <a href="https://t.me/YOUR_BOT_USERNAME" class="nav-cta">Открыть в Telegram</a>
+  </div>
+</nav>
+
+<main class="container">
+  <section class="hero">
+    <div class="hero-badge">🚀 Telegram Mini App</div>
+    <h1>Растите <span class="gradient">питомца</span><br>вместе с другом</h1>
+    <p>Заведите виртуального питомца в Telegram, ухаживайте за ним вдвоём и поддерживайте streak каждый день.</p>
+    <a href="https://t.me/YOUR_BOT_USERNAME" class="hero-cta">
+      🐾 Начать
+    </a>
+  </section>
+
+  <section class="pet-preview reveal">
+    <div class="pet-card"><span class="emoji">🐱</span><span class="label">Кот</span></div>
+    <div class="pet-card"><span class="emoji">🐶</span><span class="label">Собака</span></div>
+    <div class="pet-card"><span class="emoji">🐰</span><span class="label">Кролик</span></div>
+    <div class="pet-card"><span class="emoji">🐻</span><span class="label">Медведь</span></div>
+  </section>
+
+  <section class="features">
+    <div class="feature reveal">
+      <div class="icon">🤝</div>
+      <h3>Вдвоём веселее</h3>
+      <p>Пригласи друга по ссылке. Ухаживайте вместе — кормите, играйте, гладьте.</p>
+    </div>
+    <div class="feature reveal">
+      <div class="icon">🔥</div>
+      <h3>Streak система</h3>
+      <p>Заходите оба каждый день чтобы сохранить streak и получить бонусы.</p>
+    </div>
+    <div class="feature reveal">
+      <div class="icon">📊</div>
+      <h3>Параметры питомца</h3>
+      <p>Следите за сытостью, счастьем и здоровьем. Не забывайте кормить!</p>
+    </div>
+    <div class="feature reveal">
+      <div class="icon">🎮</div>
+      <h3>Мини-игры</h3>
+      <p>Зарабатывайте монеты в играх и тратьте их в магазине. Скоро!</p>
+    </div>
+  </section>
+
+  <section class="steps reveal">
+    <h2>Как начать?</h2>
+    <div class="step-list">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-text"><strong>Откройте бота</strong> в Telegram и нажмите /start</div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-text"><strong>Создайте питомца</strong> — выберите тип и придумайте имя</div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-text"><strong>Пригласите друга</strong> и ухаживайте за питомцем вместе</div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <p>Pet Together © 2025 · Telegram Mini App</p>
+</footer>
+
+<script>
+  // Reveal on scroll
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+  }, { threshold: 0.15 });
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+</script>
+</body>
+</html>

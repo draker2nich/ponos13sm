@@ -1,6 +1,6 @@
 // mini-app/src/pages/HomePage.tsx
-import { useEffect, useCallback, useState, useRef, useMemo, type RefObject } from "react";
-import { motion, AnimatePresence, useMotionValue, animate as fmAnimate } from "framer-motion";
+import { useEffect, useCallback, useState, useRef, useMemo } from "react";
+import { motion, AnimatePresence, useMotionValue, useSpring } from "framer-motion";
 import { usePetStore } from "../store/usePetStore";
 import { useMenuStore, MENU_ORDER, type MenuCategory } from "../store/useMenuStore";
 import { PetSVG } from "../components/PetSVG";
@@ -27,7 +27,9 @@ const G = {
 
 const PILL_H = 50, RING_SIZE = 34;
 const MENU_TABS = new Set<string>(MENU_ORDER);
-const SPRING = { type: "spring" as const, stiffness: 280, damping: 28, mass: 0.75 };
+
+// Use GPU-friendly spring config — lower stiffness = smoother on low-end
+const SPRING_SMOOTH = { stiffness: 200, damping: 26, mass: 0.8 };
 
 function toDeg(v: number) { return Math.round(Math.max(0, Math.min(100, v)) / 100 * 360); }
 
@@ -56,8 +58,9 @@ function FloatAnim({ show, text }: { show: boolean; text: string }) {
     <AnimatePresence>
       {show && (
         <motion.div
-          initial={{ opacity: 1, y: 0 }} animate={{ opacity: 0, y: -60 }}
-          transition={{ duration: 0.85, ease: "easeOut" }}
+          key="float"
+          initial={{ opacity: 1, y: 0 }} animate={{ opacity: 0, y: -50 }}
+          transition={{ duration: 0.7, ease: "easeOut" }}
           style={{
             position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)",
             fontSize: 20, fontWeight: 800, color: "rgba(0,0,0,0.60)",
@@ -72,10 +75,10 @@ function FloatAnim({ show, text }: { show: boolean; text: string }) {
 
 interface HeartFx { id: number; x: number; y: number; angle: number; dist: number }
 
-/* ══════════════════════════════════════
-   DraggablePet — единый motion.div
-   с переключением drag ↔ anchor
-   ══════════════════════════════════════ */
+/* ═══════════════════════════════════
+   DraggablePet — simplified, no remount
+   Uses spring-based x/y for anchor mode
+   ═══════════════════════════════════ */
 function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, petDomRef, anchored, headerRef, navRowRef, containerRef }: {
   children: React.ReactNode;
   constraintsRef: React.RefObject<HTMLElement | null>;
@@ -89,38 +92,13 @@ function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, petDomR
 }) {
   const x = useMotionValue(0);
   const y = useMotionValue(0);
+  const springX = useSpring(x, SPRING_SMOOTH);
+  const springY = useSpring(y, SPRING_SMOOTH);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const prevAnchored = useRef(false);
-  const animRef = useRef<{ stopX?: () => void; stopY?: () => void }>({});
+  const isDragging = useRef(false);
 
-  // Ключ для принудительного пересоздания motion.div после возврата из якоря
-  // Это полностью сбрасывает внутреннее состояние drag constraints в framer-motion
-  const [dragKey, setDragKey] = useState(0);
-
-  // Вычислить pixel-based constraints (для petZoneRef)
-  const calcPixelConstraints = useCallback(() => {
-    const zone = constraintsRef.current;
-    const el = petDomRef.current;
-    if (!zone || !el) return { top: 0, left: 0, right: 0, bottom: 0 };
-    const zr = zone.getBoundingClientRect();
-    const er = el.getBoundingClientRect();
-    // el rect уже учитывает текущий x/y offset, вычтем
-    const cx = x.get();
-    const cy = y.get();
-    const naturalLeft = er.left - cx;
-    const naturalTop = er.top - cy;
-    const naturalRight = naturalLeft + er.width;
-    const naturalBottom = naturalTop + er.height;
-    return {
-      top: zr.top - naturalTop,
-      left: zr.left - naturalLeft,
-      right: zr.right - naturalRight,
-      bottom: zr.bottom - naturalBottom,
-    };
-  }, [constraintsRef, petDomRef, x, y]);
-
-  // Вычислить offset от natural center до якорной точки
-  const calcOffset = useCallback(() => {
+  // Calculate anchor offset
+  const calcAnchorOffset = useCallback(() => {
     const el = petDomRef.current;
     const header = headerRef.current;
     const nav = navRowRef.current;
@@ -132,61 +110,33 @@ function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, petDomR
     const navR = nav.getBoundingClientRect();
     const elR = el.getBoundingClientRect();
 
-    const anchorScreenX = contR.left + contR.width / 2;
-    const anchorScreenY = headerR.bottom + (navR.top - headerR.bottom) / 2;
+    const anchorX = contR.left + contR.width / 2;
+    const anchorY = headerR.bottom + (navR.top - headerR.bottom) / 2;
 
     const curX = x.get();
     const curY = y.get();
     const naturalCX = elR.left + elR.width / 2 - curX;
     const naturalCY = elR.top + elR.height / 2 - curY;
 
-    return {
-      x: anchorScreenX - naturalCX,
-      y: anchorScreenY - naturalCY,
-    };
+    return { x: anchorX - naturalCX, y: anchorY - naturalCY };
   }, [petDomRef, headerRef, navRowRef, containerRef, x, y]);
 
+  // Anchor / free transitions
   useEffect(() => {
-    const justAnchored = anchored && !prevAnchored.current;
-    const justFreed = !anchored && prevAnchored.current;
-
-    animRef.current.stopX?.();
-    animRef.current.stopY?.();
-
-    if (justAnchored) {
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          const off = calcOffset();
-          if (off) {
-            const cx = fmAnimate(x, off.x, SPRING);
-            const cy = fmAnimate(y, off.y, SPRING);
-            animRef.current = { stopX: cx.stop, stopY: cy.stop };
-          }
-        }, 80);
-      });
+    if (anchored) {
+      // Delay slightly to let layout settle
+      const timer = setTimeout(() => {
+        const off = calcAnchorOffset();
+        if (off) { x.set(off.x); y.set(off.y); }
+      }, 50);
+      return () => clearTimeout(timer);
+    } else {
+      x.set(0);
+      y.set(0);
     }
+  }, [anchored, calcAnchorOffset, x, y]);
 
-    if (justFreed) {
-      // Анимируем к (0,0), по завершении пересоздаём motion.div
-      // чтобы framer-motion полностью сбросил drag state и constraints
-      const cx = fmAnimate(x, 0, {
-        ...SPRING,
-        onComplete: () => {
-          // Гарантируем точный 0
-          x.jump(0);
-          y.jump(0);
-          // Пересоздаём motion.div для сброса drag constraints
-          setDragKey(k => k + 1);
-        },
-      });
-      const cy = fmAnimate(y, 0, SPRING);
-      animRef.current = { stopX: cx.stop, stopY: cy.stop };
-    }
-
-    prevAnchored.current = anchored;
-  }, [anchored, calcOffset, x, y]);
-
-  // Сердечки при глажке
+  // Hearts on stroke — use RAF instead of setInterval for smoother perf
   const getPetCenter = useCallback(() => {
     const el = petDomRef.current;
     if (!el) return { x: 0, y: 0 };
@@ -196,38 +146,38 @@ function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, petDomR
 
   useEffect(() => {
     if (isStroking && !anchored) {
-      if (!tickRef.current) {
-        tickRef.current = setInterval(() => {
+      let last = 0;
+      let raf = 0;
+      const tick = (now: number) => {
+        if (now - last > 160) {
+          last = now;
           const c = getPetCenter();
           const a = Math.random() * Math.PI * 2;
           onHeartAt(c.x + Math.cos(a) * 50, c.y + Math.sin(a) * 50);
-        }, 140);
-      }
-    } else {
-      if (tickRef.current) { clearInterval(tickRef.current); tickRef.current = null; }
+        }
+        raf = requestAnimationFrame(tick);
+      };
+      raf = requestAnimationFrame(tick);
+      return () => cancelAnimationFrame(raf);
     }
-    return () => { if (tickRef.current) { clearInterval(tickRef.current); tickRef.current = null; } };
   }, [isStroking, anchored, getPetCenter, onHeartAt]);
-
-  const handleDragStart = useCallback(() => {
-    animRef.current.stopX?.();
-    animRef.current.stopY?.();
-  }, []);
 
   return (
     <motion.div
-      key={dragKey}
       drag={!anchored}
       dragConstraints={constraintsRef}
-      dragElastic={0.10}
+      dragElastic={0.08}
       dragMomentum={false}
-      onDragStart={handleDragStart}
-      whileDrag={anchored ? {} : { scale: 1.06 }}
+      onDragStart={() => { isDragging.current = true; }}
+      onDragEnd={() => { isDragging.current = false; }}
+      whileDrag={anchored ? {} : { scale: 1.04 }}
       style={{
         cursor: anchored ? "default" : "grab",
         touchAction: "none",
         display: "inline-block",
-        x, y,
+        x: springX,
+        y: springY,
+        willChange: "transform",
         ...NOTAP,
       }}
     >
@@ -277,12 +227,17 @@ export function HomePage({ petId }: Props) {
   }, [openMenu]);
 
   const handleStroking = useCallback((v: boolean) => setIsStroking(v), []);
-  const spawnHeart = useCallback((x: number, y: number) => {
+
+  // Throttled heart spawn — max 8 active hearts to reduce DOM nodes
+  const spawnHeart = useCallback((hx: number, hy: number) => {
     const id = nextHeart.current++;
     const angle = Math.random() * Math.PI * 2;
-    const dist = 40 + Math.random() * 30;
-    setHearts(h => [...h.slice(-12), { id, x, y, angle, dist }]);
-    setTimeout(() => setHearts(h => h.filter(hh => hh.id !== id)), 900);
+    const dist = 35 + Math.random() * 25;
+    setHearts(h => {
+      const next = h.length > 8 ? h.slice(-6) : h;
+      return [...next, { id, x: hx, y: hy, angle, dist }];
+    });
+    setTimeout(() => setHearts(h => h.filter(hh => hh.id !== id)), 800);
   }, []);
 
   const derived = useMemo(() => {
@@ -316,7 +271,7 @@ export function HomePage({ petId }: Props) {
 
   const showFloat = (t: string) => {
     setFloatText(t); setFloatShow(true);
-    setTimeout(() => setFloatShow(false), 1400);
+    setTimeout(() => setFloatShow(false), 1200);
   };
   const doAction = async (action: ActionType, msg: string) => {
     if (isCd(action)) return;
@@ -350,8 +305,8 @@ export function HomePage({ petId }: Props) {
         color: "rgba(0,0,0,0.75)", ...NOTAP,
       }}
     >
-      {/* Blobs */}
-      <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 0 }}>
+      {/* Blobs — use will-change for GPU compositing */}
+      <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 0, willChange: "auto" }}>
         <div style={{ position: "absolute", top: "-12%", left: "-18%", width: "55%", paddingBottom: "55%", borderRadius: "50%", background: "radial-gradient(circle,rgba(196,181,253,0.22) 0%,transparent 70%)" }} />
         <div style={{ position: "absolute", top: "15%", right: "-20%", width: "52%", paddingBottom: "52%", borderRadius: "50%", background: "radial-gradient(circle,rgba(251,207,232,0.22) 0%,transparent 70%)" }} />
         <div style={{ position: "absolute", bottom: "8%", left: "8%", width: "46%", paddingBottom: "46%", borderRadius: "50%", background: "radial-gradient(circle,rgba(167,243,208,0.18) 0%,transparent 70%)" }} />
@@ -455,7 +410,7 @@ export function HomePage({ petId }: Props) {
             {!menuIsOpen && (
               <motion.div
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
+                transition={{ duration: 0.15 }}
                 style={{
                   position: "absolute", bottom: 10, left: 0, right: 0,
                   display: "flex", justifyContent: "center", zIndex: 6, pointerEvents: "none",
@@ -520,17 +475,19 @@ export function HomePage({ petId }: Props) {
         zIndex: 20, pointerEvents: "none",
       }} />
 
-      {/* Hearts */}
+      {/* Hearts — CSS animations instead of framer-motion for perf */}
       {hearts.map(h => (
-        <motion.div key={h.id}
-          initial={{ opacity: 1, scale: 0.5, x: h.x - 9, y: h.y - 9 }}
-          animate={{ opacity: 0, scale: 1.1, x: h.x - 9 + Math.cos(h.angle) * h.dist, y: h.y - 9 + Math.sin(h.angle) * h.dist }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
+        <div key={h.id}
           style={{
-            position: "fixed", top: 0, left: 0, fontSize: 18, pointerEvents: "none",
-            zIndex: 1000, color: "#f9a8d4", filter: "drop-shadow(0 1px 4px rgba(249,168,212,0.5))",
-          }}
-        >🩷</motion.div>
+            position: "fixed", top: h.y - 9, left: h.x - 9,
+            fontSize: 18, pointerEvents: "none",
+            zIndex: 1000, color: "#f9a8d4",
+            filter: "drop-shadow(0 1px 4px rgba(249,168,212,0.5))",
+            animation: "heart-float 0.8s ease-out forwards",
+            "--hx": `${Math.cos(h.angle) * h.dist}px`,
+            "--hy": `${Math.sin(h.angle) * h.dist}px`,
+          } as React.CSSProperties}
+        >🩷</div>
       ))}
     </div>
   );
