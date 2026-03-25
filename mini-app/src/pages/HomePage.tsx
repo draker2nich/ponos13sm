@@ -4,6 +4,7 @@ import { useEffect, useCallback, useState, useRef, useMemo } from "react";
 import { motion, useMotionValue, useSpring } from "framer-motion";
 import { usePetStore } from "../store/usePetStore";
 import { useMenuStore, MENU_ORDER, type MenuCategory } from "../store/useMenuStore";
+import { useCoinStore } from "../store/useCoinStore";
 import { PetSVG } from "../components/PetSVG";
 import { BottomBlock, cdActive } from "../components/BottomBlock";
 import { IC } from "../components/icons";
@@ -175,6 +176,7 @@ interface Props { petId: number }
 export function HomePage({ petId }: Props) {
   const { pet, fetchPet, performAction, loading } = usePetStore();
   const { openMenu, setMenu, closeMenu } = useMenuStore();
+  const coins = useCoinStore(s => s.coins);
 
   const [activeTab, setActiveTab] = useState<TabId | null>(null);
   const [floatText, setFloatText] = useState("");
@@ -340,6 +342,17 @@ export function HomePage({ petId }: Props) {
             <StatusRing value={pet.happiness} icon={IC.game} />
             <StatusRing value={sleepVal} icon={IC.moon} />
             <StatusRing value={pet.health} icon={IC.wash} />
+            {/* Coin badge */}
+            <div style={{
+              display: "flex", alignItems: "center", gap: 2,
+              background: "linear-gradient(135deg, rgba(255,215,0,0.15), rgba(255,215,0,0.05))",
+              border: "1px solid rgba(255,215,0,0.30)",
+              borderRadius: 999, padding: "4px 8px",
+              marginLeft: 2,
+            }}>
+              <span style={{ fontSize: 12, lineHeight: 1 }}>🪙</span>
+              <span style={{ fontSize: 11, fontWeight: 800, color: "rgba(180,140,20,0.85)" }}>{coins}</span>
+            </div>
           </div>
         </header>
 
