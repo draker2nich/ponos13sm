@@ -55,7 +55,6 @@ function StatusRing({ value, icon }: { value: number; icon: React.ReactNode }) {
   );
 }
 
-// Pure CSS float animation — no framer-motion
 function FloatAnim({ show, text }: { show: boolean; text: string }) {
   if (!show) return null;
   return (
@@ -74,9 +73,6 @@ function FloatAnim({ show, text }: { show: boolean; text: string }) {
 
 interface HeartFx { id: number; x: number; y: number; angle: number; dist: number }
 
-/* ═══════════════════════════════════
-   DraggablePet — framer-motion only for drag
-   ═══════════════════════════════════ */
 function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, petDomRef, anchored, headerRef, navRowRef, containerRef }: {
   children: React.ReactNode;
   constraintsRef: React.RefObject<HTMLElement | null>;
@@ -123,7 +119,6 @@ function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, petDomR
     }
   }, [anchored, calcAnchorOffset, x, y]);
 
-  // Hearts via RAF
   const getPetCenter = useCallback(() => {
     const el = petDomRef.current;
     if (!el) return { x: 0, y: 0 };
@@ -168,9 +163,6 @@ function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, petDomR
   );
 }
 
-/* ════════════════════════════════════════════
-   HomePage
-   ════════════════════════════════════════════ */
 interface Props { petId: number }
 
 export function HomePage({ petId }: Props) {
@@ -260,6 +252,8 @@ export function HomePage({ petId }: Props) {
       if (activeTab === tab && menuIsOpen) { handleClose(); return; }
       setActiveTab(tab);
       setMenu(tab as MenuCategory);
+      if (tab === "feed") doAction("feed", "+30 🍎");
+      if (tab === "play") doAction("play", "+25 🎾");
       return;
     }
     setActiveTab(tab); closeMenu();
@@ -277,7 +271,7 @@ export function HomePage({ petId }: Props) {
         color: "rgba(0,0,0,0.75)", ...NOTAP,
       }}
     >
-      {/* Blobs — static, no animation needed */}
+      {/* Blobs */}
       <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 0 }}>
         <div style={{ position: "absolute", top: "-12%", left: "-18%", width: "55%", paddingBottom: "55%", borderRadius: "50%", background: "radial-gradient(circle,rgba(196,181,253,0.22) 0%,transparent 70%)" }} />
         <div style={{ position: "absolute", top: "15%", right: "-20%", width: "52%", paddingBottom: "52%", borderRadius: "50%", background: "radial-gradient(circle,rgba(251,207,232,0.22) 0%,transparent 70%)" }} />
@@ -287,7 +281,7 @@ export function HomePage({ petId }: Props) {
       {/* Pet zone */}
       <div ref={petZoneRef} style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative", zIndex: 5, overflow: "hidden", minHeight: 0 }}>
 
-        {/* Header — single backdrop-filter layer */}
+        {/* Header */}
         <header
           ref={headerRef}
           style={{
@@ -296,6 +290,7 @@ export function HomePage({ petId }: Props) {
             display: "flex", alignItems: "flex-start", gap: 8, flexShrink: 0,
           }}
         >
+          {/* Left: name pill */}
           <div style={{
             display: "flex", alignItems: "center", gap: 7,
             ...G.heavy, borderRadius: 999, height: PILL_H, padding: "0 12px 0 7px",
@@ -331,10 +326,14 @@ export function HomePage({ petId }: Props) {
               </div>
             )}
           </div>
+
           <div style={{ flex: 1 }} />
+
+          {/* Right: stats + coins */}
           <div style={{
             display: "flex", flexDirection: "column", alignItems: "flex-end", flexShrink: 0, gap: 4,
           }}>
+            {/* Stats pill */}
             <div style={{
               ...G.heavy, borderRadius: 999, height: PILL_H, padding: "0 10px",
               display: "flex", gap: 4, alignItems: "center",
@@ -344,6 +343,7 @@ export function HomePage({ petId }: Props) {
               <StatusRing value={sleepVal} icon={IC.moon} />
               <StatusRing value={pet.health} icon={IC.wash} />
             </div>
+            {/* Coins pill */}
             <div style={{
               display: "flex", alignItems: "center", gap: 3,
               background: "rgba(255,255,255,0.55)",
@@ -391,7 +391,7 @@ export function HomePage({ petId }: Props) {
             </DraggablePet>
           </div>
 
-          {/* Partner badge — no AnimatePresence, CSS opacity */}
+          {/* Partner badge */}
           <div style={{
             position: "absolute", bottom: 10, left: 0, right: 0,
             display: "flex", justifyContent: "center", zIndex: 6, pointerEvents: "none",
@@ -453,7 +453,7 @@ export function HomePage({ petId }: Props) {
         zIndex: 20, pointerEvents: "none",
       }} />
 
-      {/* Hearts — CSS keyframe, no framer-motion */}
+      {/* Hearts */}
       {hearts.map(h => (
         <div key={h.id}
           style={{

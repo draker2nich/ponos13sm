@@ -1,5 +1,4 @@
 // mini-app/src/components/MenuPanel.tsx
-// Rewritten: CSS transitions instead of AnimatePresence popLayout
 import { useRef, useCallback, useState, useEffect } from "react";
 import { useMenuStore, MENU_ORDER, type MenuCategory } from "../store/useMenuStore";
 import { useCoinStore } from "../store/useCoinStore";
@@ -7,24 +6,6 @@ import { NOTAP } from "./NavCarousel";
 import type { Pet } from "../api/types";
 
 /* ── Styles ── */
-const itemBtn: React.CSSProperties = {
-  padding: "10px 16px", borderRadius: 18,
-  background: "rgba(255,255,255,0.55)",
-  border: "1px solid rgba(255,255,255,0.75)",
-  fontSize: 13, fontWeight: 600, color: "rgba(0,0,0,0.65)",
-  cursor: "pointer", fontFamily: "inherit", outline: "none",
-  transition: "transform 0.1s ease",
-  ...NOTAP,
-};
-
-const itemBtnDisabled: React.CSSProperties = {
-  ...itemBtn,
-  background: "rgba(255,255,255,0.35)",
-  border: "1px dashed rgba(0,0,0,0.12)",
-  color: "rgba(0,0,0,0.35)",
-  cursor: "not-allowed",
-};
-
 const actionBtn: React.CSSProperties = {
   padding: "12px 32px", borderRadius: 999,
   background: "linear-gradient(135deg,#c5b8d8,#a89cc8)",
@@ -39,7 +20,7 @@ const dangerBtn: React.CSSProperties = {
   background: "linear-gradient(135deg,#f87171,#ef4444)",
 };
 
-/* ── Stat row — pure CSS bar ── */
+/* ── Stat row ── */
 function StatRow({ label, value, color }: { label: string; value: number; color: string }) {
   const v = Math.max(0, Math.min(100, value));
   return (
@@ -85,6 +66,51 @@ const FOODS: { emoji: string; cost: number; sat: number }[] = [
   { emoji: "🍲", cost: 15, sat: 30 },
 ];
 
+/* ── Wash data ── */
+const WASH_ITEMS: { emoji: string; cost: number; clean: number }[] = [
+  { emoji: "🧴", cost: 5, clean: 15 },
+  { emoji: "🧽", cost: 3, clean: 10 },
+  { emoji: "🧼", cost: 4, clean: 12 },
+];
+
+/* ── Reusable grid tile ── */
+function ShopTile({ emoji, cost, effectIcon, effectVal, afford }: {
+  emoji: string; cost: number; effectIcon: string; effectVal: number; afford: boolean;
+}) {
+  return (
+    <button
+      disabled={!afford}
+      style={{
+        aspectRatio: "1",
+        borderRadius: 16,
+        border: afford ? "1px solid rgba(255,255,255,0.75)" : "1px dashed rgba(0,0,0,0.10)",
+        background: afford ? "rgba(255,255,255,0.55)" : "rgba(255,255,255,0.30)",
+        display: "flex", flexDirection: "column",
+        alignItems: "center", justifyContent: "center",
+        gap: 3, padding: 6,
+        cursor: afford ? "pointer" : "not-allowed",
+        fontFamily: "inherit", outline: "none",
+        opacity: afford ? 1 : 0.45,
+        transition: "transform 0.1s ease",
+        ...NOTAP,
+      }}
+      onPointerDown={e => { if (afford) (e.currentTarget as HTMLElement).style.transform = "scale(0.92)"; }}
+      onPointerUp={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
+      onPointerLeave={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
+    >
+      <span style={{ fontSize: 24, lineHeight: 1 }}>{emoji}</span>
+      <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+        <span style={{ fontSize: 9, lineHeight: 1 }}>🪙</span>
+        <span style={{ fontSize: 10, fontWeight: 700, color: "rgba(180,140,20,0.80)" }}>{cost}</span>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+        <span style={{ fontSize: 9, lineHeight: 1 }}>{effectIcon}</span>
+        <span style={{ fontSize: 10, fontWeight: 600, color: "rgba(0,0,0,0.40)" }}>+{effectVal}</span>
+      </div>
+    </button>
+  );
+}
+
 /* ── Per-category content ── */
 function MenuContent({ cat, pet, sleepVal }: {
   cat: MenuCategory; pet: Pet; sleepVal: number;
@@ -92,53 +118,15 @@ function MenuContent({ cat, pet, sleepVal }: {
   const coins = useCoinStore(s => s.coins);
 
   switch (cat) {
-    case "feed": {
-      const canAfford = (c: number) => coins >= c;
+    case "feed":
       return (
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(3, 1fr)",
-          gap: 8,
-        }}>
-          {FOODS.map((f, i) => {
-            const afford = canAfford(f.cost);
-            return (
-              <button
-                key={i}
-                disabled={!afford}
-                style={{
-                  aspectRatio: "1",
-                  borderRadius: 16,
-                  border: afford ? "1px solid rgba(255,255,255,0.75)" : "1px dashed rgba(0,0,0,0.10)",
-                  background: afford ? "rgba(255,255,255,0.55)" : "rgba(255,255,255,0.30)",
-                  display: "flex", flexDirection: "column",
-                  alignItems: "center", justifyContent: "center",
-                  gap: 3, padding: 6,
-                  cursor: afford ? "pointer" : "not-allowed",
-                  fontFamily: "inherit", outline: "none",
-                  opacity: afford ? 1 : 0.45,
-                  transition: "transform 0.1s ease",
-                  ...NOTAP,
-                }}
-                onPointerDown={e => { if (afford) (e.currentTarget as HTMLElement).style.transform = "scale(0.92)"; }}
-                onPointerUp={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
-                onPointerLeave={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
-              >
-                <span style={{ fontSize: 24, lineHeight: 1 }}>{f.emoji}</span>
-                <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-                  <span style={{ fontSize: 9, lineHeight: 1 }}>🪙</span>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: "rgba(180,140,20,0.80)" }}>{f.cost}</span>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-                  <span style={{ fontSize: 9, lineHeight: 1 }}>🍎</span>
-                  <span style={{ fontSize: 10, fontWeight: 600, color: "rgba(0,0,0,0.40)" }}>+{f.sat}</span>
-                </div>
-              </button>
-            );
-          })}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+          {FOODS.map((f, i) => (
+            <ShopTile key={i} emoji={f.emoji} cost={f.cost} effectIcon="🍎" effectVal={f.sat} afford={coins >= f.cost} />
+          ))}
         </div>
       );
-    }
+
     case "play":
       return (
         <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "center" }}>
@@ -148,31 +136,26 @@ function MenuContent({ cat, pet, sleepVal }: {
           </p>
         </div>
       );
+
     case "shop":
       return (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <p style={{ fontSize: 13, color: "rgba(0,0,0,0.45)", textAlign: "center", margin: 0 }}>Магазин — скоро!</p>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center" }}>
-            {["🎀 Бант", "👑 Корона", "🛁 Ванна", "🏠 Домик", "💎 Кристалл"].map(i => (
-              <button key={i} style={itemBtnDisabled}>{i}</button>
-            ))}
-          </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "center" }}>
+          <span style={{ fontSize: 48 }}>🛍</span>
+          <p style={{ fontSize: 14, color: "rgba(0,0,0,0.45)", textAlign: "center", margin: 0, lineHeight: 1.5 }}>
+            Магазин скоро откроется!<br />Следи за обновлениями.
+          </p>
         </div>
       );
+
     case "wash":
       return (
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
-          <span style={{ fontSize: 48 }}>🛁</span>
-          <p style={{ fontSize: 14, color: "rgba(0,0,0,0.50)", textAlign: "center", margin: 0, lineHeight: 1.5 }}>
-            Питомец хочет помыться.<br />Выбери средство!
-          </p>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center" }}>
-            {["🧴 Шампунь", "🧼 Мыло", "🫧 Пена"].map(i => (
-              <button key={i} style={itemBtn}>{i}</button>
-            ))}
-          </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+          {WASH_ITEMS.map((w, i) => (
+            <ShopTile key={i} emoji={w.emoji} cost={w.cost} effectIcon="🛁" effectVal={w.clean} afford={coins >= w.cost} />
+          ))}
         </div>
       );
+
     case "sleep":
       return (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
@@ -184,6 +167,7 @@ function MenuContent({ cat, pet, sleepVal }: {
           <button style={actionBtn}>Спокойной ночи 🌙</button>
         </div>
       );
+
     case "partner":
       return (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
@@ -210,6 +194,7 @@ function MenuContent({ cat, pet, sleepVal }: {
           )}
         </div>
       );
+
     case "settings":
       return (
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -244,13 +229,14 @@ function MenuContent({ cat, pet, sleepVal }: {
           </div>
         </div>
       );
+
     default:
       return null;
   }
 }
 
 /* ════════════════════════════════════════════
-   MenuPanel — CSS slide transition, no AnimatePresence
+   MenuPanel
    ════════════════════════════════════════════ */
 interface Props { menuH: string; pet: Pet; sleepVal: number }
 
