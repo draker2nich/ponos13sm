@@ -340,7 +340,7 @@ export function HomePage({ petId }: Props) {
             WebkitBackdropFilter: "blur(24px) saturate(160%)",
             border: "1px solid rgba(255,255,255,0.70)",
             boxShadow: "0 4px 20px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.9)",
-            borderRadius: "999px 999px 999px 8px",
+            borderRadius: "999px 999px 999px 999px",
             padding: "6px 10px 5px",
             display: "flex", flexDirection: "column", gap: 3, flexShrink: 0,
           }}>
@@ -354,8 +354,8 @@ export function HomePage({ petId }: Props) {
               display: "flex", alignItems: "center", justifyContent: "flex-end",
               gap: 3, paddingRight: 4,
             }}>
-              <span style={{ fontSize: 10, lineHeight: 1 }}>🪙</span>
-              <span style={{ fontSize: 9, fontWeight: 800, color: "rgba(180,140,20,0.85)" }}>{coins}</span>
+              <span style={{ fontSize: 12, lineHeight: 1 }}>🪙</span>
+              <span style={{ fontSize: 11, fontWeight: 800, color: "rgba(180,140,20,0.85)" }}>{coins}</span>
             </div>
           </div>
         </header>
