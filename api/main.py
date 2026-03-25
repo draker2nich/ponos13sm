@@ -46,12 +46,11 @@ async def health():
     return {"status": "ok"}
 
 
-# ─── Статика и SPA ───────────────────────────────────────────────────────────
+# ─── Статика ──────────────────────────────────────────────────────────────────
 DIST = Path(__file__).parent.parent / "mini-app" / "dist"
 STATIC = Path(__file__).parent.parent / "static"
 LANDING = STATIC / "landing.html"
 
-# Mini-app static assets
 if DIST.exists():
     if (DIST / "assets").exists():
         app.mount("/assets", StaticFiles(directory=DIST / "assets"), name="assets")
@@ -59,25 +58,48 @@ if DIST.exists():
         app.mount("/sprites", StaticFiles(directory=DIST / "sprites"), name="sprites")
 
 
-# Landing page на корне домена (для браузерного доступа)
+# ─── Определяем: это Telegram WebApp или обычный браузер ──────────────────────
+
+def _is_webapp_request(request: Request) -> bool:
+    """
+    Telegram WebApp открывает URL с параметрами pet_id, tgWebAppData и т.д.
+    Также Telegram передаёт характерный referer или query-параметры.
+    """
+    params = set(request.query_params.keys())
+    # Telegram WebApp всегда добавляет tgWebAppStartParam или pet_id
+    tg_markers = {"tgWebAppStartParam", "tgWebAppData", "tgWebAppVersion",
+                  "tgWebAppPlatform", "tgWebAppThemeParams", "pet_id", "action"}
+    if params & tg_markers:
+        return True
+    # Fragment-based params не видны серверу, но если есть pet_id — это mini-app
+    if request.query_params.get("pet_id"):
+        return True
+    return False
+
+
+# ─── Роутинг: лендинг vs SPA ─────────────────────────────────────────────────
+
 @app.get("/")
-async def landing_page():
+async def root(request: Request):
+    # Если запрос от Telegram WebApp — отдаём SPA
+    if _is_webapp_request(request):
+        if DIST.exists() and (DIST / "index.html").exists():
+            return FileResponse(DIST / "index.html")
+    # Иначе — лендинг
     if LANDING.exists():
         return FileResponse(LANDING, media_type="text/html")
-    # Fallback: если лендинга нет, показываем mini-app
+    # Fallback
     if DIST.exists() and (DIST / "index.html").exists():
         return FileResponse(DIST / "index.html")
     return {"message": "Pet Together API is running"}
 
 
-# SPA fallback для mini-app роутов (всё кроме /api, /health, /assets, /sprites)
 @app.get("/{full_path:path}")
 async def spa_fallback(request: Request, full_path: str):
-    # Не ловим API-пути
+    # API-пути не ловим
     if full_path.startswith(("pets", "invites", "health")):
         return {"detail": "Not found"}
-
+    # Всё остальное — SPA (для клиентского роутинга mini-app)
     if DIST.exists() and (DIST / "index.html").exists():
         return FileResponse(DIST / "index.html")
-
     return {"detail": "Not found"}
