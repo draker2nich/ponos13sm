@@ -1,6 +1,7 @@
 // mini-app/src/pages/HomePage.tsx
+// Perf rewrite: CSS animations everywhere, framer-motion only for drag
 import { useEffect, useCallback, useState, useRef, useMemo } from "react";
-import { motion, AnimatePresence, useMotionValue, useSpring } from "framer-motion";
+import { motion, useMotionValue, useSpring } from "framer-motion";
 import { usePetStore } from "../store/usePetStore";
 import { useMenuStore, MENU_ORDER, type MenuCategory } from "../store/useMenuStore";
 import { PetSVG } from "../components/PetSVG";
@@ -9,26 +10,25 @@ import { IC } from "../components/icons";
 import { NOTAP, type TabId } from "../components/NavCarousel";
 import type { ActionType } from "../api/types";
 
-const tg = window.Telegram?.WebApp;
 type CSSProps = React.CSSProperties;
 
 const G = {
   heavy: {
-    background: "rgba(255,255,255,0.55)", backdropFilter: "blur(32px) saturate(180%)",
-    WebkitBackdropFilter: "blur(32px) saturate(180%)", border: "1px solid rgba(255,255,255,0.70)",
-    boxShadow: "0 6px 24px rgba(0,0,0,0.07), inset 0 1.5px 0 rgba(255,255,255,0.9)",
+    background: "rgba(255,255,255,0.55)",
+    backdropFilter: "blur(24px) saturate(160%)",
+    WebkitBackdropFilter: "blur(24px) saturate(160%)",
+    border: "1px solid rgba(255,255,255,0.70)",
+    boxShadow: "0 4px 20px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.9)",
   } as CSSProps,
   pill: {
-    background: "rgba(255,255,255,0.38)", backdropFilter: "blur(14px)",
-    WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(255,255,255,0.55)",
+    background: "rgba(255,255,255,0.38)",
+    border: "1px solid rgba(255,255,255,0.55)",
     boxShadow: "0 2px 10px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.7)",
   } as CSSProps,
 };
 
 const PILL_H = 50, RING_SIZE = 34;
 const MENU_TABS = new Set<string>(MENU_ORDER);
-
-// Use GPU-friendly spring config — lower stiffness = smoother on low-end
 const SPRING_SMOOTH = { stiffness: 200, damping: 26, mass: 0.8 };
 
 function toDeg(v: number) { return Math.round(Math.max(0, Math.min(100, v)) / 100 * 360); }
@@ -42,7 +42,8 @@ function StatusRing({ value, icon }: { value: number; icon: React.ReactNode }) {
       <svg width={RING_SIZE} height={RING_SIZE} style={{ position: "absolute", inset: 0, transform: "rotate(-90deg)" }}>
         <circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R} fill="none" stroke="rgba(0,0,0,0.06)" strokeWidth={2} />
         <circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={R} fill="none" stroke={col} strokeWidth={2}
-          strokeDasharray={`${dash} ${circ}`} strokeLinecap="round" />
+          strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
+          style={{ transition: "stroke-dasharray 0.5s ease" }} />
       </svg>
       <div style={{
         position: "absolute", inset: 5, borderRadius: "50%", background: "rgba(255,255,255,0.5)",
@@ -53,31 +54,27 @@ function StatusRing({ value, icon }: { value: number; icon: React.ReactNode }) {
   );
 }
 
+// Pure CSS float animation — no framer-motion
 function FloatAnim({ show, text }: { show: boolean; text: string }) {
+  if (!show) return null;
   return (
-    <AnimatePresence>
-      {show && (
-        <motion.div
-          key="float"
-          initial={{ opacity: 1, y: 0 }} animate={{ opacity: 0, y: -50 }}
-          transition={{ duration: 0.7, ease: "easeOut" }}
-          style={{
-            position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)",
-            fontSize: 20, fontWeight: 800, color: "rgba(0,0,0,0.60)",
-            textShadow: "0 2px 8px rgba(255,255,255,0.6)", pointerEvents: "none",
-            whiteSpace: "nowrap", zIndex: 20,
-          }}
-        >{text}</motion.div>
-      )}
-    </AnimatePresence>
+    <div
+      key={text + Date.now()}
+      style={{
+        position: "absolute", top: 0, left: "50%",
+        fontSize: 20, fontWeight: 800, color: "rgba(0,0,0,0.60)",
+        textShadow: "0 2px 8px rgba(255,255,255,0.6)", pointerEvents: "none",
+        whiteSpace: "nowrap", zIndex: 20,
+        animation: "float-up 0.8s ease-out forwards",
+      }}
+    >{text}</div>
   );
 }
 
 interface HeartFx { id: number; x: number; y: number; angle: number; dist: number }
 
 /* ═══════════════════════════════════
-   DraggablePet — simplified, no remount
-   Uses spring-based x/y for anchor mode
+   DraggablePet — framer-motion only for drag
    ═══════════════════════════════════ */
 function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, petDomRef, anchored, headerRef, navRowRef, containerRef }: {
   children: React.ReactNode;
@@ -94,49 +91,38 @@ function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, petDomR
   const y = useMotionValue(0);
   const springX = useSpring(x, SPRING_SMOOTH);
   const springY = useSpring(y, SPRING_SMOOTH);
-  const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const isDragging = useRef(false);
 
-  // Calculate anchor offset
   const calcAnchorOffset = useCallback(() => {
     const el = petDomRef.current;
     const header = headerRef.current;
     const nav = navRowRef.current;
     const cont = containerRef.current;
     if (!el || !header || !nav || !cont) return null;
-
     const contR = cont.getBoundingClientRect();
     const headerR = header.getBoundingClientRect();
     const navR = nav.getBoundingClientRect();
     const elR = el.getBoundingClientRect();
-
     const anchorX = contR.left + contR.width / 2;
     const anchorY = headerR.bottom + (navR.top - headerR.bottom) / 2;
-
-    const curX = x.get();
-    const curY = y.get();
+    const curX = x.get(); const curY = y.get();
     const naturalCX = elR.left + elR.width / 2 - curX;
     const naturalCY = elR.top + elR.height / 2 - curY;
-
     return { x: anchorX - naturalCX, y: anchorY - naturalCY };
   }, [petDomRef, headerRef, navRowRef, containerRef, x, y]);
 
-  // Anchor / free transitions
   useEffect(() => {
     if (anchored) {
-      // Delay slightly to let layout settle
       const timer = setTimeout(() => {
         const off = calcAnchorOffset();
         if (off) { x.set(off.x); y.set(off.y); }
-      }, 50);
+      }, 40);
       return () => clearTimeout(timer);
     } else {
-      x.set(0);
-      y.set(0);
+      x.set(0); y.set(0);
     }
   }, [anchored, calcAnchorOffset, x, y]);
 
-  // Hearts on stroke — use RAF instead of setInterval for smoother perf
+  // Hearts via RAF
   const getPetCenter = useCallback(() => {
     const el = petDomRef.current;
     if (!el) return { x: 0, y: 0 };
@@ -146,10 +132,9 @@ function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, petDomR
 
   useEffect(() => {
     if (isStroking && !anchored) {
-      let last = 0;
-      let raf = 0;
+      let last = 0; let raf = 0;
       const tick = (now: number) => {
-        if (now - last > 160) {
+        if (now - last > 180) {
           last = now;
           const c = getPetCenter();
           const a = Math.random() * Math.PI * 2;
@@ -168,22 +153,16 @@ function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, petDomR
       dragConstraints={constraintsRef}
       dragElastic={0.08}
       dragMomentum={false}
-      onDragStart={() => { isDragging.current = true; }}
-      onDragEnd={() => { isDragging.current = false; }}
-      whileDrag={anchored ? {} : { scale: 1.04 }}
       style={{
         cursor: anchored ? "default" : "grab",
         touchAction: "none",
         display: "inline-block",
-        x: springX,
-        y: springY,
+        x: springX, y: springY,
         willChange: "transform",
         ...NOTAP,
       }}
     >
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-        {children}
-      </div>
+      {children}
     </motion.div>
   );
 }
@@ -227,16 +206,11 @@ export function HomePage({ petId }: Props) {
   }, [openMenu]);
 
   const handleStroking = useCallback((v: boolean) => setIsStroking(v), []);
-
-  // Throttled heart spawn — max 8 active hearts to reduce DOM nodes
   const spawnHeart = useCallback((hx: number, hy: number) => {
     const id = nextHeart.current++;
     const angle = Math.random() * Math.PI * 2;
     const dist = 35 + Math.random() * 25;
-    setHearts(h => {
-      const next = h.length > 8 ? h.slice(-6) : h;
-      return [...next, { id, x: hx, y: hy, angle, dist }];
-    });
+    setHearts(h => [...(h.length > 6 ? h.slice(-5) : h), { id, x: hx, y: hy, angle, dist }]);
     setTimeout(() => setHearts(h => h.filter(hh => hh.id !== id)), 800);
   }, []);
 
@@ -271,14 +245,13 @@ export function HomePage({ petId }: Props) {
 
   const showFloat = (t: string) => {
     setFloatText(t); setFloatShow(true);
-    setTimeout(() => setFloatShow(false), 1200);
+    setTimeout(() => setFloatShow(false), 1000);
   };
   const doAction = async (action: ActionType, msg: string) => {
     if (isCd(action)) return;
     await performAction(action);
     showFloat(msg);
   };
-
   const handleClose = () => closeMenu();
   const handleTab = (tab: TabId) => {
     if (MENU_TABS.has(tab)) {
@@ -289,8 +262,7 @@ export function HomePage({ petId }: Props) {
       if (tab === "play") doAction("play", "+25 🎾");
       return;
     }
-    setActiveTab(tab);
-    closeMenu();
+    setActiveTab(tab); closeMenu();
   };
 
   return (
@@ -305,17 +277,17 @@ export function HomePage({ petId }: Props) {
         color: "rgba(0,0,0,0.75)", ...NOTAP,
       }}
     >
-      {/* Blobs — use will-change for GPU compositing */}
-      <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 0, willChange: "auto" }}>
+      {/* Blobs — static, no animation needed */}
+      <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 0 }}>
         <div style={{ position: "absolute", top: "-12%", left: "-18%", width: "55%", paddingBottom: "55%", borderRadius: "50%", background: "radial-gradient(circle,rgba(196,181,253,0.22) 0%,transparent 70%)" }} />
         <div style={{ position: "absolute", top: "15%", right: "-20%", width: "52%", paddingBottom: "52%", borderRadius: "50%", background: "radial-gradient(circle,rgba(251,207,232,0.22) 0%,transparent 70%)" }} />
         <div style={{ position: "absolute", bottom: "8%", left: "8%", width: "46%", paddingBottom: "46%", borderRadius: "50%", background: "radial-gradient(circle,rgba(167,243,208,0.18) 0%,transparent 70%)" }} />
       </div>
 
-      {/* ══ Pet zone ══ */}
+      {/* Pet zone */}
       <div ref={petZoneRef} style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative", zIndex: 5, overflow: "hidden", minHeight: 0 }}>
 
-        {/* ── Header ── */}
+        {/* Header — single backdrop-filter layer */}
         <header
           ref={headerRef}
           style={{
@@ -344,8 +316,7 @@ export function HomePage({ petId }: Props) {
               <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
                 <span style={{ fontSize: 9, fontWeight: 700, color: "rgba(0,0,0,0.28)", letterSpacing: "0.06em" }}>LV.{pet.level}</span>
                 <div style={{ width: "clamp(24px,7vw,44px)", height: 2.5, background: "rgba(0,0,0,0.08)", borderRadius: 2, overflow: "hidden" }}>
-                  <motion.div animate={{ width: `${xpPct}%` }} transition={{ duration: 0.6 }}
-                    style={{ height: "100%", background: "rgba(0,0,0,0.32)", borderRadius: 2 }} />
+                  <div style={{ height: "100%", background: "rgba(0,0,0,0.32)", borderRadius: 2, width: `${xpPct}%`, transition: "width 0.5s ease" }} />
                 </div>
               </div>
             </div>
@@ -372,7 +343,7 @@ export function HomePage({ petId }: Props) {
           </div>
         </header>
 
-        {/* ── Pet centered ── */}
+        {/* Pet centered */}
         <div style={{
           flex: 1, display: "flex", flexDirection: "column",
           alignItems: "center", justifyContent: "center",
@@ -381,14 +352,10 @@ export function HomePage({ petId }: Props) {
           <div style={{ position: "relative" }}>
             <FloatAnim show={floatShow} text={floatText} />
             <DraggablePet
-              constraintsRef={petZoneRef}
-              isStroking={isStroking}
-              onHeartAt={spawnHeart}
-              petDomRef={petDomRef}
-              anchored={menuIsOpen}
-              headerRef={headerRef}
-              navRowRef={navRowRef}
-              containerRef={containerRef}
+              constraintsRef={petZoneRef} isStroking={isStroking}
+              onHeartAt={spawnHeart} petDomRef={petDomRef}
+              anchored={menuIsOpen} headerRef={headerRef}
+              navRowRef={navRowRef} containerRef={containerRef}
             >
               <div ref={petDomRef} style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
                 <PetSVG
@@ -405,61 +372,53 @@ export function HomePage({ petId }: Props) {
             </DraggablePet>
           </div>
 
-          {/* Partner badge */}
-          <AnimatePresence>
-            {!menuIsOpen && (
-              <motion.div
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                transition={{ duration: 0.15 }}
-                style={{
-                  position: "absolute", bottom: 10, left: 0, right: 0,
-                  display: "flex", justifyContent: "center", zIndex: 6, pointerEvents: "none",
-                }}
-              >
-                <div style={{ pointerEvents: "auto" }}>
-                  {partner ? (
-                    <div style={{
-                      display: "inline-flex", alignItems: "center", gap: 6,
-                      ...G.pill, borderRadius: 999, padding: "5px 14px", ...NOTAP,
-                    }}>
-                      <div style={{
-                        width: 6, height: 6, flexShrink: 0,
-                        color: pOnline ? "#22c55e" : "rgba(0,0,0,0.20)",
-                        filter: pOnline ? "drop-shadow(0 0 4px #22c55e)" : "none",
-                      }}>{IC.dot}</div>
-                      <span style={{ fontSize: "clamp(10px,2.8vw,12px)", color: "rgba(0,0,0,0.42)", fontWeight: 500 }}>
-                        {pMins === null
-                          ? "Партнёр не заходил"
-                          : pMins < 5 ? "Партнёр онлайн"
-                          : pMins < 60 ? `Партнёр ${pMins} мин назад`
-                          : `Партнёр ${Math.floor(pMins / 60)} ч назад`}
-                      </span>
-                    </div>
-                  ) : (
-                    <motion.button
-                      whileTap={{ scale: 0.96 }}
-                      onClick={() => handleTab("partner")}
-                      style={{
-                        display: "inline-flex", alignItems: "center", gap: 6,
-                        ...G.pill, border: "1px dashed rgba(0,0,0,0.13)",
-                        borderRadius: 999, padding: "6px 16px",
-                        cursor: "pointer", fontFamily: "inherit",
-                        fontSize: "clamp(11px,3vw,12px)", color: "rgba(0,0,0,0.42)",
-                        fontWeight: 600, outline: "none", ...NOTAP,
-                      }}
-                    >
-                      <div style={{ width: 13, height: 13, color: "rgba(0,0,0,0.32)" }}>{IC.users}</div>
-                      Пригласить партнёра
-                    </motion.button>
-                  )}
+          {/* Partner badge — no AnimatePresence, CSS opacity */}
+          <div style={{
+            position: "absolute", bottom: 10, left: 0, right: 0,
+            display: "flex", justifyContent: "center", zIndex: 6, pointerEvents: "none",
+            opacity: menuIsOpen ? 0 : 1,
+            transition: "opacity 0.15s ease",
+          }}>
+            <div style={{ pointerEvents: menuIsOpen ? "none" : "auto" }}>
+              {partner ? (
+                <div style={{
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  ...G.pill, borderRadius: 999, padding: "5px 14px", ...NOTAP,
+                }}>
+                  <div style={{
+                    width: 6, height: 6, flexShrink: 0,
+                    color: pOnline ? "#22c55e" : "rgba(0,0,0,0.20)",
+                    filter: pOnline ? "drop-shadow(0 0 4px #22c55e)" : "none",
+                  }}>{IC.dot}</div>
+                  <span style={{ fontSize: "clamp(10px,2.8vw,12px)", color: "rgba(0,0,0,0.42)", fontWeight: 500 }}>
+                    {pMins === null ? "Партнёр не заходил"
+                      : pMins < 5 ? "Партнёр онлайн"
+                      : pMins < 60 ? `Партнёр ${pMins} мин назад`
+                      : `Партнёр ${Math.floor(pMins / 60)} ч назад`}
+                  </span>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+              ) : (
+                <button
+                  onClick={() => handleTab("partner")}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 6,
+                    ...G.pill, border: "1px dashed rgba(0,0,0,0.13)",
+                    borderRadius: 999, padding: "6px 16px",
+                    cursor: "pointer", fontFamily: "inherit",
+                    fontSize: "clamp(11px,3vw,12px)", color: "rgba(0,0,0,0.42)",
+                    fontWeight: 600, outline: "none", ...NOTAP,
+                  }}
+                >
+                  <div style={{ width: 13, height: 13, color: "rgba(0,0,0,0.32)" }}>{IC.users}</div>
+                  Пригласить партнёра
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* ══ Bottom block ══ */}
+      {/* Bottom block */}
       <BottomBlock
         pet={pet} evo={evo} sleepVal={sleepVal}
         activeTab={activeTab} isCd={isCd} getCd={getCd}
@@ -475,14 +434,14 @@ export function HomePage({ petId }: Props) {
         zIndex: 20, pointerEvents: "none",
       }} />
 
-      {/* Hearts — CSS animations instead of framer-motion for perf */}
+      {/* Hearts — CSS keyframe, no framer-motion */}
       {hearts.map(h => (
         <div key={h.id}
           style={{
             position: "fixed", top: h.y - 9, left: h.x - 9,
             fontSize: 18, pointerEvents: "none",
             zIndex: 1000, color: "#f9a8d4",
-            filter: "drop-shadow(0 1px 4px rgba(249,168,212,0.5))",
+            filter: "drop-shadow(0 1px 3px rgba(249,168,212,0.4))",
             animation: "heart-float 0.8s ease-out forwards",
             "--hx": `${Math.cos(h.angle) * h.dist}px`,
             "--hy": `${Math.sin(h.angle) * h.dist}px`,

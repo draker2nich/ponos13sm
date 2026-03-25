@@ -1,6 +1,6 @@
 // mini-app/src/components/MenuPanel.tsx
-import { useRef, useMemo, useCallback, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+// Rewritten: CSS transitions instead of AnimatePresence popLayout
+import { useRef, useCallback, useState, useEffect } from "react";
 import { useMenuStore, MENU_ORDER, type MenuCategory } from "../store/useMenuStore";
 import { useCoinStore } from "../store/useCoinStore";
 import { NOTAP } from "./NavCarousel";
@@ -12,7 +12,9 @@ const itemBtn: React.CSSProperties = {
   background: "rgba(255,255,255,0.55)",
   border: "1px solid rgba(255,255,255,0.75)",
   fontSize: 13, fontWeight: 600, color: "rgba(0,0,0,0.65)",
-  cursor: "pointer", fontFamily: "inherit", outline: "none", ...NOTAP,
+  cursor: "pointer", fontFamily: "inherit", outline: "none",
+  transition: "transform 0.1s ease",
+  ...NOTAP,
 };
 
 const itemBtnDisabled: React.CSSProperties = {
@@ -27,17 +29,17 @@ const actionBtn: React.CSSProperties = {
   padding: "12px 32px", borderRadius: 999,
   background: "linear-gradient(135deg,#c5b8d8,#a89cc8)",
   border: "none", fontSize: 14, fontWeight: 700,
-  color: "#fff", cursor: "pointer", fontFamily: "inherit", outline: "none", ...NOTAP,
+  color: "#fff", cursor: "pointer", fontFamily: "inherit", outline: "none",
+  transition: "transform 0.1s ease",
+  ...NOTAP,
 };
 
 const dangerBtn: React.CSSProperties = {
-  padding: "12px 32px", borderRadius: 999,
+  ...actionBtn,
   background: "linear-gradient(135deg,#f87171,#ef4444)",
-  border: "none", fontSize: 14, fontWeight: 700,
-  color: "#fff", cursor: "pointer", fontFamily: "inherit", outline: "none", ...NOTAP,
 };
 
-/* ── Stat row ── */
+/* ── Stat row — pure CSS bar ── */
 function StatRow({ label, value, color }: { label: string; value: number; color: string }) {
   const v = Math.max(0, Math.min(100, value));
   return (
@@ -47,10 +49,12 @@ function StatRow({ label, value, color }: { label: string; value: number; color:
         <span style={{ fontSize: 12, fontWeight: 700, color: v < 25 ? "#ef4444" : "rgba(0,0,0,0.55)" }}>{Math.round(v)}</span>
       </div>
       <div style={{ height: 6, borderRadius: 6, background: "rgba(0,0,0,0.07)", overflow: "hidden" }}>
-        <motion.div
-          animate={{ width: `${v}%` }} transition={{ duration: 0.5 }}
-          style={{ height: "100%", borderRadius: 6, background: v < 25 ? "#ef4444" : color }}
-        />
+        <div style={{
+          height: "100%", borderRadius: 6,
+          background: v < 25 ? "#ef4444" : color,
+          width: `${v}%`,
+          transition: "width 0.4s ease",
+        }} />
       </div>
     </div>
   );
@@ -76,7 +80,6 @@ function MenuContent({ cat, pet, sleepVal }: {
           </div>
         </div>
       );
-
     case "play":
       return (
         <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "center" }}>
@@ -95,7 +98,6 @@ function MenuContent({ cat, pet, sleepVal }: {
           </p>
         </div>
       );
-
     case "shop":
       return (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -108,7 +110,7 @@ function MenuContent({ cat, pet, sleepVal }: {
             <span style={{ fontSize: 18 }}>🪙</span>
             <span style={{ fontSize: 16, fontWeight: 800, color: "rgba(180,140,20,0.85)" }}>{coins}</span>
           </div>
-          <p style={{ fontSize: 13, color: "rgba(0,0,0,0.45)", textAlign: "center", margin: 0 }}>Магазин — скоро откроется!</p>
+          <p style={{ fontSize: 13, color: "rgba(0,0,0,0.45)", textAlign: "center", margin: 0 }}>Магазин — скоро!</p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center" }}>
             {["🎀 Бант", "👑 Корона", "🛁 Ванна", "🏠 Домик", "💎 Кристалл"].map(i => (
               <button key={i} style={itemBtnDisabled}>{i}</button>
@@ -116,13 +118,12 @@ function MenuContent({ cat, pet, sleepVal }: {
           </div>
         </div>
       );
-
     case "wash":
       return (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
           <span style={{ fontSize: 48 }}>🛁</span>
           <p style={{ fontSize: 14, color: "rgba(0,0,0,0.50)", textAlign: "center", margin: 0, lineHeight: 1.5 }}>
-            Питомец хочет помыться.<br />Выбери средство для купания!
+            Питомец хочет помыться.<br />Выбери средство!
           </p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center" }}>
             {["🧴 Шампунь", "🧼 Мыло", "🫧 Пена"].map(i => (
@@ -131,19 +132,17 @@ function MenuContent({ cat, pet, sleepVal }: {
           </div>
         </div>
       );
-
     case "sleep":
       return (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
           <span style={{ fontSize: 48 }}>😴</span>
           <p style={{ fontSize: 14, color: "rgba(0,0,0,0.50)", textAlign: "center", margin: 0, lineHeight: 1.5 }}>
-            Питомец хочет отдохнуть.<br />Уложи его спать, чтобы восстановить силы.
+            Уложи питомца спать<br />чтобы восстановить силы.
           </p>
           <StatRow label="Энергия" value={sleepVal} color="#818cf8" />
           <button style={actionBtn}>Спокойной ночи 🌙</button>
         </div>
       );
-
     case "partner":
       return (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
@@ -170,7 +169,6 @@ function MenuContent({ cat, pet, sleepVal }: {
           )}
         </div>
       );
-
     case "settings":
       return (
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -205,20 +203,38 @@ function MenuContent({ cat, pet, sleepVal }: {
           </div>
         </div>
       );
-
     default:
       return null;
   }
 }
 
 /* ════════════════════════════════════════════
-   MenuPanel
+   MenuPanel — CSS slide transition, no AnimatePresence
    ════════════════════════════════════════════ */
 interface Props { menuH: string; pet: Pet; sleepVal: number }
 
 export function MenuPanel({ menuH, pet, sleepVal }: Props) {
-  const { openMenu, prevMenu, setMenu, closeMenu } = useMenuStore();
+  const { openMenu, setMenu, closeMenu } = useMenuStore();
   const touchStart = useRef<{ x: number; y: number } | null>(null);
+  // Track previous menu for slide direction
+  const [slideDir, setSlideDir] = useState(0);
+  const prevMenu = useRef<MenuCategory | null>(null);
+
+  useEffect(() => {
+    if (openMenu && prevMenu.current) {
+      const pi = MENU_ORDER.indexOf(prevMenu.current);
+      const ni = MENU_ORDER.indexOf(openMenu as MenuCategory);
+      if (pi !== -1 && ni !== -1) setSlideDir(ni > pi ? 1 : -1);
+      else setSlideDir(0);
+    } else {
+      setSlideDir(0);
+    }
+    prevMenu.current = openMenu as MenuCategory | null;
+  }, [openMenu]);
+
+  // CSS class key to trigger re-animation
+  const [animKey, setAnimKey] = useState(0);
+  useEffect(() => { setAnimKey(k => k + 1); }, [openMenu]);
 
   const handleStart = useCallback((cx: number, cy: number) => {
     touchStart.current = { x: cx, y: cy };
@@ -237,14 +253,6 @@ export function MenuPanel({ menuH, pet, sleepVal }: Props) {
     if (dx > 0 && idx > 0) setMenu(MENU_ORDER[idx - 1]);
   }, [openMenu, setMenu, closeMenu]);
 
-  const dir = useMemo(() => {
-    if (!prevMenu || !openMenu) return 0;
-    const pi = MENU_ORDER.indexOf(prevMenu as MenuCategory);
-    const ni = MENU_ORDER.indexOf(openMenu as MenuCategory);
-    if (pi === -1 || ni === -1) return 0;
-    return ni > pi ? 1 : -1;
-  }, [prevMenu, openMenu]);
-
   return (
     <div
       onTouchStart={e => { const t = e.touches[0]; handleStart(t.clientX, t.clientY); }}
@@ -258,23 +266,22 @@ export function MenuPanel({ menuH, pet, sleepVal }: Props) {
         ...NOTAP,
       }}
     >
-      <AnimatePresence mode="popLayout" custom={dir}>
-        {openMenu && (
-          <motion.div
-            key={openMenu}
-            custom={dir}
-            initial={{ x: dir !== 0 ? `${dir * 100}%` : 0, y: dir === 0 ? "100%" : 0, opacity: dir !== 0 ? 0.5 : 1 }}
-            animate={{ x: 0, y: 0, opacity: 1 }}
-            exit={{ x: dir !== 0 ? `${-dir * 100}%` : 0, y: dir === 0 ? "100%" : 0, opacity: dir !== 0 ? 0.5 : 1 }}
-            transition={{ type: "spring", stiffness: 500, damping: 40, mass: 0.8 }}
-            style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}
-          >
-            <div style={{ flex: 1, overflowY: "auto", padding: "16px 16px 24px", scrollbarWidth: "none" }}>
-              <MenuContent cat={openMenu as MenuCategory} pet={pet} sleepVal={sleepVal} />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {openMenu && (
+        <div
+          key={animKey}
+          style={{
+            position: "absolute", inset: 0,
+            display: "flex", flexDirection: "column", overflow: "hidden",
+            animation: `menu-slide-in 0.22s cubic-bezier(0.22, 1, 0.36, 1) forwards`,
+            // CSS custom property for direction
+            ["--slide-from" as string]: slideDir !== 0 ? `${slideDir * 60}px` : "0px",
+          }}
+        >
+          <div style={{ flex: 1, overflowY: "auto", padding: "16px 16px 24px", scrollbarWidth: "none" }}>
+            <MenuContent cat={openMenu as MenuCategory} pet={pet} sleepVal={sleepVal} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

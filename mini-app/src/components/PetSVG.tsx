@@ -1,52 +1,52 @@
 // mini-app/src/components/PetSVG.tsx
-import { motion, type TargetAndTransition } from "framer-motion";
+// Pure CSS animations — no framer-motion overhead
 import type { PetMood, PetType } from "../api/types";
 
-const BODY_ANIM: Record<PetMood, TargetAndTransition> = {
-  happy:   { rotate: [-2, 2, -2], transition: { repeat: Infinity, duration: 1.8, ease: "easeInOut" } },
-  content: {},  // статичный — пусть пользователь двигает сам
-  sad:     { rotate: [0, -3, 0],  transition: { repeat: Infinity, duration: 3, ease: "easeInOut" } },
-  hungry:  { scaleY: [1, 0.96, 1], transition: { repeat: Infinity, duration: 0.7 } },
-  sleepy:  { opacity: [1, 0.6, 1], transition: { repeat: Infinity, duration: 3 } },
+const MOOD_ANIM: Record<PetMood, string> = {
+  happy:   "pet-happy",
+  content: "pet-idle",
+  sad:     "pet-sad",
+  hungry:  "pet-hungry",
+  sleepy:  "pet-sleepy",
 };
 
 const GLOW: Record<PetMood, string> = {
-  happy:   "#ffd700",
-  content: "rgba(255,255,255,0.5)",
-  sad:     "#6a9fd8",
-  hungry:  "#ff7f50",
-  sleepy:  "#c5b8d8",
+  happy:   "rgba(255,215,0,0.30)",
+  content: "rgba(255,255,255,0.20)",
+  sad:     "rgba(106,159,216,0.25)",
+  hungry:  "rgba(255,127,80,0.25)",
+  sleepy:  "rgba(197,184,216,0.25)",
 };
 
 interface Props {
   mood: PetMood;
   petType: PetType;
   evolution?: number;
-  /** px number или CSS строка, напр. "clamp(140px,42vw,200px)" */
   size?: number | string;
   isReacting?: boolean;
 }
 
 export function PetSVG({ mood, petType, evolution = 1, size = 160, isReacting = false }: Props) {
-  const glow = isReacting ? "#ffd700" : GLOW[mood];
+  const glow = isReacting ? "rgba(255,215,0,0.35)" : GLOW[mood];
   const dim = typeof size === "number" ? `${size}px` : size;
+  const anim = isReacting ? "pet-react" : MOOD_ANIM[mood];
 
   return (
-    <motion.div
-      animate={isReacting ? { scale: [1, 1.08, 1] } : BODY_ANIM[mood]}
-      transition={isReacting ? { duration: 0.35 } : undefined}
+    <div
       style={{
-        filter: `drop-shadow(0 0 20px ${glow}55)`,
+        filter: `drop-shadow(0 0 16px ${glow})`,
         display: "inline-block",
         position: "relative",
         width: dim,
         height: dim,
+        animation: `${anim} ${isReacting ? "0.35s" : mood === "happy" ? "1.8s" : mood === "hungry" ? "0.7s" : "3s"} ease-in-out infinite`,
+        willChange: "transform",
       }}
     >
       <img
         src={`/sprites/${petType}.svg`}
         style={{ width: "100%", height: "100%", display: "block", objectFit: "contain" }}
-        draggable={false}  // чтобы браузер не перехватывал drag у картинки
+        draggable={false}
       />
       {evolution >= 5 && (
         <div style={{
@@ -56,6 +56,6 @@ export function PetSVG({ mood, petType, evolution = 1, size = 160, isReacting = 
           pointerEvents: "none",
         }}>👑</div>
       )}
-    </motion.div>
+    </div>
   );
 }

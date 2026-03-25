@@ -15,7 +15,6 @@ html, body, #root {
 body { overflow-x: hidden; }
 button { font-family: inherit; }
 
-/* ── Kill mobile tap highlight & text selection globally ── */
 * {
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
@@ -23,15 +22,11 @@ button { font-family: inherit; }
 
 #root {
   -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
   user-select: none;
 }
 
 input, textarea {
   -webkit-user-select: text;
-  -moz-user-select: text;
-  -ms-user-select: text;
   user-select: text;
 }
 
@@ -41,31 +36,80 @@ a:focus:not(:focus-visible) {
   outline: none;
 }
 
-/* Splash screen */
 .splash {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100vh;
-  gap: 12px;
-  background: #07070c;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  height: 100vh; gap: 12px; background: #07070c;
 }
 .splash-paw  { font-size: 48px; }
 .splash-text { font-size: 14px; color: rgba(255,255,255,0.4); }
 
-/* Hide scrollbar globally */
 ::-webkit-scrollbar { display: none; }
 * { -ms-overflow-style: none; scrollbar-width: none; }
 
-/* ── GPU-accelerated heart float animation ── */
+
+/* ═══════════════════════════════════════
+   GPU-accelerated keyframes
+   All use transform/opacity only
+   ═══════════════════════════════════════ */
+
+/* Hearts floating from pet */
 @keyframes heart-float {
+  0%   { opacity: 1; transform: translate(0, 0) scale(0.5); }
+  100% { opacity: 0; transform: translate(var(--hx, 0), var(--hy, -40px)) scale(1.1); }
+}
+
+/* Pet mood animations */
+@keyframes pet-happy {
+  0%, 100% { transform: rotate(-2deg); }
+  50%      { transform: rotate(2deg); }
+}
+
+@keyframes pet-idle {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-2px); }
+}
+
+@keyframes pet-sad {
+  0%, 100% { transform: rotate(0deg); }
+  50%      { transform: rotate(-3deg); }
+}
+
+@keyframes pet-hungry {
+  0%, 100% { transform: scaleY(1); }
+  50%      { transform: scaleY(0.96); }
+}
+
+@keyframes pet-sleepy {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.6; }
+}
+
+@keyframes pet-react {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.08); }
+}
+
+/* Glove stroking wobble */
+@keyframes glove-stroke {
+  0%   { transform: rotate(-16deg); }
+  100% { transform: rotate(16deg); }
+}
+
+/* Menu panel slide-in */
+@keyframes menu-slide-in {
   0% {
-    opacity: 1;
-    transform: translate(0, 0) scale(0.5);
+    opacity: 0.4;
+    transform: translateX(var(--slide-from, 0));
   }
   100% {
-    opacity: 0;
-    transform: translate(var(--hx, 0), var(--hy, -40px)) scale(1.1);
+    opacity: 1;
+    transform: translateX(0);
   }
+}
+
+/* Float text (action feedback) */
+@keyframes float-up {
+  0%   { opacity: 1; transform: translateX(-50%) translateY(0); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-50px); }
 }

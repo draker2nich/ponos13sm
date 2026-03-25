@@ -1,5 +1,5 @@
 // mini-app/src/components/BottomBlock.tsx
-import { AnimatePresence, motion } from "framer-motion";
+// Rewritten: CSS transitions instead of spring height animation
 import { useMenuStore, type MenuCategory } from "../store/useMenuStore";
 import { Carousel, CarouselBtn, NOTAP, NAV_PAD, BTN_W, PILL_INNER_W, type TabId } from "./NavCarousel";
 import { MenuPanel } from "./MenuPanel";
@@ -8,18 +8,15 @@ import { IC } from "./icons";
 import type { Pet } from "../api/types";
 
 /* ── Design tokens ── */
-export const GLASS: React.CSSProperties = {
-  background: "rgba(255,255,255,0.60)",
-  backdropFilter: "blur(32px) saturate(180%)",
-  WebkitBackdropFilter: "blur(32px) saturate(180%)",
-  border: "1px solid rgba(255,255,255,0.72)",
-  boxShadow: "0 8px 32px rgba(100,100,140,0.13), 0 2px 8px rgba(100,100,140,0.08), inset 0 1.5px 0 rgba(255,255,255,0.95)",
-};
+// Simplified glass — ONE backdrop-filter layer on outermost container only
+export const GLASS_BG = "rgba(255,255,255,0.58)";
+export const GLASS_BORDER = "1px solid rgba(255,255,255,0.70)";
+export const GLASS_SHADOW = "0 -4px 24px rgba(100,100,140,0.08)";
 
 const ALL_TABS: TabId[] = ["feed", "play", "shop", "wash", "sleep", "partner", "settings"];
 
-export const WIDGET_H = NAV_PAD * 2 + BTN_W;  // 66
-export const HALF_H   = WIDGET_H / 2;          // 33
+export const WIDGET_H = NAV_PAD * 2 + BTN_W;
+export const HALF_H   = WIDGET_H / 2;
 const GLOVE_SZ  = WIDGET_H;
 export const GLOVE_GAP = 10;
 
@@ -59,27 +56,30 @@ export function BottomBlock({
 }: Props) {
   const { openMenu } = useMenuStore();
   const menuIsOpen = openMenu !== null;
-  const closedBottomPad = "clamp(24px,6.5vw,38px)";
-
   const activeIndex = activeTab !== null ? Math.max(0, ALL_TABS.indexOf(activeTab)) : 0;
 
-  const widgetStyle: React.CSSProperties = menuIsOpen
-    ? { background: "rgba(255,255,255,0.10)" }
-    : { ...GLASS };
-
   return (
-    <div style={{ position: "relative", zIndex: 10, display: "flex", flexDirection: "column", width: "100%", ...NOTAP }}>
+    <div style={{
+      position: "relative", zIndex: 10,
+      display: "flex", flexDirection: "column", width: "100%",
+      ...NOTAP,
+    }}>
+      {/* ── Outer shell: ONE backdrop-filter here, children inherit ── */}
       <div style={{
         width: "100vw",
         marginLeft: "calc(-50vw + 50%)",
         display: "flex", flexDirection: "column", flexShrink: 0,
-        pointerEvents: menuIsOpen ? "auto" : "none",
+        // Backdrop-filter ONLY when menu open, and only on this one element
         ...(menuIsOpen ? {
-          ...GLASS,
-          borderBottom: "none",
+          background: GLASS_BG,
+          backdropFilter: "blur(24px) saturate(160%)",
+          WebkitBackdropFilter: "blur(24px) saturate(160%)",
+          borderTop: GLASS_BORDER,
           borderRadius: `${HALF_H}px ${HALF_H}px 0 0`,
-          overflow: "hidden",
+          boxShadow: GLASS_SHADOW,
         } : {}),
+        // CSS transition for menu open/close — no JS spring
+        transition: "background 0.2s ease, border-radius 0.2s ease",
       }}>
 
         {/* ── Nav row ── */}
@@ -87,26 +87,32 @@ export function BottomBlock({
           ref={navRowRef as React.RefObject<HTMLDivElement>}
           style={{
             pointerEvents: "auto",
-            padding: menuIsOpen ? `8px 16px 0` : `0 16px ${closedBottomPad}`,
+            padding: menuIsOpen ? `8px 16px 0` : `0 16px clamp(24px,6.5vw,38px)`,
             display: "flex", justifyContent: "center", alignItems: "center",
             gap: GLOVE_GAP, flexShrink: 0,
-            transition: "padding 0.25s ease",
+            transition: "padding 0.2s ease",
           }}
         >
-
           {/* ── Pill ── */}
           <div style={{
-            ...widgetStyle,
+            // No backdrop-filter on pill when menu open (parent handles it)
+            background: menuIsOpen ? "rgba(255,255,255,0.10)" : GLASS_BG,
+            ...(!menuIsOpen ? {
+              backdropFilter: "blur(20px)",
+              WebkitBackdropFilter: "blur(20px)",
+              border: GLASS_BORDER,
+              boxShadow: "0 4px 16px rgba(100,100,140,0.08), inset 0 1px 0 rgba(255,255,255,0.9)",
+            } : {
+              border: "1px solid rgba(255,255,255,0.15)",
+            }),
             borderRadius: `${HALF_H}px`,
             height: WIDGET_H,
             width: PILL_INNER_W,
             display: "inline-flex",
             alignItems: "center",
             justifyContent: "center",
-            overflowX: "hidden",
-            overflowY: "hidden",
-            boxSizing: "border-box",
-            transition: "background 0.25s, box-shadow 0.25s, border 0.25s",
+            overflow: "hidden",
+            transition: "background 0.2s ease, border 0.2s ease, box-shadow 0.2s ease",
           }}>
             <Carousel activeIndex={activeIndex} totalCount={ALL_TABS.length}>
               <CarouselBtn icon={IC.food}  active={activeTab === "feed"}  disabled={isCd("feed")} cdLabel={fmtCd(getCd("feed"))} onClick={() => onTab("feed")} />
@@ -125,17 +131,25 @@ export function BottomBlock({
             height: WIDGET_H,
             borderRadius: `${GLOVE_SZ / 2}px`,
             flexShrink: 0,
-            ...widgetStyle,
+            background: menuIsOpen ? "rgba(255,255,255,0.10)" : GLASS_BG,
+            ...(!menuIsOpen ? {
+              backdropFilter: "blur(20px)",
+              WebkitBackdropFilter: "blur(20px)",
+              border: GLASS_BORDER,
+              boxShadow: "0 4px 16px rgba(100,100,140,0.08), inset 0 1px 0 rgba(255,255,255,0.9)",
+            } : {
+              border: "1px solid rgba(255,255,255,0.15)",
+            }),
             position: "relative",
             overflow: menuIsOpen ? "hidden" : "visible",
-            transition: "background 0.25s, box-shadow 0.25s, border 0.25s",
+            transition: "background 0.2s ease, border 0.2s ease, box-shadow 0.2s ease",
           }}>
             {/* Glove */}
             <div style={{
               position: "absolute", inset: 0,
               opacity: menuIsOpen ? 0 : 1,
               pointerEvents: menuIsOpen ? "none" : "auto",
-              transition: "opacity 0.15s",
+              transition: "opacity 0.15s ease",
             }}>
               <PettingGlove petRef={petRef} onStroking={onStroking} isStroking={isStroking} />
             </div>
@@ -148,7 +162,7 @@ export function BottomBlock({
                 cursor: menuIsOpen ? "pointer" : "default",
                 opacity: menuIsOpen ? 1 : 0,
                 pointerEvents: menuIsOpen ? "auto" : "none",
-                transition: "opacity 0.15s",
+                transition: "opacity 0.15s ease",
                 ...NOTAP,
               }}
             >
@@ -157,21 +171,15 @@ export function BottomBlock({
           </div>
         </div>
 
-        {/* ── Menu content ── */}
-        <AnimatePresence>
-          {menuIsOpen && (
-            <motion.div
-              key="menu-slide"
-              initial={{ height: 0 }}
-              animate={{ height: "50dvh" }}
-              exit={{ height: 0 }}
-              transition={{ type: "spring", stiffness: 480, damping: 42, mass: 0.75 }}
-              style={{ overflow: "hidden", flexShrink: 0 }}
-            >
-              <MenuPanel menuH="50dvh" pet={pet} sleepVal={sleepVal} />
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* ── Menu content — CSS max-height transition instead of spring ── */}
+        <div style={{
+          maxHeight: menuIsOpen ? "50dvh" : "0px",
+          overflow: "hidden",
+          transition: "max-height 0.28s cubic-bezier(0.32, 0.72, 0, 1)",
+          willChange: menuIsOpen ? "max-height" : "auto",
+        }}>
+          <MenuPanel menuH="50dvh" pet={pet} sleepVal={sleepVal} />
+        </div>
 
         {!menuIsOpen && (
           <div style={{ pointerEvents: "auto", height: 4, marginBottom: "clamp(5px,1.5vw,8px)" }} />
