@@ -335,23 +335,25 @@ export function HomePage({ petId }: Props) {
           </div>
           <div style={{ flex: 1 }} />
           <div style={{
-            ...G.heavy, borderRadius: 999, height: PILL_H, padding: "0 10px",
-            display: "flex", gap: 4, alignItems: "center", flexShrink: 0,
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 4, flexShrink: 0,
           }}>
-            <StatusRing value={pet.hunger} icon={IC.food} />
-            <StatusRing value={pet.happiness} icon={IC.game} />
-            <StatusRing value={sleepVal} icon={IC.moon} />
-            <StatusRing value={pet.health} icon={IC.wash} />
-            {/* Coin badge */}
             <div style={{
-              display: "flex", alignItems: "center", gap: 2,
-              background: "linear-gradient(135deg, rgba(255,215,0,0.15), rgba(255,215,0,0.05))",
-              border: "1px solid rgba(255,215,0,0.30)",
-              borderRadius: 999, padding: "4px 8px",
-              marginLeft: 2,
+              ...G.heavy, borderRadius: 999, height: PILL_H, padding: "0 10px",
+              display: "flex", gap: 4, alignItems: "center",
             }}>
-              <span style={{ fontSize: 12, lineHeight: 1 }}>🪙</span>
-              <span style={{ fontSize: 11, fontWeight: 800, color: "rgba(180,140,20,0.85)" }}>{coins}</span>
+              <StatusRing value={pet.hunger} icon={IC.food} />
+              <StatusRing value={pet.happiness} icon={IC.game} />
+              <StatusRing value={sleepVal} icon={IC.moon} />
+              <StatusRing value={pet.health} icon={IC.wash} />
+            </div>
+            <div style={{
+              display: "flex", alignItems: "center", gap: 3,
+              background: "linear-gradient(135deg, rgba(255,215,0,0.15), rgba(255,215,0,0.05))",
+              border: "1px solid rgba(255,215,0,0.28)",
+              borderRadius: 999, padding: "3px 10px",
+            }}>
+              <span style={{ fontSize: 11, lineHeight: 1 }}>🪙</span>
+              <span style={{ fontSize: 10, fontWeight: 800, color: "rgba(180,140,20,0.85)" }}>{coins}</span>
             </div>
           </div>
         </header>
