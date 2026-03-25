@@ -1,6 +1,7 @@
 // mini-app/src/components/NavCarousel.tsx
-import { useRef, useEffect, useCallback } from "react";
-import { motion } from "framer-motion";
+// GPU-accelerated carousel via translateX instead of scrollLeft
+import { useRef, useEffect, useCallback, useState } from "react";
+import { motion, useMotionValue, useSpring, animate } from "framer-motion";
 import type { ActionType } from "../api/types";
 
 export type TabId = ActionType | "shop" | "sleep" | "wash" | "partner" | "settings";
@@ -20,6 +21,12 @@ export const NOTAP: React.CSSProperties = {
   userSelect: "none",
 };
 
+const ITEM_STEP = BTN_W + BTN_GAP; // 55px per item
+const TRACK_PAD = SPAD;
+
+// Spring config — fast & snappy, no wobble
+const SNAP_SPRING = { stiffness: 400, damping: 35, mass: 0.6 };
+
 interface CarouselProps {
   children: React.ReactNode;
   activeIndex: number;
@@ -27,56 +34,132 @@ interface CarouselProps {
 }
 
 export function Carousel({ children, activeIndex, totalCount }: CarouselProps) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const down = useRef(false);
-  const sx   = useRef(0);
-  const sl   = useRef(0);
+  const trackX = useMotionValue(0);
+  const springX = useSpring(trackX, SNAP_SPRING);
 
-  const scrollToActive = useCallback((idx: number, smooth: boolean) => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const visibleW = VISIBLE * BTN_W + (VISIBLE - 1) * BTN_GAP;
+  // Drag state
+  const dragging = useRef(false);
+  const dragStartX = useRef(0);
+  const dragStartVal = useRef(0);
+  const velocity = useRef(0);
+  const lastX = useRef(0);
+  const lastT = useRef(0);
+
+  // Visible area width & max scroll
+  const visibleW = VISIBLE * BTN_W + (VISIBLE - 1) * BTN_GAP;
+  const totalW = totalCount * BTN_W + (totalCount - 1) * BTN_GAP + TRACK_PAD * 2;
+  const maxScroll = Math.max(0, totalW - visibleW);
+
+  // Center the active item
+  const getTargetX = useCallback((idx: number) => {
     const centerOffset = visibleW / 2 - BTN_W / 2;
-    const targetScroll = idx * (BTN_W + BTN_GAP) - centerOffset;
-    const maxScroll = (totalCount - VISIBLE) * (BTN_W + BTN_GAP);
-    const clamped = Math.max(0, Math.min(maxScroll, targetScroll));
-    el.scrollTo({ left: clamped, behavior: smooth ? "smooth" : "instant" });
-  }, [totalCount]);
+    const raw = idx * ITEM_STEP - centerOffset + TRACK_PAD;
+    return -Math.max(0, Math.min(maxScroll, raw));
+  }, [visibleW, maxScroll]);
 
-  useEffect(() => { scrollToActive(activeIndex, false); }, []);
-  useEffect(() => { scrollToActive(activeIndex, true); }, [activeIndex, scrollToActive]);
+  // Snap to active on mount (instant)
+  useEffect(() => {
+    const target = getTargetX(activeIndex);
+    trackX.jump(target);
+    springX.jump(target);
+  }, []);
+
+  // Animate to active on change (spring)
+  useEffect(() => {
+    const target = getTargetX(activeIndex);
+    trackX.set(target);
+  }, [activeIndex, getTargetX, trackX]);
+
+  // Clamp helper
+  const clamp = useCallback((v: number) => {
+    return Math.max(-maxScroll, Math.min(0, v));
+  }, [maxScroll]);
+
+  // Pointer handlers — unified touch + mouse
+  const onPointerDown = useCallback((e: React.PointerEvent) => {
+    // Only handle primary pointer (left click / single touch)
+    if (e.button !== 0) return;
+    dragging.current = true;
+    dragStartX.current = e.clientX;
+    dragStartVal.current = trackX.get();
+    velocity.current = 0;
+    lastX.current = e.clientX;
+    lastT.current = performance.now();
+
+    // Stop any running spring animation
+    springX.stop();
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  }, [trackX, springX]);
+
+  const onPointerMove = useCallback((e: React.PointerEvent) => {
+    if (!dragging.current) return;
+    const dx = e.clientX - dragStartX.current;
+    const now = performance.now();
+    const dt = now - lastT.current;
+
+    if (dt > 0) {
+      velocity.current = (e.clientX - lastX.current) / dt * 1000; // px/sec
+    }
+    lastX.current = e.clientX;
+    lastT.current = now;
+
+    const next = clamp(dragStartVal.current + dx);
+    trackX.jump(next);
+    springX.jump(next);
+  }, [trackX, springX, clamp]);
+
+  const onPointerUp = useCallback((e: React.PointerEvent) => {
+    if (!dragging.current) return;
+    dragging.current = false;
+
+    const dx = Math.abs(e.clientX - dragStartX.current);
+
+    // If minimal movement — it's a tap, don't fling
+    if (dx < 4) return;
+
+    // Fling: project final position based on velocity
+    const current = trackX.get();
+    const flingDistance = velocity.current * 0.15; // damped projection
+    const projected = clamp(current + flingDistance);
+
+    // Snap to nearest item boundary
+    const rawOffset = -projected - TRACK_PAD;
+    const nearestIdx = Math.round(rawOffset / ITEM_STEP);
+    const snappedIdx = Math.max(0, Math.min(totalCount - VISIBLE, nearestIdx));
+    const centerOffset = visibleW / 2 - BTN_W / 2;
+    const snapTarget = -(snappedIdx * ITEM_STEP - centerOffset + TRACK_PAD);
+    const clampedTarget = clamp(snapTarget);
+
+    trackX.set(clampedTarget);
+  }, [trackX, clamp, totalCount, visibleW]);
 
   return (
     <div style={{
       width: PILL_INNER_W,
-      overflowX: "hidden",
-      overflowY: "hidden",
+      overflow: "hidden",
+      position: "relative",
     }}>
-      <div
-        ref={scrollRef}
-        onMouseDown={e => { down.current = true; sx.current = e.pageX; sl.current = scrollRef.current!.scrollLeft; }}
-        onMouseUp={() => { down.current = false; }}
-        onMouseLeave={() => { down.current = false; }}
-        onMouseMove={e => { if (!down.current) return; scrollRef.current!.scrollLeft = sl.current - (e.pageX - sx.current) * 1.2; }}
+      <motion.div
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
         style={{
           display: "flex",
           gap: BTN_GAP,
           alignItems: "center",
-          overflowX: "auto",
-          overflowY: "hidden",
-          height: BTN_W + SPAD * 2,
-          paddingInline: SPAD,
+          paddingInline: TRACK_PAD,
           paddingBlock: SPAD,
-          scrollbarWidth: "none",
-          WebkitOverflowScrolling: "touch",
+          height: BTN_W + SPAD * 2,
+          x: springX,
           cursor: "grab",
-          boxSizing: "border-box",
-          touchAction: "pan-x",
+          touchAction: "none",
+          willChange: "transform",
           ...NOTAP,
         }}
       >
         {children}
-      </div>
+      </motion.div>
     </div>
   );
 }
@@ -88,11 +171,17 @@ export function CarouselBtn({ icon, active, disabled, cdLabel, onClick }: {
   cdLabel?: string;
   onClick?: () => void;
 }) {
+  const [pressed, setPressed] = useState(false);
+
   return (
-    <div style={{ flexShrink: 0, width: BTN_W, height: BTN_W }}>
-      <motion.button
-        whileTap={disabled ? {} : { scale: 0.84 }}
-        onClick={disabled ? undefined : onClick}
+    <div
+      style={{ flexShrink: 0, width: BTN_W, height: BTN_W }}
+      onPointerDown={() => !disabled && setPressed(true)}
+      onPointerUp={() => { setPressed(false); if (!disabled) onClick?.(); }}
+      onPointerCancel={() => setPressed(false)}
+      onPointerLeave={() => setPressed(false)}
+    >
+      <div
         style={{
           width: "100%", height: "100%", borderRadius: "50%",
           background: active ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.30)",
@@ -108,7 +197,9 @@ export function CarouselBtn({ icon, active, disabled, cdLabel, onClick }: {
           display: "flex", flexDirection: "column",
           alignItems: "center", justifyContent: "center",
           gap: 2,
-          transition: "background 0.15s, border 0.15s, box-shadow 0.15s",
+          // CSS transform instead of framer-motion whileTap
+          transform: pressed && !disabled ? "scale(0.85)" : "scale(1)",
+          transition: "transform 0.1s ease, background 0.15s, border 0.15s, box-shadow 0.15s",
           fontFamily: "inherit", padding: 0, outline: "none",
           ...NOTAP,
         }}
@@ -127,7 +218,7 @@ export function CarouselBtn({ icon, active, disabled, cdLabel, onClick }: {
             {cdLabel}
           </span>
         )}
-      </motion.button>
+      </div>
     </div>
   );
 }

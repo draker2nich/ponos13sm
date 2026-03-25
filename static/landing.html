@@ -4,31 +4,38 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Pet Together — Виртуальный питомец для двоих</title>
+  <meta name="description" content="Заведите виртуального питомца в Telegram и ухаживайте за ним вдвоём с другом" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg: #07070c;
-      --surface: rgba(255,255,255,0.04);
-      --border: rgba(255,255,255,0.08);
-      --text: rgba(255,255,255,0.87);
-      --text-dim: rgba(255,255,255,0.45);
+      --bg: linear-gradient(150deg, #eef2ff 0%, #fce7f3 45%, #ecfdf5 100%);
+      --glass: rgba(255,255,255,0.55);
+      --glass-border: rgba(255,255,255,0.72);
+      --glass-shadow: 0 8px 32px rgba(100,100,140,0.10), 0 2px 8px rgba(100,100,140,0.06);
+      --glass-inset: inset 0 1.5px 0 rgba(255,255,255,0.95);
+      --text: rgba(0,0,0,0.75);
+      --text-dim: rgba(0,0,0,0.42);
+      --text-light: rgba(0,0,0,0.28);
       --accent: #818cf8;
-      --accent-glow: rgba(129,140,248,0.25);
+      --accent-soft: rgba(129,140,248,0.12);
       --pink: #f9a8d4;
-      --green: #6ee7b7;
+      --pink-soft: rgba(249,168,212,0.15);
+      --green-soft: rgba(110,231,183,0.12);
     }
 
     html { scroll-behavior: smooth; }
 
     body {
       background: var(--bg);
+      background-attachment: fixed;
       color: var(--text);
       font-family: 'Inter', system-ui, sans-serif;
       -webkit-font-smoothing: antialiased;
       overflow-x: hidden;
+      min-height: 100vh;
     }
 
     /* ── Ambient blobs ── */
@@ -38,159 +45,255 @@
     }
     .blob {
       position: absolute; border-radius: 50%;
-      filter: blur(80px);
-      animation: drift 20s ease-in-out infinite alternate;
+      filter: blur(100px);
+      animation: drift 25s ease-in-out infinite alternate;
     }
-    .blob-1 { width: 500px; height: 500px; top: -10%; left: -10%; background: rgba(129,140,248,0.12); }
-    .blob-2 { width: 400px; height: 400px; top: 30%; right: -8%; background: rgba(249,168,212,0.10); animation-delay: -7s; }
-    .blob-3 { width: 350px; height: 350px; bottom: -5%; left: 20%; background: rgba(110,231,183,0.08); animation-delay: -14s; }
+    .blob-1 { width: 45vw; height: 45vw; max-width: 500px; max-height: 500px; top: -8%; left: -10%; background: rgba(196,181,253,0.30); }
+    .blob-2 { width: 40vw; height: 40vw; max-width: 420px; max-height: 420px; top: 35%; right: -8%; background: rgba(251,207,232,0.30); animation-delay: -8s; }
+    .blob-3 { width: 35vw; height: 35vw; max-width: 380px; max-height: 380px; bottom: 0%; left: 15%; background: rgba(167,243,208,0.22); animation-delay: -15s; }
 
     @keyframes drift {
       0%   { transform: translate(0, 0) scale(1); }
-      100% { transform: translate(40px, -30px) scale(1.08); }
+      100% { transform: translate(30px, -25px) scale(1.06); }
+    }
+
+    /* ── Glass mixin ── */
+    .glass {
+      background: var(--glass);
+      backdrop-filter: blur(32px) saturate(180%);
+      -webkit-backdrop-filter: blur(32px) saturate(180%);
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--glass-shadow), var(--glass-inset);
+    }
+    .glass-light {
+      background: rgba(255,255,255,0.38);
+      backdrop-filter: blur(16px) saturate(160%);
+      -webkit-backdrop-filter: blur(16px) saturate(160%);
+      border: 1px solid rgba(255,255,255,0.55);
+      box-shadow: 0 4px 16px rgba(100,100,140,0.06), inset 0 1px 0 rgba(255,255,255,0.7);
     }
 
     /* ── Layout ── */
     .container {
       position: relative; z-index: 1;
-      max-width: 720px; margin: 0 auto;
-      padding: 0 24px;
+      max-width: 680px; margin: 0 auto;
+      padding: 0 20px;
     }
 
     /* ── Nav ── */
     nav {
       position: sticky; top: 0; z-index: 100;
-      backdrop-filter: blur(20px) saturate(180%);
-      -webkit-backdrop-filter: blur(20px) saturate(180%);
-      background: rgba(7,7,12,0.75);
-      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      background: rgba(255,255,255,0.45);
+      border-bottom: 1px solid rgba(255,255,255,0.60);
     }
     .nav-inner {
-      max-width: 720px; margin: 0 auto;
-      padding: 16px 24px;
+      max-width: 680px; margin: 0 auto;
+      padding: 14px 20px;
       display: flex; align-items: center; justify-content: space-between;
     }
     .logo { display: flex; align-items: center; gap: 8; text-decoration: none; }
-    .logo-icon { font-size: 24px; }
-    .logo-text { font-size: 16px; font-weight: 800; color: var(--text); letter-spacing: -0.02em; }
+    .logo-icon { font-size: 22px; }
+    .logo-text { font-size: 15px; font-weight: 800; color: var(--text); letter-spacing: -0.02em; }
 
     .nav-cta {
-      padding: 10px 22px; border-radius: 12px; border: none;
-      background: var(--accent); color: #fff;
-      font-size: 13px; font-weight: 700; font-family: inherit;
+      padding: 9px 20px; border-radius: 999px; border: none;
+      background: linear-gradient(135deg, #c5b8d8, #d4a8c8);
+      color: #fff;
+      font-size: 12px; font-weight: 700; font-family: inherit;
       cursor: pointer; text-decoration: none;
-      transition: transform 0.15s, box-shadow 0.15s;
+      transition: transform 0.15s, box-shadow 0.2s;
+      box-shadow: 0 2px 12px rgba(197,184,216,0.35);
     }
-    .nav-cta:hover { transform: translateY(-1px); box-shadow: 0 4px 20px var(--accent-glow); }
+    .nav-cta:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(197,184,216,0.45); }
 
     /* ── Hero ── */
     .hero {
       text-align: center;
-      padding: 80px 0 60px;
+      padding: 72px 0 48px;
     }
     .hero-badge {
       display: inline-flex; align-items: center; gap: 6px;
-      padding: 6px 16px; border-radius: 999;
-      background: var(--surface); border: 1px solid var(--border);
-      font-size: 12px; font-weight: 600; color: var(--text-dim);
-      margin-bottom: 24px;
+      padding: 6px 16px; border-radius: 999px;
+      font-size: 11px; font-weight: 600; color: var(--text-dim);
+      margin-bottom: 20px;
     }
     .hero h1 {
-      font-size: clamp(32px, 7vw, 52px);
+      font-size: clamp(28px, 6.5vw, 44px);
       font-weight: 900; letter-spacing: -0.03em;
-      line-height: 1.1; margin-bottom: 16px;
+      line-height: 1.15; margin-bottom: 14px;
+      color: rgba(0,0,0,0.80);
     }
     .hero h1 .gradient {
-      background: linear-gradient(135deg, var(--accent), var(--pink));
+      background: linear-gradient(135deg, #a78bfa, #f9a8d4);
       -webkit-background-clip: text; -webkit-text-fill-color: transparent;
       background-clip: text;
     }
     .hero p {
-      font-size: clamp(15px, 3.5vw, 18px);
-      color: var(--text-dim); line-height: 1.6;
-      max-width: 480px; margin: 0 auto 32px;
+      font-size: clamp(14px, 3.2vw, 16px);
+      color: var(--text-dim); line-height: 1.65;
+      max-width: 420px; margin: 0 auto 28px;
     }
     .hero-cta {
       display: inline-flex; align-items: center; gap: 8px;
-      padding: 16px 36px; border-radius: 16px; border: none;
-      background: linear-gradient(135deg, var(--accent), #a78bfa);
-      color: #fff; font-size: 16px; font-weight: 700; font-family: inherit;
+      padding: 15px 34px; border-radius: 999px; border: none;
+      background: linear-gradient(135deg, #c5b8d8, #e8a0c8);
+      color: #fff; font-size: 15px; font-weight: 700; font-family: inherit;
       cursor: pointer; text-decoration: none;
       transition: transform 0.15s, box-shadow 0.2s;
-      box-shadow: 0 4px 24px var(--accent-glow);
+      box-shadow: 0 4px 24px rgba(200,168,200,0.35);
     }
-    .hero-cta:hover { transform: translateY(-2px); box-shadow: 0 8px 32px var(--accent-glow); }
+    .hero-cta:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(200,168,200,0.45);
+    }
+    .hero-cta:active { transform: scale(0.97); }
 
-    /* ── Pet preview ── */
-    .pet-preview {
+    /* ── Pet showcase ── */
+    .pet-showcase {
       display: flex; justify-content: center;
-      padding: 40px 0 20px; gap: 24px; flex-wrap: wrap;
+      padding: 36px 0 16px; gap: 14px; flex-wrap: wrap;
     }
     .pet-card {
-      width: 100px; height: 120px;
-      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 24px;
+      width: 88px; height: 104px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+      border-radius: 22px;
       transition: transform 0.2s, border-color 0.2s;
+      cursor: default;
     }
-    .pet-card:hover { transform: translateY(-4px); border-color: rgba(255,255,255,0.15); }
-    .pet-card .emoji { font-size: 40px; }
-    .pet-card .label { font-size: 11px; font-weight: 600; color: var(--text-dim); }
+    .pet-card:hover { transform: translateY(-3px); border-color: rgba(255,255,255,0.85); }
+    .pet-card .emoji { font-size: 36px; line-height: 1; }
+    .pet-card .label { font-size: 10px; font-weight: 600; color: var(--text-light); letter-spacing: 0.02em; }
+
+    /* ── App mockup ── */
+    .mockup-section {
+      padding: 40px 0;
+      display: flex; justify-content: center;
+    }
+    .mockup-frame {
+      width: min(280px, 75vw);
+      aspect-ratio: 9 / 16;
+      border-radius: 32px;
+      overflow: hidden;
+      position: relative;
+    }
+    .mockup-inner {
+      position: absolute; inset: 6px;
+      border-radius: 26px;
+      background: linear-gradient(150deg, #eef2ff, #fce7f3 50%, #ecfdf5);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 12px;
+      overflow: hidden;
+    }
+    .mockup-pet {
+      font-size: 64px; line-height: 1;
+      animation: pet-bounce 2.5s ease-in-out infinite;
+    }
+    @keyframes pet-bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+    .mockup-bars {
+      display: flex; gap: 8px; padding: 0 24px; width: 100%;
+    }
+    .mockup-bar {
+      flex: 1; height: 5px; border-radius: 5px;
+      background: rgba(0,0,0,0.06); overflow: hidden;
+    }
+    .mockup-bar-fill {
+      height: 100%; border-radius: 5px;
+      animation: bar-fill 3s ease-in-out infinite alternate;
+    }
+    .mockup-bar-fill.hunger { background: #f59e0b; width: 75%; }
+    .mockup-bar-fill.happy { background: #34d399; width: 88%; animation-delay: 0.5s; }
+    .mockup-bar-fill.health { background: #60a5fa; width: 92%; animation-delay: 1s; }
+    @keyframes bar-fill {
+      0% { opacity: 0.7; }
+      100% { opacity: 1; }
+    }
+    .mockup-nav {
+      display: flex; gap: 6px; padding: 0 20px;
+    }
+    .mockup-dot {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: rgba(255,255,255,0.55);
+      border: 1px solid rgba(255,255,255,0.7);
+    }
+    .mockup-dot.active { background: rgba(255,255,255,0.85); }
 
     /* ── Features ── */
     .features {
-      padding: 60px 0;
-      display: grid; grid-template-columns: 1fr; gap: 16px;
+      padding: 48px 0;
+      display: grid; grid-template-columns: 1fr; gap: 14px;
     }
-    @media (min-width: 500px) { .features { grid-template-columns: 1fr 1fr; } }
+    @media (min-width: 480px) { .features { grid-template-columns: 1fr 1fr; } }
 
     .feature {
-      padding: 24px; border-radius: 20px;
-      background: var(--surface); border: 1px solid var(--border);
-      transition: border-color 0.2s;
+      padding: 22px; border-radius: 22px;
+      transition: transform 0.2s, border-color 0.2s;
     }
-    .feature:hover { border-color: rgba(255,255,255,0.12); }
-    .feature .icon { font-size: 28px; margin-bottom: 12px; }
-    .feature h3 { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
-    .feature p { font-size: 13px; color: var(--text-dim); line-height: 1.5; }
+    .feature:hover { transform: translateY(-2px); border-color: rgba(255,255,255,0.85); }
+    .feature .icon { font-size: 26px; margin-bottom: 10px; }
+    .feature h3 { font-size: 14px; font-weight: 700; margin-bottom: 5px; color: rgba(0,0,0,0.70); }
+    .feature p { font-size: 12px; color: var(--text-dim); line-height: 1.55; }
 
-    /* ── How it works ── */
+    /* ── Steps ── */
     .steps {
-      padding: 40px 0 60px; text-align: center;
+      padding: 32px 0 56px; text-align: center;
     }
     .steps h2 {
-      font-size: clamp(22px, 5vw, 30px); font-weight: 800;
-      margin-bottom: 32px; letter-spacing: -0.02em;
+      font-size: clamp(20px, 4.5vw, 28px); font-weight: 800;
+      margin-bottom: 28px; letter-spacing: -0.02em; color: rgba(0,0,0,0.75);
     }
     .step-list {
-      display: flex; flex-direction: column; gap: 20px;
-      max-width: 400px; margin: 0 auto;
+      display: flex; flex-direction: column; gap: 14px;
+      max-width: 380px; margin: 0 auto;
     }
     .step {
-      display: flex; align-items: center; gap: 16px; text-align: left;
+      display: flex; align-items: center; gap: 14px; text-align: left;
+      padding: 14px 18px; border-radius: 18px;
     }
     .step-num {
-      width: 40px; height: 40px; flex-shrink: 0;
+      width: 36px; height: 36px; flex-shrink: 0;
       display: flex; align-items: center; justify-content: center;
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 12px; font-size: 16px; font-weight: 800; color: var(--accent);
+      background: rgba(255,255,255,0.65);
+      border: 1px solid rgba(255,255,255,0.80);
+      border-radius: 12px; font-size: 14px; font-weight: 800;
+      color: #a78bfa;
     }
-    .step-text { font-size: 14px; color: var(--text-dim); line-height: 1.5; }
-    .step-text strong { color: var(--text); }
+    .step-text { font-size: 13px; color: var(--text-dim); line-height: 1.5; }
+    .step-text strong { color: rgba(0,0,0,0.65); }
+
+    /* ── Bottom CTA ── */
+    .bottom-cta {
+      text-align: center; padding: 0 0 48px;
+    }
+    .bottom-cta p {
+      font-size: 13px; color: var(--text-dim); margin-bottom: 16px; line-height: 1.5;
+    }
 
     /* ── Footer ── */
     footer {
-      border-top: 1px solid var(--border);
-      padding: 32px 24px; text-align: center;
+      border-top: 1px solid rgba(255,255,255,0.50);
+      padding: 28px 20px; text-align: center;
+      background: rgba(255,255,255,0.25);
     }
-    footer p { font-size: 12px; color: rgba(255,255,255,0.25); }
+    footer p { font-size: 11px; color: var(--text-light); }
 
-    /* ── Fade-in on scroll ── */
+    /* ── Reveal ── */
     .reveal {
-      opacity: 0; transform: translateY(20px);
-      transition: opacity 0.5s ease, transform 0.5s ease;
+      opacity: 0; transform: translateY(16px);
+      transition: opacity 0.45s ease, transform 0.45s ease;
     }
     .reveal.visible { opacity: 1; transform: translateY(0); }
+
+    /* ── Responsive tweaks ── */
+    @media (max-width: 380px) {
+      .pet-card { width: 74px; height: 90px; }
+      .pet-card .emoji { font-size: 28px; }
+      .hero { padding: 56px 0 36px; }
+    }
   </style>
 </head>
 <body>
@@ -207,79 +310,119 @@
       <span class="logo-icon">🐾</span>
       <span class="logo-text">Pet Together</span>
     </a>
-    <a href="https://t.me/YOUR_BOT_USERNAME" class="nav-cta">Открыть в Telegram</a>
+    <a href="https://t.me/ponos13sm_bot" class="nav-cta">Открыть бота</a>
   </div>
 </nav>
 
 <main class="container">
+
+  <!-- Hero -->
   <section class="hero">
-    <div class="hero-badge">🚀 Telegram Mini App</div>
+    <div class="hero-badge glass-light">🐾 Telegram Mini App</div>
     <h1>Растите <span class="gradient">питомца</span><br>вместе с другом</h1>
-    <p>Заведите виртуального питомца в Telegram, ухаживайте за ним вдвоём и поддерживайте streak каждый день.</p>
-    <a href="https://t.me/YOUR_BOT_USERNAME" class="hero-cta">
-      🐾 Начать
+    <p>Виртуальный питомец в Telegram. Кормите, играйте, гладьте — вдвоём. Поддерживайте streak каждый день.</p>
+    <a href="https://t.me/ponos13sm_bot" class="hero-cta">
+      Начать 🐾
     </a>
   </section>
 
-  <section class="pet-preview reveal">
-    <div class="pet-card"><span class="emoji">🐱</span><span class="label">Кот</span></div>
-    <div class="pet-card"><span class="emoji">🐶</span><span class="label">Собака</span></div>
-    <div class="pet-card"><span class="emoji">🐰</span><span class="label">Кролик</span></div>
-    <div class="pet-card"><span class="emoji">🐻</span><span class="label">Медведь</span></div>
+  <!-- Pets -->
+  <section class="pet-showcase reveal">
+    <div class="pet-card glass">
+      <span class="emoji">🐱</span><span class="label">Кот</span>
+    </div>
+    <div class="pet-card glass">
+      <span class="emoji">🐶</span><span class="label">Собака</span>
+    </div>
+    <div class="pet-card glass">
+      <span class="emoji">🐰</span><span class="label">Кролик</span>
+    </div>
+    <div class="pet-card glass">
+      <span class="emoji">🐻</span><span class="label">Медведь</span>
+    </div>
   </section>
 
+  <!-- Mockup -->
+  <section class="mockup-section reveal">
+    <div class="mockup-frame glass">
+      <div class="mockup-inner">
+        <div class="mockup-pet">🐱</div>
+        <div class="mockup-bars">
+          <div class="mockup-bar"><div class="mockup-bar-fill hunger"></div></div>
+          <div class="mockup-bar"><div class="mockup-bar-fill happy"></div></div>
+          <div class="mockup-bar"><div class="mockup-bar-fill health"></div></div>
+        </div>
+        <div class="mockup-nav">
+          <div class="mockup-dot active"></div>
+          <div class="mockup-dot"></div>
+          <div class="mockup-dot"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
   <section class="features">
-    <div class="feature reveal">
+    <div class="feature glass-light reveal">
       <div class="icon">🤝</div>
       <h3>Вдвоём веселее</h3>
-      <p>Пригласи друга по ссылке. Ухаживайте вместе — кормите, играйте, гладьте.</p>
+      <p>Пригласи друга по ссылке и ухаживайте за питомцем вместе. Кормите, играйте, гладьте.</p>
     </div>
-    <div class="feature reveal">
+    <div class="feature glass-light reveal">
       <div class="icon">🔥</div>
       <h3>Streak система</h3>
-      <p>Заходите оба каждый день чтобы сохранить streak и получить бонусы.</p>
+      <p>Заходите оба каждый день — streak растёт. Пропустил день — начинай сначала.</p>
     </div>
-    <div class="feature reveal">
-      <div class="icon">📊</div>
-      <h3>Параметры питомца</h3>
-      <p>Следите за сытостью, счастьем и здоровьем. Не забывайте кормить!</p>
+    <div class="feature glass-light reveal">
+      <div class="icon">💓</div>
+      <h3>Живой питомец</h3>
+      <p>Сытость, счастье, здоровье — всё меняется в реальном времени. Не забывай кормить!</p>
     </div>
-    <div class="feature reveal">
-      <div class="icon">🎮</div>
-      <h3>Мини-игры</h3>
-      <p>Зарабатывайте монеты в играх и тратьте их в магазине. Скоро!</p>
+    <div class="feature glass-light reveal">
+      <div class="icon">✨</div>
+      <h3>Эволюция</h3>
+      <p>Питомец растёт, набирает уровни и меняется. Чем лучше уход — тем круче результат.</p>
     </div>
   </section>
 
+  <!-- Steps -->
   <section class="steps reveal">
     <h2>Как начать?</h2>
     <div class="step-list">
-      <div class="step">
+      <div class="step glass-light">
         <div class="step-num">1</div>
-        <div class="step-text"><strong>Откройте бота</strong> в Telegram и нажмите /start</div>
+        <div class="step-text"><strong>Откройте бота</strong> @ponos13sm_bot в Telegram</div>
       </div>
-      <div class="step">
+      <div class="step glass-light">
         <div class="step-num">2</div>
-        <div class="step-text"><strong>Создайте питомца</strong> — выберите тип и придумайте имя</div>
+        <div class="step-text"><strong>Создайте питомца</strong> — выберите тип и имя</div>
       </div>
-      <div class="step">
+      <div class="step glass-light">
         <div class="step-num">3</div>
-        <div class="step-text"><strong>Пригласите друга</strong> и ухаживайте за питомцем вместе</div>
+        <div class="step-text"><strong>Пригласите друга</strong> и растите питомца вместе</div>
       </div>
     </div>
   </section>
+
+  <!-- Bottom CTA -->
+  <section class="bottom-cta reveal">
+    <p>Уже более 0 питомцев ждут своих хозяев 🐾</p>
+    <a href="https://t.me/ponos13sm_bot" class="hero-cta">
+      Завести питомца
+    </a>
+  </section>
+
 </main>
 
 <footer>
-  <p>Pet Together © 2025 · Telegram Mini App</p>
+  <p>Pet Together © 2025 · Сделано с 🩷</p>
 </footer>
 
 <script>
-  // Reveal on scroll
-  const observer = new IntersectionObserver((entries) => {
+  const obs = new IntersectionObserver((entries) => {
     entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
-  }, { threshold: 0.15 });
-  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+  }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+  document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
 </script>
 </body>
 </html>
