@@ -295,7 +295,7 @@ export function HomePage({ petId }: Props) {
           style={{
             padding: "clamp(12px,3.5vw,20px) clamp(12px,4vw,18px) 6px",
             zIndex: 10, position: "relative",
-            display: "flex", alignItems: "center", gap: 8, flexShrink: 0,
+            display: "flex", alignItems: "flex-start", gap: 8, flexShrink: 0,
           }}
         >
           <div style={{
