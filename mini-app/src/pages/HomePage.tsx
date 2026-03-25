@@ -335,21 +335,28 @@ export function HomePage({ petId }: Props) {
           </div>
           <div style={{ flex: 1 }} />
           <div style={{
-            ...G.heavy,
-            borderRadius: 0,
-            clipPath: "polygon(12px 0, calc(100% - 12px) 0, 100% 12px, 100% calc(100% - 12px), calc(100% - 12px) 100%, 16% 100%, 0 38%, 0 12px) round 12px",
-            padding: "7px 10px 6px",
-            display: "flex", flexDirection: "column", alignItems: "stretch", gap: 4, flexShrink: 0,
+            display: "flex", flexDirection: "column", alignItems: "flex-end", flexShrink: 0, gap: 0,
           }}>
-            <div style={{ display: "flex", gap: 4, alignItems: "center", justifyContent: "center" }}>
+            <div style={{
+              ...G.heavy, borderRadius: 999, height: PILL_H, padding: "0 10px",
+              display: "flex", gap: 4, alignItems: "center",
+            }}>
               <StatusRing value={pet.hunger} icon={IC.food} />
               <StatusRing value={pet.happiness} icon={IC.game} />
               <StatusRing value={sleepVal} icon={IC.moon} />
               <StatusRing value={pet.health} icon={IC.wash} />
             </div>
             <div style={{
-              display: "flex", alignItems: "center", justifyContent: "flex-end",
-              gap: 3, paddingRight: 2,
+              display: "flex", alignItems: "center", gap: 3,
+              background: "rgba(255,255,255,0.50)",
+              backdropFilter: "blur(20px)",
+              WebkitBackdropFilter: "blur(20px)",
+              border: "1px solid rgba(255,255,255,0.65)",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+              borderRadius: 999,
+              padding: "3px 10px",
+              marginTop: -6,
+              marginRight: 6,
             }}>
               <span style={{ fontSize: 10, lineHeight: 1 }}>🪙</span>
               <span style={{ fontSize: 9, fontWeight: 800, color: "rgba(180,140,20,0.85)" }}>{coins}</span>
