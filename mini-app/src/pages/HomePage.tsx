@@ -335,12 +335,10 @@ export function HomePage({ petId }: Props) {
           </div>
           <div style={{ flex: 1 }} />
           <div style={{
-            display: "flex", flexDirection: "column", alignItems: "center", gap: 4, flexShrink: 0,
+            ...G.heavy, borderRadius: 22, padding: "6px 10px 5px",
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 3, flexShrink: 0,
           }}>
-            <div style={{
-              ...G.heavy, borderRadius: 999, height: PILL_H, padding: "0 10px",
-              display: "flex", gap: 4, alignItems: "center",
-            }}>
+            <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
               <StatusRing value={pet.hunger} icon={IC.food} />
               <StatusRing value={pet.happiness} icon={IC.game} />
               <StatusRing value={sleepVal} icon={IC.moon} />
@@ -350,10 +348,10 @@ export function HomePage({ petId }: Props) {
               display: "flex", alignItems: "center", gap: 3,
               background: "linear-gradient(135deg, rgba(255,215,0,0.15), rgba(255,215,0,0.05))",
               border: "1px solid rgba(255,215,0,0.28)",
-              borderRadius: 999, padding: "3px 10px",
+              borderRadius: 999, padding: "2px 9px",
             }}>
-              <span style={{ fontSize: 11, lineHeight: 1 }}>🪙</span>
-              <span style={{ fontSize: 10, fontWeight: 800, color: "rgba(180,140,20,0.85)" }}>{coins}</span>
+              <span style={{ fontSize: 10, lineHeight: 1 }}>🪙</span>
+              <span style={{ fontSize: 9, fontWeight: 800, color: "rgba(180,140,20,0.85)" }}>{coins}</span>
             </div>
           </div>
         </header>

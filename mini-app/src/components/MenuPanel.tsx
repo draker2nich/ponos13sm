@@ -60,6 +60,31 @@ function StatRow({ label, value, color }: { label: string; value: number; color:
   );
 }
 
+/* ── Food data ── */
+const FOODS: { emoji: string; cost: number; sat: number }[] = [
+  { emoji: "🍎", cost: 2, sat: 5 },
+  { emoji: "🥕", cost: 2, sat: 5 },
+  { emoji: "🌽", cost: 3, sat: 7 },
+  { emoji: "🍞", cost: 3, sat: 8 },
+  { emoji: "🥚", cost: 4, sat: 9 },
+  { emoji: "🧀", cost: 5, sat: 10 },
+  { emoji: "🍗", cost: 6, sat: 14 },
+  { emoji: "🐟", cost: 7, sat: 15 },
+  { emoji: "🍖", cost: 8, sat: 18 },
+  { emoji: "🥩", cost: 10, sat: 20 },
+  { emoji: "🍣", cost: 12, sat: 22 },
+  { emoji: "🍤", cost: 12, sat: 22 },
+  { emoji: "🥐", cost: 5, sat: 11 },
+  { emoji: "🍕", cost: 8, sat: 16 },
+  { emoji: "🌮", cost: 9, sat: 17 },
+  { emoji: "🍔", cost: 10, sat: 19 },
+  { emoji: "🍰", cost: 14, sat: 25 },
+  { emoji: "🧁", cost: 6, sat: 12 },
+  { emoji: "🍩", cost: 4, sat: 8 },
+  { emoji: "🥗", cost: 7, sat: 13 },
+  { emoji: "🍲", cost: 15, sat: 30 },
+];
+
 /* ── Per-category content ── */
 function MenuContent({ cat, pet, sleepVal }: {
   cat: MenuCategory; pet: Pet; sleepVal: number;
@@ -68,98 +93,55 @@ function MenuContent({ cat, pet, sleepVal }: {
 
   switch (cat) {
     case "feed": {
-      const FOODS: { emoji: string; cost: number; sat: number }[] = [
-        { emoji: "🍎", cost: 2, sat: 5 },
-        { emoji: "🥕", cost: 2, sat: 5 },
-        { emoji: "🌽", cost: 3, sat: 7 },
-        { emoji: "🍞", cost: 3, sat: 8 },
-        { emoji: "🥚", cost: 4, sat: 9 },
-        { emoji: "🧀", cost: 5, sat: 10 },
-        { emoji: "🍗", cost: 6, sat: 14 },
-        { emoji: "🐟", cost: 7, sat: 15 },
-        { emoji: "🍖", cost: 8, sat: 18 },
-        { emoji: "🥩", cost: 10, sat: 20 },
-        { emoji: "🍣", cost: 12, sat: 22 },
-        { emoji: "🍤", cost: 12, sat: 22 },
-        { emoji: "🥐", cost: 5, sat: 11 },
-        { emoji: "🍕", cost: 8, sat: 16 },
-        { emoji: "🌮", cost: 9, sat: 17 },
-        { emoji: "🍔", cost: 10, sat: 19 },
-        { emoji: "🍰", cost: 14, sat: 25 },
-        { emoji: "🧁", cost: 6, sat: 12 },
-        { emoji: "🍩", cost: 4, sat: 8 },
-        { emoji: "🥗", cost: 7, sat: 13 },
-        { emoji: "🍲", cost: 15, sat: 30 },
-      ];
       const canAfford = (c: number) => coins >= c;
       return (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-            padding: "6px 14px", borderRadius: 999, alignSelf: "center",
-            background: "linear-gradient(135deg, rgba(255,215,0,0.12), rgba(255,215,0,0.05))",
-            border: "1px solid rgba(255,215,0,0.25)",
-          }}>
-            <span style={{ fontSize: 16 }}>🪙</span>
-            <span style={{ fontSize: 14, fontWeight: 800, color: "rgba(180,140,20,0.85)" }}>{coins}</span>
-          </div>
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
-            gap: 8,
-          }}>
-            {FOODS.map((f, i) => {
-              const afford = canAfford(f.cost);
-              return (
-                <button
-                  key={i}
-                  disabled={!afford}
-                  style={{
-                    aspectRatio: "1",
-                    borderRadius: 16,
-                    border: afford ? "1px solid rgba(255,255,255,0.75)" : "1px dashed rgba(0,0,0,0.10)",
-                    background: afford ? "rgba(255,255,255,0.55)" : "rgba(255,255,255,0.30)",
-                    display: "flex", flexDirection: "column",
-                    alignItems: "center", justifyContent: "center",
-                    gap: 3, padding: 6,
-                    cursor: afford ? "pointer" : "not-allowed",
-                    fontFamily: "inherit", outline: "none",
-                    opacity: afford ? 1 : 0.45,
-                    transition: "transform 0.1s ease",
-                    ...NOTAP,
-                  }}
-                  onPointerDown={e => { if (afford) (e.currentTarget as HTMLElement).style.transform = "scale(0.92)"; }}
-                  onPointerUp={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
-                  onPointerLeave={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
-                >
-                  <span style={{ fontSize: 24, lineHeight: 1 }}>{f.emoji}</span>
-                  <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-                    <span style={{ fontSize: 9, lineHeight: 1 }}>🪙</span>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: "rgba(180,140,20,0.80)" }}>{f.cost}</span>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-                    <span style={{ fontSize: 9, lineHeight: 1 }}>🍎</span>
-                    <span style={{ fontSize: 10, fontWeight: 600, color: "rgba(0,0,0,0.40)" }}>+{f.sat}</span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(3, 1fr)",
+          gap: 8,
+        }}>
+          {FOODS.map((f, i) => {
+            const afford = canAfford(f.cost);
+            return (
+              <button
+                key={i}
+                disabled={!afford}
+                style={{
+                  aspectRatio: "1",
+                  borderRadius: 16,
+                  border: afford ? "1px solid rgba(255,255,255,0.75)" : "1px dashed rgba(0,0,0,0.10)",
+                  background: afford ? "rgba(255,255,255,0.55)" : "rgba(255,255,255,0.30)",
+                  display: "flex", flexDirection: "column",
+                  alignItems: "center", justifyContent: "center",
+                  gap: 3, padding: 6,
+                  cursor: afford ? "pointer" : "not-allowed",
+                  fontFamily: "inherit", outline: "none",
+                  opacity: afford ? 1 : 0.45,
+                  transition: "transform 0.1s ease",
+                  ...NOTAP,
+                }}
+                onPointerDown={e => { if (afford) (e.currentTarget as HTMLElement).style.transform = "scale(0.92)"; }}
+                onPointerUp={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
+                onPointerLeave={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
+              >
+                <span style={{ fontSize: 24, lineHeight: 1 }}>{f.emoji}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                  <span style={{ fontSize: 9, lineHeight: 1 }}>🪙</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: "rgba(180,140,20,0.80)" }}>{f.cost}</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                  <span style={{ fontSize: 9, lineHeight: 1 }}>🍎</span>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: "rgba(0,0,0,0.40)" }}>+{f.sat}</span>
+                </div>
+              </button>
+            );
+          })}
         </div>
       );
-    };
+    }
     case "play":
       return (
         <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "center" }}>
-          <div style={{
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-            padding: "8px 16px", borderRadius: 999,
-            background: "linear-gradient(135deg, rgba(255,215,0,0.12), rgba(255,215,0,0.05))",
-            border: "1px solid rgba(255,215,0,0.25)",
-          }}>
-            <span style={{ fontSize: 18 }}>🪙</span>
-            <span style={{ fontSize: 16, fontWeight: 800, color: "rgba(180,140,20,0.85)" }}>{coins}</span>
-          </div>
           <span style={{ fontSize: 48 }}>🎮</span>
           <p style={{ fontSize: 14, color: "rgba(0,0,0,0.45)", textAlign: "center", margin: 0, lineHeight: 1.5 }}>
             Игры скоро появятся!<br />Следи за обновлениями.
@@ -169,15 +151,6 @@ function MenuContent({ cat, pet, sleepVal }: {
     case "shop":
       return (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-            padding: "8px 16px", borderRadius: 999,
-            background: "linear-gradient(135deg, rgba(255,215,0,0.12), rgba(255,215,0,0.05))",
-            border: "1px solid rgba(255,215,0,0.25)", alignSelf: "center",
-          }}>
-            <span style={{ fontSize: 18 }}>🪙</span>
-            <span style={{ fontSize: 16, fontWeight: 800, color: "rgba(180,140,20,0.85)" }}>{coins}</span>
-          </div>
           <p style={{ fontSize: 13, color: "rgba(0,0,0,0.45)", textAlign: "center", margin: 0 }}>Магазин — скоро!</p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center" }}>
             {["🎀 Бант", "👑 Корона", "🛁 Ванна", "🏠 Домик", "💎 Кристалл"].map(i => (
@@ -284,7 +257,6 @@ interface Props { menuH: string; pet: Pet; sleepVal: number }
 export function MenuPanel({ menuH, pet, sleepVal }: Props) {
   const { openMenu, setMenu, closeMenu } = useMenuStore();
   const touchStart = useRef<{ x: number; y: number } | null>(null);
-  // Track previous menu for slide direction
   const [slideDir, setSlideDir] = useState(0);
   const prevMenu = useRef<MenuCategory | null>(null);
 
@@ -300,7 +272,6 @@ export function MenuPanel({ menuH, pet, sleepVal }: Props) {
     prevMenu.current = openMenu as MenuCategory | null;
   }, [openMenu]);
 
-  // CSS class key to trigger re-animation
   const [animKey, setAnimKey] = useState(0);
   useEffect(() => { setAnimKey(k => k + 1); }, [openMenu]);
 
@@ -341,7 +312,6 @@ export function MenuPanel({ menuH, pet, sleepVal }: Props) {
             position: "absolute", inset: 0,
             display: "flex", flexDirection: "column", overflow: "hidden",
             animation: `menu-slide-in 0.22s cubic-bezier(0.22, 1, 0.36, 1) forwards`,
-            // CSS custom property for direction
             ["--slide-from" as string]: slideDir !== 0 ? `${slideDir * 60}px` : "0px",
           }}
         >
