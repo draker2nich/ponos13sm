@@ -336,8 +336,8 @@ export function HomePage({ petId }: Props) {
           <div style={{ flex: 1 }} />
           <div style={{
             ...G.heavy,
-            borderRadius: 999,
-            clipPath: "polygon(0 0, 100% 0, 100% 100%, 30% 100%, 0 60%)",
+            borderRadius: 0,
+            clipPath: "polygon(12px 0, calc(100% - 12px) 0, 100% 12px, 100% calc(100% - 12px), calc(100% - 12px) 100%, 16% 100%, 0 38%, 0 12px) round 12px",
             padding: "7px 10px 6px",
             display: "flex", flexDirection: "column", alignItems: "stretch", gap: 4, flexShrink: 0,
           }}>
