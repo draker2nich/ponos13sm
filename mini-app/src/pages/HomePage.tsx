@@ -260,8 +260,6 @@ export function HomePage({ petId }: Props) {
       if (activeTab === tab && menuIsOpen) { handleClose(); return; }
       setActiveTab(tab);
       setMenu(tab as MenuCategory);
-      if (tab === "feed") doAction("feed", "+30 🍎");
-      if (tab === "play") doAction("play", "+25 🎾");
       return;
     }
     setActiveTab(tab); closeMenu();
