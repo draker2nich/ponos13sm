@@ -335,20 +335,21 @@ export function HomePage({ petId }: Props) {
           </div>
           <div style={{ flex: 1 }} />
           <div style={{
-            ...G.heavy, borderRadius: 22, padding: "6px 10px 5px",
-            display: "flex", flexDirection: "column", alignItems: "center", gap: 3, flexShrink: 0,
+            ...G.heavy,
+            borderRadius: 0,
+            clipPath: "polygon(0 0, 100% 0, 100% 100%, 30% 100%, 0 60%)",
+            padding: "7px 10px 6px",
+            display: "flex", flexDirection: "column", alignItems: "stretch", gap: 4, flexShrink: 0,
           }}>
-            <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+            <div style={{ display: "flex", gap: 4, alignItems: "center", justifyContent: "center" }}>
               <StatusRing value={pet.hunger} icon={IC.food} />
               <StatusRing value={pet.happiness} icon={IC.game} />
               <StatusRing value={sleepVal} icon={IC.moon} />
               <StatusRing value={pet.health} icon={IC.wash} />
             </div>
             <div style={{
-              display: "flex", alignItems: "center", gap: 3,
-              background: "linear-gradient(135deg, rgba(255,215,0,0.15), rgba(255,215,0,0.05))",
-              border: "1px solid rgba(255,215,0,0.28)",
-              borderRadius: 999, padding: "2px 9px",
+              display: "flex", alignItems: "center", justifyContent: "flex-end",
+              gap: 3, paddingRight: 2,
             }}>
               <span style={{ fontSize: 10, lineHeight: 1 }}>🪙</span>
               <span style={{ fontSize: 9, fontWeight: 800, color: "rgba(180,140,20,0.85)" }}>{coins}</span>
