@@ -5,6 +5,7 @@ import { motion, useMotionValue, useSpring } from "framer-motion";
 import { usePetStore } from "../store/usePetStore";
 import { useMenuStore, MENU_ORDER, type MenuCategory } from "../store/useMenuStore";
 import { useCoinStore } from "../store/useCoinStore";
+import { useSleepStore } from "../store/useSleepStore";
 import { PetSVG } from "../components/PetSVG";
 import { BottomBlock, cdActive } from "../components/BottomBlock";
 import { IC } from "../components/icons";
@@ -73,6 +74,76 @@ function FloatAnim({ show, text }: { show: boolean; text: string }) {
 
 interface HeartFx { id: number; x: number; y: number; angle: number; dist: number }
 
+/* ── Sleep overlay on scene ── */
+function SleepOverlay() {
+  const sleeping = useSleepStore(s => s.sleeping);
+  return (
+    <>
+      {/* Dark overlay */}
+      <div style={{
+        position: "absolute", inset: 0, zIndex: 15,
+        background: sleeping
+          ? "radial-gradient(ellipse at 50% 55%, rgba(15,12,40,0.82) 0%, rgba(5,3,20,0.94) 100%)"
+          : "transparent",
+        pointerEvents: "none",
+        transition: "background 0.8s ease",
+      }} />
+
+      {/* Stars */}
+      {sleeping && (
+        <div style={{ position: "absolute", inset: 0, zIndex: 16, pointerEvents: "none", overflow: "hidden" }}>
+          {Array.from({ length: 12 }).map((_, i) => (
+            <span key={`star-${i}`} style={{
+              position: "absolute",
+              left: `${8 + ((i * 17 + 7) % 84)}%`,
+              top: `${5 + ((i * 23 + 11) % 70)}%`,
+              fontSize: 6 + (i % 4) * 3,
+              color: `rgba(255,255,220,${0.15 + (i % 3) * 0.12})`,
+              animation: `star-twinkle ${1.2 + (i % 5) * 0.5}s ease-in-out infinite alternate`,
+              animationDelay: `${(i * 0.25) % 2}s`,
+            }}>✦</span>
+          ))}
+          {/* Moon */}
+          <div style={{
+            position: "absolute", top: "8%", right: "12%",
+            fontSize: 32,
+            filter: "drop-shadow(0 0 18px rgba(255,230,150,0.35))",
+            animation: "sleep-moon-glow 4s ease-in-out infinite alternate",
+          }}>🌙</div>
+        </div>
+      )}
+    </>
+  );
+}
+
+/* ── Zzz floating from pet ── */
+function SleepZzz() {
+  const sleeping = useSleepStore(s => s.sleeping);
+  if (!sleeping) return null;
+  return (
+    <div style={{
+      position: "absolute", top: "-10%", right: "-20%",
+      zIndex: 18, pointerEvents: "none",
+      width: 80, height: 120,
+    }}>
+      {[0, 1, 2].map(i => (
+        <span key={i} style={{
+          position: "absolute",
+          left: `${i * 22}%`,
+          bottom: 0,
+          fontSize: 16 + i * 8,
+          fontWeight: 900,
+          fontStyle: "italic",
+          color: `rgba(200,190,255,${0.4 + i * 0.15})`,
+          textShadow: `0 0 8px rgba(180,170,240,${0.2 + i * 0.1})`,
+          animation: `zzz-float ${2.2 + i * 0.5}s ease-in-out infinite`,
+          animationDelay: `${i * 0.6}s`,
+        }}>Z</span>
+      ))}
+    </div>
+  );
+}
+
 function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, petDomRef, anchored, headerRef, navRowRef, containerRef }: {
   children: React.ReactNode;
   constraintsRef: React.RefObject<HTMLElement | null>;
@@ -84,6 +155,7 @@ function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, petDomR
   navRowRef: React.RefObject<HTMLDivElement | null>;
   containerRef: React.RefObject<HTMLDivElement | null>;
 }) {
+  const sleeping = useSleepStore(s => s.sleeping);
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const springX = useSpring(x, SPRING_SMOOTH);
@@ -145,12 +217,12 @@ function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, petDomR
 
   return (
     <motion.div
-      drag={!anchored}
+      drag={!anchored && !sleeping}
       dragConstraints={constraintsRef}
       dragElastic={0.08}
       dragMomentum={false}
       style={{
-        cursor: anchored ? "default" : "grab",
+        cursor: anchored || sleeping ? "default" : "grab",
         touchAction: "none",
         display: "inline-block",
         x: springX, y: springY,
@@ -169,6 +241,7 @@ export function HomePage({ petId }: Props) {
   const { pet, fetchPet, performAction, loading } = usePetStore();
   const { openMenu, setMenu, closeMenu } = useMenuStore();
   const coins = useCoinStore(s => s.coins);
+  const sleeping = useSleepStore(s => s.sleeping);
 
   const [activeTab, setActiveTab] = useState<TabId | null>(null);
   const [floatText, setFloatText] = useState("");
@@ -259,6 +332,9 @@ export function HomePage({ petId }: Props) {
     setActiveTab(tab); closeMenu();
   };
 
+  // Determine pet mood override when sleeping
+  const effectiveMood = sleeping ? "sleepy" as const : (isStroking ? "happy" as const : pet.mood);
+
   return (
     <div
       ref={containerRef}
@@ -278,6 +354,9 @@ export function HomePage({ petId }: Props) {
         <div style={{ position: "absolute", bottom: "8%", left: "8%", width: "46%", paddingBottom: "46%", borderRadius: "50%", background: "radial-gradient(circle,rgba(167,243,208,0.18) 0%,transparent 70%)" }} />
       </div>
 
+      {/* Sleep overlay — covers the whole scene */}
+      <SleepOverlay />
+
       {/* Pet zone */}
       <div ref={petZoneRef} style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative", zIndex: 5, overflow: "hidden", minHeight: 0 }}>
 
@@ -286,8 +365,10 @@ export function HomePage({ petId }: Props) {
           ref={headerRef}
           style={{
             padding: "clamp(12px,3.5vw,20px) clamp(12px,4vw,18px) 6px",
-            zIndex: 10, position: "relative",
+            zIndex: 20, position: "relative",
             display: "flex", alignItems: "flex-start", gap: 8, flexShrink: 0,
+            opacity: sleeping ? 0.3 : 1,
+            transition: "opacity 0.6s ease",
           }}
         >
           {/* Left: name pill */}
@@ -333,7 +414,6 @@ export function HomePage({ petId }: Props) {
           <div style={{
             display: "flex", flexDirection: "column", alignItems: "flex-end", flexShrink: 0, gap: 4,
           }}>
-            {/* Stats pill */}
             <div style={{
               ...G.heavy, borderRadius: 999, height: PILL_H, padding: "0 10px",
               display: "flex", gap: 4, alignItems: "center",
@@ -343,7 +423,6 @@ export function HomePage({ petId }: Props) {
               <StatusRing value={sleepVal} icon={IC.moon} />
               <StatusRing value={pet.health} icon={IC.wash} />
             </div>
-            {/* Coins pill */}
             <div style={{
               display: "flex", alignItems: "center", gap: 3,
               background: "rgba(255,255,255,0.55)",
@@ -351,10 +430,7 @@ export function HomePage({ petId }: Props) {
               WebkitBackdropFilter: "blur(20px)",
               border: "1px solid rgba(255,255,255,0.70)",
               boxShadow: "0 2px 10px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.9)",
-              borderRadius: 999,
-              padding: "4px 10px",
-              minWidth: 52,
-              justifyContent: "center",
+              borderRadius: 999, padding: "4px 10px", minWidth: 52, justifyContent: "center",
             }}>
               <span style={{ fontSize: 11, lineHeight: 1 }}>🪙</span>
               <span style={{ fontSize: 10, fontWeight: 800, color: "rgba(180,140,20,0.85)" }}>{coins}</span>
@@ -370,6 +446,10 @@ export function HomePage({ petId }: Props) {
         }}>
           <div style={{ position: "relative" }}>
             <FloatAnim show={floatShow} text={floatText} />
+
+            {/* Zzz bubbles floating from pet */}
+            <SleepZzz />
+
             <DraggablePet
               constraintsRef={petZoneRef} isStroking={isStroking}
               onHeartAt={spawnHeart} petDomRef={petDomRef}
@@ -378,14 +458,16 @@ export function HomePage({ petId }: Props) {
             >
               <div ref={petDomRef} style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
                 <PetSVG
-                  mood={isStroking ? "happy" : pet.mood} petType={pet.pet_type}
+                  mood={effectiveMood} petType={pet.pet_type}
                   evolution={evo} isReacting={floatShow || isStroking}
                   size="clamp(120px,32vw,180px)"
                 />
                 <div style={{
                   width: "clamp(44px,12vw,68px)", height: 6,
-                  background: "rgba(0,0,0,0.07)", filter: "blur(5px)",
+                  background: sleeping ? "rgba(0,0,0,0.15)" : "rgba(0,0,0,0.07)",
+                  filter: "blur(5px)",
                   borderRadius: "50%", marginTop: -2, pointerEvents: "none",
+                  transition: "background 0.6s ease",
                 }} />
               </div>
             </DraggablePet>
@@ -394,11 +476,11 @@ export function HomePage({ petId }: Props) {
           {/* Partner badge */}
           <div style={{
             position: "absolute", bottom: 10, left: 0, right: 0,
-            display: "flex", justifyContent: "center", zIndex: 6, pointerEvents: "none",
-            opacity: menuIsOpen ? 0 : 1,
+            display: "flex", justifyContent: "center", zIndex: 20, pointerEvents: "none",
+            opacity: menuIsOpen || sleeping ? 0 : 1,
             transition: "opacity 0.15s ease",
           }}>
-            <div style={{ pointerEvents: menuIsOpen ? "none" : "auto" }}>
+            <div style={{ pointerEvents: menuIsOpen || sleeping ? "none" : "auto" }}>
               {partner ? (
                 <div style={{
                   display: "inline-flex", alignItems: "center", gap: 6,
