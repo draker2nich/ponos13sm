@@ -3,6 +3,7 @@ import { useRef, useCallback, useState, useEffect } from "react";
 import { useMenuStore, MENU_ORDER, type MenuCategory } from "../store/useMenuStore";
 import { useCoinStore } from "../store/useCoinStore";
 import { useSleepStore } from "../store/useSleepStore";
+import { BlockBlastGame } from "./BlockBlastGame";
 import { NOTAP } from "./NavCarousel";
 import type { Pet } from "../api/types";
 
@@ -113,8 +114,8 @@ function ShopTile({ emoji, cost, effectIcon, effectVal, afford }: {
 }
 
 /* ── Per-category content ── */
-function MenuContent({ cat, pet, sleepVal }: {
-  cat: MenuCategory; pet: Pet; sleepVal: number;
+function MenuContent({ cat, pet, sleepVal, onGameOpen }: {
+  cat: MenuCategory; pet: Pet; sleepVal: number; onGameOpen: () => void;
 }) {
   const coins = useCoinStore(s => s.coins);
   const { sleeping, toggle } = useSleepStore();
@@ -131,10 +132,57 @@ function MenuContent({ cat, pet, sleepVal }: {
 
     case "play":
       return (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "center" }}>
-          <span style={{ fontSize: 48 }}>🎮</span>
-          <p style={{ fontSize: 14, color: "rgba(0,0,0,0.45)", textAlign: "center", margin: 0, lineHeight: 1.5 }}>
-            Игры скоро появятся!<br />Следи за обновлениями.
+        <div style={{ display: "flex", flexDirection: "column", gap: 16, alignItems: "center" }}>
+          {/* Block Blast card */}
+          <button
+            onClick={onGameOpen}
+            style={{
+              width: "100%", maxWidth: 320,
+              padding: "20px", borderRadius: 22,
+              background: "linear-gradient(135deg, rgba(124,92,252,0.12), rgba(244,114,182,0.12))",
+              border: "1px solid rgba(255,255,255,0.65)",
+              boxShadow: "0 4px 20px rgba(124,92,252,0.10)",
+              cursor: "pointer", fontFamily: "inherit", outline: "none",
+              display: "flex", alignItems: "center", gap: 16,
+              transition: "transform 0.12s ease",
+              ...NOTAP,
+            }}
+            onPointerDown={e => { (e.currentTarget as HTMLElement).style.transform = "scale(0.97)"; }}
+            onPointerUp={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
+            onPointerLeave={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
+          >
+            {/* Mini preview grid */}
+            <div style={{
+              width: 56, height: 56, borderRadius: 14, flexShrink: 0,
+              background: "linear-gradient(135deg, #7c5cfc, #f472b6)",
+              display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 2,
+              padding: 8, alignContent: "center",
+            }}>
+              {[1,1,0, 0,1,0, 0,1,1].map((f, i) => (
+                <div key={i} style={{
+                  borderRadius: 2, aspectRatio: "1",
+                  background: f ? "rgba(255,255,255,0.80)" : "rgba(255,255,255,0.15)",
+                }} />
+              ))}
+            </div>
+            <div style={{ textAlign: "left" }}>
+              <div style={{ fontSize: 15, fontWeight: 800, color: "rgba(0,0,0,0.70)" }}>Block Blast</div>
+              <div style={{ fontSize: 11, color: "rgba(0,0,0,0.40)", marginTop: 2 }}>
+                Заполняй линии, зарабатывай монеты
+              </div>
+              <div style={{
+                display: "inline-flex", alignItems: "center", gap: 3,
+                marginTop: 6, padding: "3px 8px", borderRadius: 999,
+                background: "rgba(251,191,36,0.15)", border: "1px solid rgba(251,191,36,0.25)",
+              }}>
+                <span style={{ fontSize: 9 }}>🪙</span>
+                <span style={{ fontSize: 10, fontWeight: 700, color: "rgba(180,140,20,0.80)" }}>1 за 2 линии</span>
+              </div>
+            </div>
+          </button>
+
+          <p style={{ fontSize: 12, color: "rgba(0,0,0,0.30)", textAlign: "center", margin: 0 }}>
+            Больше игр скоро появятся!
           </p>
         </div>
       );
@@ -188,7 +236,6 @@ function MenuContent({ cat, pet, sleepVal }: {
             onPointerUp={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
             onPointerLeave={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
           >
-            {/* glow */}
             <div style={{
               position: "absolute", top: "15%", left: "50%", transform: "translateX(-50%)",
               width: 120, height: 120, borderRadius: "50%",
@@ -291,6 +338,7 @@ export function MenuPanel({ menuH, pet, sleepVal }: Props) {
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const [slideDir, setSlideDir] = useState(0);
   const prevMenu = useRef<MenuCategory | null>(null);
+  const [gameOpen, setGameOpen] = useState(false);
 
   useEffect(() => {
     if (openMenu && prevMenu.current) {
@@ -304,6 +352,11 @@ export function MenuPanel({ menuH, pet, sleepVal }: Props) {
     prevMenu.current = openMenu as MenuCategory | null;
   }, [openMenu]);
 
+  // Close game when menu changes away from play
+  useEffect(() => {
+    if (openMenu !== "play") setGameOpen(false);
+  }, [openMenu]);
+
   const [animKey, setAnimKey] = useState(0);
   useEffect(() => { setAnimKey(k => k + 1); }, [openMenu]);
 
@@ -312,7 +365,7 @@ export function MenuPanel({ menuH, pet, sleepVal }: Props) {
   }, []);
 
   const handleEnd = useCallback((cx: number, cy: number) => {
-    if (!touchStart.current || !openMenu) return;
+    if (!touchStart.current || !openMenu || gameOpen) return;
     const dx = cx - touchStart.current.x;
     const dy = cy - touchStart.current.y;
     touchStart.current = null;
@@ -322,7 +375,21 @@ export function MenuPanel({ menuH, pet, sleepVal }: Props) {
     if (idx === -1) return;
     if (dx < 0 && idx < MENU_ORDER.length - 1) setMenu(MENU_ORDER[idx + 1]);
     if (dx > 0 && idx > 0) setMenu(MENU_ORDER[idx - 1]);
-  }, [openMenu, setMenu, closeMenu]);
+  }, [openMenu, setMenu, closeMenu, gameOpen]);
+
+  // Full-screen game mode
+  if (gameOpen) {
+    return (
+      <div style={{
+        position: "fixed", inset: 0, zIndex: 9999,
+        background: "linear-gradient(150deg,#eef2ff 0%,#fce7f3 45%,#ecfdf5 100%)",
+        display: "flex", flexDirection: "column",
+        padding: "env(safe-area-inset-top, 12px) 12px env(safe-area-inset-bottom, 12px)",
+      }}>
+        <BlockBlastGame onBack={() => setGameOpen(false)} />
+      </div>
+    );
+  }
 
   return (
     <div
@@ -348,7 +415,12 @@ export function MenuPanel({ menuH, pet, sleepVal }: Props) {
           }}
         >
           <div style={{ flex: 1, overflowY: "auto", padding: "16px 16px 24px", scrollbarWidth: "none" }}>
-            <MenuContent cat={openMenu as MenuCategory} pet={pet} sleepVal={sleepVal} />
+            <MenuContent
+              cat={openMenu as MenuCategory}
+              pet={pet}
+              sleepVal={sleepVal}
+              onGameOpen={() => setGameOpen(true)}
+            />
           </div>
         </div>
       )}
