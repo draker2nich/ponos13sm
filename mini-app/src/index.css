@@ -113,3 +113,22 @@ a:focus:not(:focus-visible) {
   0%   { opacity: 1; transform: translateX(-50%) translateY(0); }
   100% { opacity: 0; transform: translateX(-50%) translateY(-50px); }
 }
+
+@keyframes zzz-float {
+  0%   { opacity: 0; transform: translateY(0) scale(0.6) rotate(0deg); }
+  15%  { opacity: 1; }
+  75%  { opacity: 0.5; }
+  100% { opacity: 0; transform: translateY(-100px) scale(1.3) rotate(-20deg); }
+}
+
+/* Stars twinkling */
+@keyframes star-twinkle {
+  0%   { opacity: 0.1; transform: scale(0.7); }
+  100% { opacity: 0.5; transform: scale(1.3); }
+}
+
+/* Moon soft glow pulse */
+@keyframes sleep-moon-glow {
+  0%   { filter: drop-shadow(0 0 14px rgba(255,230,150,0.25)); transform: scale(1); }
+  100% { filter: drop-shadow(0 0 24px rgba(255,230,150,0.45)); transform: scale(1.05); }
+}

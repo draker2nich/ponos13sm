@@ -2,6 +2,7 @@
 import { useRef, useCallback, useState, useEffect } from "react";
 import { useMenuStore, MENU_ORDER, type MenuCategory } from "../store/useMenuStore";
 import { useCoinStore } from "../store/useCoinStore";
+import { useSleepStore } from "../store/useSleepStore";
 import { NOTAP } from "./NavCarousel";
 import type { Pet } from "../api/types";
 
@@ -111,165 +112,12 @@ function ShopTile({ emoji, cost, effectIcon, effectVal, afford }: {
   );
 }
 
-/* ── Sleep Panel ── */
-function SleepPanel() {
-  const [sleeping, setSleeping] = useState(false);
-
-  return (
-    <div style={{
-      display: "flex", flexDirection: "column",
-      alignItems: "center", justifyContent: "center",
-      height: "100%", minHeight: 200, gap: 0,
-      position: "relative", overflow: "hidden",
-    }}>
-      {/* Sleeping overlay */}
-      <div style={{
-        position: "absolute", inset: 0,
-        background: sleeping
-          ? "radial-gradient(ellipse at 50% 60%, rgba(30,25,60,0.92) 0%, rgba(10,8,30,0.97) 100%)"
-          : "transparent",
-        borderRadius: 18,
-        transition: "background 0.8s ease",
-        pointerEvents: "none", zIndex: 0,
-      }} />
-
-      {/* Floating Zzz */}
-      {sleeping && (
-        <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 1, overflow: "hidden" }}>
-          {[0, 1, 2].map(i => (
-            <span key={i} style={{
-              position: "absolute",
-              left: `${30 + i * 18}%`,
-              bottom: "20%",
-              fontSize: 18 + i * 6,
-              color: `rgba(200,190,255,${0.35 + i * 0.15})`,
-              fontWeight: 800,
-              animation: `zzz-float ${2.5 + i * 0.6}s ease-in-out infinite`,
-              animationDelay: `${i * 0.7}s`,
-            }}>z</span>
-          ))}
-          {/* Stars */}
-          {[0, 1, 2, 3, 4].map(i => (
-            <span key={`s${i}`} style={{
-              position: "absolute",
-              left: `${12 + i * 20}%`,
-              top: `${10 + (i % 3) * 25}%`,
-              fontSize: 8 + (i % 3) * 4,
-              color: "rgba(255,255,200,0.35)",
-              animation: `star-twinkle ${1.5 + i * 0.4}s ease-in-out infinite alternate`,
-              animationDelay: `${i * 0.3}s`,
-            }}>✦</span>
-          ))}
-        </div>
-      )}
-
-      {/* Moon & sleeping emoji when active */}
-      {sleeping && (
-        <div style={{
-          position: "relative", zIndex: 2,
-          display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
-          animation: "sleep-fade-in 0.6s ease forwards",
-        }}>
-          <span style={{ fontSize: 48, filter: "drop-shadow(0 0 16px rgba(255,230,150,0.4))" }}>🌙</span>
-          <span style={{
-            fontSize: 13, fontWeight: 600,
-            color: "rgba(200,190,255,0.7)",
-            letterSpacing: "0.05em",
-          }}>Спит сладко...</span>
-        </div>
-      )}
-
-      {/* Big sleep button */}
-      <button
-        onClick={() => setSleeping(s => !s)}
-        style={{
-          position: "relative", zIndex: 2,
-          width: sleeping ? 72 : "100%",
-          height: sleeping ? 72 : "100%",
-          minHeight: sleeping ? 72 : 180,
-          maxWidth: sleeping ? 72 : 400,
-          borderRadius: sleeping ? "50%" : 24,
-          border: "none",
-          background: sleeping
-            ? "rgba(255,255,255,0.08)"
-            : "linear-gradient(135deg, #2d2654 0%, #1a1440 40%, #0f0d2a 100%)",
-          cursor: "pointer",
-          display: "flex", flexDirection: "column",
-          alignItems: "center", justifyContent: "center",
-          gap: 12,
-          fontFamily: "inherit", outline: "none",
-          transition: "all 0.5s cubic-bezier(0.32,0.72,0,1)",
-          boxShadow: sleeping
-            ? "0 0 20px rgba(130,120,200,0.15)"
-            : "0 8px 40px rgba(30,20,60,0.35), inset 0 1px 0 rgba(255,255,255,0.06)",
-          overflow: "hidden",
-          marginTop: sleeping ? 16 : 0,
-          ...NOTAP,
-        }}
-        onPointerDown={e => {
-          if (!sleeping) (e.currentTarget as HTMLElement).style.transform = "scale(0.97)";
-        }}
-        onPointerUp={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
-        onPointerLeave={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
-      >
-        {!sleeping && (
-          <>
-            {/* Moon glow bg */}
-            <div style={{
-              position: "absolute", top: "20%", left: "50%",
-              transform: "translateX(-50%)",
-              width: 120, height: 120, borderRadius: "50%",
-              background: "radial-gradient(circle, rgba(255,230,150,0.12) 0%, transparent 70%)",
-              pointerEvents: "none",
-            }} />
-            <span style={{
-              fontSize: 56, lineHeight: 1, position: "relative",
-              filter: "drop-shadow(0 0 20px rgba(255,230,150,0.3))",
-            }}>🌙</span>
-            <span style={{
-              fontSize: 16, fontWeight: 700, color: "rgba(200,190,255,0.85)",
-              position: "relative", letterSpacing: "0.02em",
-            }}>Выключить свет</span>
-            <span style={{
-              fontSize: 11, color: "rgba(200,190,255,0.35)",
-              position: "relative",
-            }}>Питомец уснёт и восстановит силы</span>
-          </>
-        )}
-        {sleeping && (
-          <span style={{
-            fontSize: 20, color: "rgba(200,190,255,0.5)",
-            filter: "drop-shadow(0 0 8px rgba(200,190,255,0.2))",
-          }}>💡</span>
-        )}
-      </button>
-
-      {/* Inline keyframes via style tag */}
-      <style>{`
-        @keyframes zzz-float {
-          0%   { opacity: 0; transform: translateY(0) scale(0.7); }
-          20%  { opacity: 1; }
-          80%  { opacity: 0.6; }
-          100% { opacity: 0; transform: translateY(-90px) scale(1.2) rotate(-15deg); }
-        }
-        @keyframes star-twinkle {
-          0%   { opacity: 0.15; transform: scale(0.8); }
-          100% { opacity: 0.55; transform: scale(1.2); }
-        }
-        @keyframes sleep-fade-in {
-          0%   { opacity: 0; transform: translateY(10px); }
-          100% { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
-    </div>
-  );
-}
-
 /* ── Per-category content ── */
 function MenuContent({ cat, pet, sleepVal }: {
   cat: MenuCategory; pet: Pet; sleepVal: number;
 }) {
   const coins = useCoinStore(s => s.coins);
+  const { sleeping, toggle } = useSleepStore();
 
   switch (cat) {
     case "feed":
@@ -311,7 +159,60 @@ function MenuContent({ cat, pet, sleepVal }: {
       );
 
     case "sleep":
-      return <SleepPanel />;
+      return (
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "center",
+          height: "100%", minHeight: 180,
+        }}>
+          <button
+            onClick={toggle}
+            style={{
+              width: "100%", height: "100%", minHeight: 180,
+              maxWidth: 400,
+              borderRadius: 24, border: "none",
+              background: sleeping
+                ? "linear-gradient(135deg, rgba(255,240,180,0.25) 0%, rgba(255,250,220,0.15) 100%)"
+                : "linear-gradient(135deg, #2d2654 0%, #1a1440 40%, #0f0d2a 100%)",
+              cursor: "pointer",
+              display: "flex", flexDirection: "column",
+              alignItems: "center", justifyContent: "center", gap: 12,
+              fontFamily: "inherit", outline: "none",
+              transition: "all 0.4s ease",
+              boxShadow: sleeping
+                ? "0 4px 20px rgba(200,180,100,0.15), inset 0 1px 0 rgba(255,255,255,0.3)"
+                : "0 8px 40px rgba(30,20,60,0.35), inset 0 1px 0 rgba(255,255,255,0.06)",
+              position: "relative", overflow: "hidden",
+              ...NOTAP,
+            }}
+            onPointerDown={e => { (e.currentTarget as HTMLElement).style.transform = "scale(0.97)"; }}
+            onPointerUp={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
+            onPointerLeave={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
+          >
+            {/* glow */}
+            <div style={{
+              position: "absolute", top: "15%", left: "50%", transform: "translateX(-50%)",
+              width: 120, height: 120, borderRadius: "50%",
+              background: sleeping
+                ? "radial-gradient(circle, rgba(255,220,100,0.15) 0%, transparent 70%)"
+                : "radial-gradient(circle, rgba(255,230,150,0.12) 0%, transparent 70%)",
+              pointerEvents: "none",
+            }} />
+            <span style={{
+              fontSize: 56, lineHeight: 1, position: "relative",
+              filter: `drop-shadow(0 0 20px ${sleeping ? "rgba(255,220,100,0.3)" : "rgba(255,230,150,0.3)"})`,
+            }}>
+              {sleeping ? "💡" : "🌙"}
+            </span>
+            <span style={{
+              fontSize: 16, fontWeight: 700, position: "relative",
+              color: sleeping ? "rgba(0,0,0,0.50)" : "rgba(200,190,255,0.85)",
+              letterSpacing: "0.02em",
+            }}>
+              {sleeping ? "Включить свет" : "Выключить свет"}
+            </span>
+          </button>
+        </div>
+      );
 
     case "partner":
       return (
