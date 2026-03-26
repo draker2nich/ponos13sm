@@ -11,6 +11,7 @@ import { BottomBlock, cdActive } from "../components/BottomBlock";
 import { IC } from "../components/icons";
 import { NOTAP, type TabId } from "../components/NavCarousel";
 import type { ActionType } from "../api/types";
+import { BlockBlastGame } from "../components/BlockBlastGame";
 
 type CSSProps = React.CSSProperties;
 
@@ -249,6 +250,8 @@ export function HomePage({ petId }: Props) {
   const [isStroking, setIsStroking] = useState(false);
   const [hearts, setHearts] = useState<HeartFx[]>([]);
   const nextHeart = useRef(0);
+
+  const [gameOpen, setGameOpen] = useState(false);
 
   const petZoneRef = useRef<HTMLDivElement>(null);
   const petDomRef = useRef<HTMLDivElement>(null);
@@ -536,6 +539,7 @@ export function HomePage({ petId }: Props) {
       }} />
 
       {/* Hearts */}
+      
       {hearts.map(h => (
         <div key={h.id}
           style={{
@@ -549,6 +553,7 @@ export function HomePage({ petId }: Props) {
           } as React.CSSProperties}
         >🩷</div>
       ))}
+      {gameOpen && <BlockBlastGame onBack={() => setGameOpen(false)} />}
     </div>
   );
 }

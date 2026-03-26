@@ -3,7 +3,6 @@ import { useRef, useCallback, useState, useEffect } from "react";
 import { useMenuStore, MENU_ORDER, type MenuCategory } from "../store/useMenuStore";
 import { useCoinStore } from "../store/useCoinStore";
 import { useSleepStore } from "../store/useSleepStore";
-import { BlockBlastGame } from "./BlockBlastGame";
 import { NOTAP } from "./NavCarousel";
 import type { Pet } from "../api/types";
 
@@ -22,7 +21,6 @@ const dangerBtn: React.CSSProperties = {
   background: "linear-gradient(135deg,#f87171,#ef4444)",
 };
 
-/* ── Stat row ── */
 function StatRow({ label, value, color }: { label: string; value: number; color: string }) {
   const v = Math.max(0, Math.min(100, value));
   return (
@@ -32,70 +30,43 @@ function StatRow({ label, value, color }: { label: string; value: number; color:
         <span style={{ fontSize: 12, fontWeight: 700, color: v < 25 ? "#ef4444" : "rgba(0,0,0,0.55)" }}>{Math.round(v)}</span>
       </div>
       <div style={{ height: 6, borderRadius: 6, background: "rgba(0,0,0,0.07)", overflow: "hidden" }}>
-        <div style={{
-          height: "100%", borderRadius: 6,
-          background: v < 25 ? "#ef4444" : color,
-          width: `${v}%`,
-          transition: "width 0.4s ease",
-        }} />
+        <div style={{ height: "100%", borderRadius: 6, background: v < 25 ? "#ef4444" : color, width: `${v}%`, transition: "width 0.4s ease" }} />
       </div>
     </div>
   );
 }
 
-/* ── Food data ── */
 const FOODS: { emoji: string; cost: number; sat: number }[] = [
-  { emoji: "🍎", cost: 2, sat: 5 },
-  { emoji: "🥕", cost: 2, sat: 5 },
-  { emoji: "🌽", cost: 3, sat: 7 },
-  { emoji: "🍞", cost: 3, sat: 8 },
-  { emoji: "🥚", cost: 4, sat: 9 },
-  { emoji: "🧀", cost: 5, sat: 10 },
-  { emoji: "🍗", cost: 6, sat: 14 },
-  { emoji: "🐟", cost: 7, sat: 15 },
-  { emoji: "🍖", cost: 8, sat: 18 },
-  { emoji: "🥩", cost: 10, sat: 20 },
-  { emoji: "🍣", cost: 12, sat: 22 },
-  { emoji: "🍤", cost: 12, sat: 22 },
-  { emoji: "🥐", cost: 5, sat: 11 },
-  { emoji: "🍕", cost: 8, sat: 16 },
-  { emoji: "🌮", cost: 9, sat: 17 },
-  { emoji: "🍔", cost: 10, sat: 19 },
-  { emoji: "🍰", cost: 14, sat: 25 },
-  { emoji: "🧁", cost: 6, sat: 12 },
-  { emoji: "🍩", cost: 4, sat: 8 },
-  { emoji: "🥗", cost: 7, sat: 13 },
+  { emoji: "🍎", cost: 2, sat: 5 }, { emoji: "🥕", cost: 2, sat: 5 },
+  { emoji: "🌽", cost: 3, sat: 7 }, { emoji: "🍞", cost: 3, sat: 8 },
+  { emoji: "🥚", cost: 4, sat: 9 }, { emoji: "🧀", cost: 5, sat: 10 },
+  { emoji: "🍗", cost: 6, sat: 14 }, { emoji: "🐟", cost: 7, sat: 15 },
+  { emoji: "🍖", cost: 8, sat: 18 }, { emoji: "🥩", cost: 10, sat: 20 },
+  { emoji: "🍣", cost: 12, sat: 22 }, { emoji: "🍤", cost: 12, sat: 22 },
+  { emoji: "🥐", cost: 5, sat: 11 }, { emoji: "🍕", cost: 8, sat: 16 },
+  { emoji: "🌮", cost: 9, sat: 17 }, { emoji: "🍔", cost: 10, sat: 19 },
+  { emoji: "🍰", cost: 14, sat: 25 }, { emoji: "🧁", cost: 6, sat: 12 },
+  { emoji: "🍩", cost: 4, sat: 8 }, { emoji: "🥗", cost: 7, sat: 13 },
   { emoji: "🍲", cost: 15, sat: 30 },
 ];
 
-/* ── Wash data ── */
 const WASH_ITEMS: { emoji: string; cost: number; clean: number }[] = [
-  { emoji: "🧴", cost: 5, clean: 15 },
-  { emoji: "🧽", cost: 3, clean: 10 },
-  { emoji: "🧼", cost: 4, clean: 12 },
+  { emoji: "🧴", cost: 5, clean: 15 }, { emoji: "🧽", cost: 3, clean: 10 }, { emoji: "🧼", cost: 4, clean: 12 },
 ];
 
-/* ── Reusable grid tile ── */
 function ShopTile({ emoji, cost, effectIcon, effectVal, afford }: {
   emoji: string; cost: number; effectIcon: string; effectVal: number; afford: boolean;
 }) {
   return (
-    <button
-      disabled={!afford}
-      style={{
-        aspectRatio: "1",
-        borderRadius: 16,
-        border: afford ? "1px solid rgba(255,255,255,0.75)" : "1px dashed rgba(0,0,0,0.10)",
-        background: afford ? "rgba(255,255,255,0.55)" : "rgba(255,255,255,0.30)",
-        display: "flex", flexDirection: "column",
-        alignItems: "center", justifyContent: "center",
-        gap: 3, padding: 6,
-        cursor: afford ? "pointer" : "not-allowed",
-        fontFamily: "inherit", outline: "none",
-        opacity: afford ? 1 : 0.45,
-        transition: "transform 0.1s ease",
-        ...NOTAP,
-      }}
+    <button disabled={!afford} style={{
+      aspectRatio: "1", borderRadius: 16,
+      border: afford ? "1px solid rgba(255,255,255,0.75)" : "1px dashed rgba(0,0,0,0.10)",
+      background: afford ? "rgba(255,255,255,0.55)" : "rgba(255,255,255,0.30)",
+      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+      gap: 3, padding: 6, cursor: afford ? "pointer" : "not-allowed",
+      fontFamily: "inherit", outline: "none", opacity: afford ? 1 : 0.45,
+      transition: "transform 0.1s ease", ...NOTAP,
+    }}
       onPointerDown={e => { if (afford) (e.currentTarget as HTMLElement).style.transform = "scale(0.92)"; }}
       onPointerUp={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
       onPointerLeave={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
@@ -113,7 +84,6 @@ function ShopTile({ emoji, cost, effectIcon, effectVal, afford }: {
   );
 }
 
-/* ── Per-category content ── */
 function MenuContent({ cat, pet, sleepVal, onGameOpen }: {
   cat: MenuCategory; pet: Pet; sleepVal: number; onGameOpen: () => void;
 }) {
@@ -133,25 +103,21 @@ function MenuContent({ cat, pet, sleepVal, onGameOpen }: {
     case "play":
       return (
         <div style={{ display: "flex", flexDirection: "column", gap: 16, alignItems: "center" }}>
-          {/* Block Blast card */}
           <button
             onClick={onGameOpen}
             style={{
-              width: "100%", maxWidth: 320,
-              padding: "20px", borderRadius: 22,
+              width: "100%", maxWidth: 320, padding: "20px", borderRadius: 22,
               background: "linear-gradient(135deg, rgba(124,92,252,0.12), rgba(244,114,182,0.12))",
               border: "1px solid rgba(255,255,255,0.65)",
               boxShadow: "0 4px 20px rgba(124,92,252,0.10)",
               cursor: "pointer", fontFamily: "inherit", outline: "none",
               display: "flex", alignItems: "center", gap: 16,
-              transition: "transform 0.12s ease",
-              ...NOTAP,
+              transition: "transform 0.12s ease", ...NOTAP,
             }}
             onPointerDown={e => { (e.currentTarget as HTMLElement).style.transform = "scale(0.97)"; }}
             onPointerUp={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
             onPointerLeave={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
           >
-            {/* Mini preview grid */}
             <div style={{
               width: 56, height: 56, borderRadius: 14, flexShrink: 0,
               background: "linear-gradient(135deg, #7c5cfc, #f472b6)",
@@ -167,9 +133,7 @@ function MenuContent({ cat, pet, sleepVal, onGameOpen }: {
             </div>
             <div style={{ textAlign: "left" }}>
               <div style={{ fontSize: 15, fontWeight: 800, color: "rgba(0,0,0,0.70)" }}>Block Blast</div>
-              <div style={{ fontSize: 11, color: "rgba(0,0,0,0.40)", marginTop: 2 }}>
-                Заполняй линии, зарабатывай монеты
-              </div>
+              <div style={{ fontSize: 11, color: "rgba(0,0,0,0.40)", marginTop: 2 }}>Заполняй линии, зарабатывай монеты</div>
               <div style={{
                 display: "inline-flex", alignItems: "center", gap: 3,
                 marginTop: 6, padding: "3px 8px", borderRadius: 999,
@@ -180,7 +144,6 @@ function MenuContent({ cat, pet, sleepVal, onGameOpen }: {
               </div>
             </div>
           </button>
-
           <p style={{ fontSize: 12, color: "rgba(0,0,0,0.30)", textAlign: "center", margin: 0 }}>
             Больше игр скоро появятся!
           </p>
@@ -208,30 +171,21 @@ function MenuContent({ cat, pet, sleepVal, onGameOpen }: {
 
     case "sleep":
       return (
-        <div style={{
-          display: "flex", alignItems: "center", justifyContent: "center",
-          height: "100%", minHeight: 180,
-        }}>
-          <button
-            onClick={toggle}
-            style={{
-              width: "100%", height: "100%", minHeight: 180,
-              maxWidth: 400,
-              borderRadius: 24, border: "none",
-              background: sleeping
-                ? "linear-gradient(135deg, rgba(255,240,180,0.25) 0%, rgba(255,250,220,0.15) 100%)"
-                : "linear-gradient(135deg, #2d2654 0%, #1a1440 40%, #0f0d2a 100%)",
-              cursor: "pointer",
-              display: "flex", flexDirection: "column",
-              alignItems: "center", justifyContent: "center", gap: 12,
-              fontFamily: "inherit", outline: "none",
-              transition: "all 0.4s ease",
-              boxShadow: sleeping
-                ? "0 4px 20px rgba(200,180,100,0.15), inset 0 1px 0 rgba(255,255,255,0.3)"
-                : "0 8px 40px rgba(30,20,60,0.35), inset 0 1px 0 rgba(255,255,255,0.06)",
-              position: "relative", overflow: "hidden",
-              ...NOTAP,
-            }}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", minHeight: 180 }}>
+          <button onClick={toggle} style={{
+            width: "100%", height: "100%", minHeight: 180, maxWidth: 400,
+            borderRadius: 24, border: "none",
+            background: sleeping
+              ? "linear-gradient(135deg, rgba(255,240,180,0.25), rgba(255,250,220,0.15))"
+              : "linear-gradient(135deg, #2d2654, #1a1440 40%, #0f0d2a)",
+            cursor: "pointer", display: "flex", flexDirection: "column",
+            alignItems: "center", justifyContent: "center", gap: 12,
+            fontFamily: "inherit", outline: "none", transition: "all 0.4s ease",
+            boxShadow: sleeping
+              ? "0 4px 20px rgba(200,180,100,0.15), inset 0 1px 0 rgba(255,255,255,0.3)"
+              : "0 8px 40px rgba(30,20,60,0.35), inset 0 1px 0 rgba(255,255,255,0.06)",
+            position: "relative", overflow: "hidden", ...NOTAP,
+          }}
             onPointerDown={e => { (e.currentTarget as HTMLElement).style.transform = "scale(0.97)"; }}
             onPointerUp={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
             onPointerLeave={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
@@ -240,23 +194,19 @@ function MenuContent({ cat, pet, sleepVal, onGameOpen }: {
               position: "absolute", top: "15%", left: "50%", transform: "translateX(-50%)",
               width: 120, height: 120, borderRadius: "50%",
               background: sleeping
-                ? "radial-gradient(circle, rgba(255,220,100,0.15) 0%, transparent 70%)"
-                : "radial-gradient(circle, rgba(255,230,150,0.12) 0%, transparent 70%)",
+                ? "radial-gradient(circle, rgba(255,220,100,0.15), transparent 70%)"
+                : "radial-gradient(circle, rgba(255,230,150,0.12), transparent 70%)",
               pointerEvents: "none",
             }} />
             <span style={{
               fontSize: 56, lineHeight: 1, position: "relative",
               filter: `drop-shadow(0 0 20px ${sleeping ? "rgba(255,220,100,0.3)" : "rgba(255,230,150,0.3)"})`,
-            }}>
-              {sleeping ? "💡" : "🌙"}
-            </span>
+            }}>{sleeping ? "💡" : "🌙"}</span>
             <span style={{
               fontSize: 16, fontWeight: 700, position: "relative",
               color: sleeping ? "rgba(0,0,0,0.50)" : "rgba(200,190,255,0.85)",
               letterSpacing: "0.02em",
-            }}>
-              {sleeping ? "Включить свет" : "Выключить свет"}
-            </span>
+            }}>{sleeping ? "Включить свет" : "Выключить свет"}</span>
           </button>
         </div>
       );
@@ -323,22 +273,25 @@ function MenuContent({ cat, pet, sleepVal, onGameOpen }: {
         </div>
       );
 
-    default:
-      return null;
+    default: return null;
   }
 }
 
 /* ════════════════════════════════════════════
    MenuPanel
    ════════════════════════════════════════════ */
-interface Props { menuH: string; pet: Pet; sleepVal: number }
+interface Props {
+  menuH: string;
+  pet: Pet;
+  sleepVal: number;
+  onGameOpen?: () => void;
+}
 
-export function MenuPanel({ menuH, pet, sleepVal }: Props) {
+export function MenuPanel({ menuH, pet, sleepVal, onGameOpen }: Props) {
   const { openMenu, setMenu, closeMenu } = useMenuStore();
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const [slideDir, setSlideDir] = useState(0);
   const prevMenu = useRef<MenuCategory | null>(null);
-  const [gameOpen, setGameOpen] = useState(false);
 
   useEffect(() => {
     if (openMenu && prevMenu.current) {
@@ -346,15 +299,8 @@ export function MenuPanel({ menuH, pet, sleepVal }: Props) {
       const ni = MENU_ORDER.indexOf(openMenu as MenuCategory);
       if (pi !== -1 && ni !== -1) setSlideDir(ni > pi ? 1 : -1);
       else setSlideDir(0);
-    } else {
-      setSlideDir(0);
-    }
+    } else { setSlideDir(0); }
     prevMenu.current = openMenu as MenuCategory | null;
-  }, [openMenu]);
-
-  // Close game when menu changes away from play
-  useEffect(() => {
-    if (openMenu !== "play") setGameOpen(false);
   }, [openMenu]);
 
   const [animKey, setAnimKey] = useState(0);
@@ -365,7 +311,7 @@ export function MenuPanel({ menuH, pet, sleepVal }: Props) {
   }, []);
 
   const handleEnd = useCallback((cx: number, cy: number) => {
-    if (!touchStart.current || !openMenu || gameOpen) return;
+    if (!touchStart.current || !openMenu) return;
     const dx = cx - touchStart.current.x;
     const dy = cy - touchStart.current.y;
     touchStart.current = null;
@@ -375,21 +321,7 @@ export function MenuPanel({ menuH, pet, sleepVal }: Props) {
     if (idx === -1) return;
     if (dx < 0 && idx < MENU_ORDER.length - 1) setMenu(MENU_ORDER[idx + 1]);
     if (dx > 0 && idx > 0) setMenu(MENU_ORDER[idx - 1]);
-  }, [openMenu, setMenu, closeMenu, gameOpen]);
-
-  // Full-screen game mode
-  if (gameOpen) {
-    return (
-      <div style={{
-        position: "fixed", inset: 0, zIndex: 9999,
-        background: "linear-gradient(150deg,#eef2ff 0%,#fce7f3 45%,#ecfdf5 100%)",
-        display: "flex", flexDirection: "column",
-        padding: "env(safe-area-inset-top, 12px) 12px env(safe-area-inset-bottom, 12px)",
-      }}>
-        <BlockBlastGame onBack={() => setGameOpen(false)} />
-      </div>
-    );
-  }
+  }, [openMenu, setMenu, closeMenu]);
 
   return (
     <div
@@ -419,7 +351,7 @@ export function MenuPanel({ menuH, pet, sleepVal }: Props) {
               cat={openMenu as MenuCategory}
               pet={pet}
               sleepVal={sleepVal}
-              onGameOpen={() => setGameOpen(true)}
+              onGameOpen={() => onGameOpen?.()}
             />
           </div>
         </div>

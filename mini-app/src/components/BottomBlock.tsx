@@ -8,7 +8,6 @@ import { IC } from "./icons";
 import type { Pet } from "../api/types";
 
 /* ── Design tokens ── */
-// Simplified glass — ONE backdrop-filter layer on outermost container only
 export const GLASS_BG = "rgba(255,255,255,0.58)";
 export const GLASS_BORDER = "1px solid rgba(255,255,255,0.70)";
 export const GLASS_SHADOW = "0 -4px 24px rgba(100,100,140,0.08)";
@@ -44,6 +43,7 @@ interface Props {
   onStroking: (v: boolean) => void;
   isStroking: boolean;
   navRowRef?: React.RefObject<HTMLDivElement | null>;
+  onGameOpen?: () => void;
 }
 
 export function BottomBlock({
@@ -53,6 +53,7 @@ export function BottomBlock({
   onTab, onClose,
   petRef, onStroking, isStroking,
   navRowRef,
+  onGameOpen,
 }: Props) {
   const { openMenu } = useMenuStore();
   const menuIsOpen = openMenu !== null;
@@ -64,12 +65,11 @@ export function BottomBlock({
       display: "flex", flexDirection: "column", width: "100%",
       ...NOTAP,
     }}>
-      {/* ── Outer shell: ONE backdrop-filter here, children inherit ── */}
+      {/* ── Outer shell ── */}
       <div style={{
         width: "100vw",
         marginLeft: "calc(-50vw + 50%)",
         display: "flex", flexDirection: "column", flexShrink: 0,
-        // Backdrop-filter ONLY when menu open, and only on this one element
         ...(menuIsOpen ? {
           background: GLASS_BG,
           backdropFilter: "blur(24px) saturate(160%)",
@@ -78,7 +78,6 @@ export function BottomBlock({
           borderRadius: `${HALF_H}px ${HALF_H}px 0 0`,
           boxShadow: GLASS_SHADOW,
         } : {}),
-        // CSS transition for menu open/close — no JS spring
         transition: "background 0.2s ease, border-radius 0.2s ease",
       }}>
 
@@ -95,7 +94,6 @@ export function BottomBlock({
         >
           {/* ── Pill ── */}
           <div style={{
-            // No backdrop-filter on pill when menu open (parent handles it)
             background: menuIsOpen ? "rgba(255,255,255,0.10)" : GLASS_BG,
             ...(!menuIsOpen ? {
               backdropFilter: "blur(20px)",
@@ -144,7 +142,6 @@ export function BottomBlock({
             overflow: menuIsOpen ? "hidden" : "visible",
             transition: "background 0.2s ease, border 0.2s ease, box-shadow 0.2s ease",
           }}>
-            {/* Glove */}
             <div style={{
               position: "absolute", inset: 0,
               opacity: menuIsOpen ? 0 : 1,
@@ -153,7 +150,6 @@ export function BottomBlock({
             }}>
               <PettingGlove petRef={petRef} onStroking={onStroking} isStroking={isStroking} />
             </div>
-            {/* Chevron */}
             <div
               onClick={menuIsOpen ? onClose : undefined}
               style={{
@@ -171,14 +167,14 @@ export function BottomBlock({
           </div>
         </div>
 
-        {/* ── Menu content — CSS max-height transition instead of spring ── */}
+        {/* ── Menu content ── */}
         <div style={{
           maxHeight: menuIsOpen ? "50dvh" : "0px",
           overflow: "hidden",
           transition: "max-height 0.28s cubic-bezier(0.32, 0.72, 0, 1)",
           willChange: menuIsOpen ? "max-height" : "auto",
         }}>
-          <MenuPanel menuH="50dvh" pet={pet} sleepVal={sleepVal} />
+          <MenuPanel menuH="50dvh" pet={pet} sleepVal={sleepVal} onGameOpen={onGameOpen} />
         </div>
 
         {!menuIsOpen && (
