@@ -80,7 +80,6 @@ function SleepOverlay() {
   const sleeping = useSleepStore(s => s.sleeping);
   return (
     <>
-      {/* Dark overlay */}
       <div style={{
         position: "absolute", inset: 0, zIndex: 15,
         background: sleeping
@@ -89,8 +88,6 @@ function SleepOverlay() {
         pointerEvents: "none",
         transition: "background 0.8s ease",
       }} />
-
-      {/* Stars */}
       {sleeping && (
         <div style={{ position: "absolute", inset: 0, zIndex: 16, pointerEvents: "none", overflow: "hidden" }}>
           {Array.from({ length: 12 }).map((_, i) => (
@@ -104,7 +101,6 @@ function SleepOverlay() {
               animationDelay: `${(i * 0.25) % 2}s`,
             }}>✦</span>
           ))}
-          {/* Moon */}
           <div style={{
             position: "absolute", top: "8%", right: "12%",
             fontSize: 32,
@@ -117,7 +113,6 @@ function SleepOverlay() {
   );
 }
 
-/* ── Zzz floating from pet ── */
 function SleepZzz() {
   const sleeping = useSleepStore(s => s.sleeping);
   if (!sleeping) return null;
@@ -130,11 +125,8 @@ function SleepZzz() {
       {[0, 1, 2].map(i => (
         <span key={i} style={{
           position: "absolute",
-          left: `${i * 22}%`,
-          bottom: 0,
-          fontSize: 16 + i * 8,
-          fontWeight: 900,
-          fontStyle: "italic",
+          left: `${i * 22}%`, bottom: 0,
+          fontSize: 16 + i * 8, fontWeight: 900, fontStyle: "italic",
           color: `rgba(200,190,255,${0.4 + i * 0.15})`,
           textShadow: `0 0 8px rgba(180,170,240,${0.2 + i * 0.1})`,
           animation: `zzz-float ${2.2 + i * 0.5}s ease-in-out infinite`,
@@ -298,6 +290,13 @@ export function HomePage({ petId }: Props) {
     return { evo, xpPct, partner, pMins, pOnline, sleepVal };
   }, [pet]);
 
+  // ── Game open handler — close menu first ──
+  const handleGameOpen = useCallback(() => {
+    closeMenu();
+    // Small delay so menu closes before game overlay mounts
+    setTimeout(() => setGameOpen(true), 50);
+  }, [closeMenu]);
+
   if (loading && !pet) return (
     <div style={{
       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
@@ -335,7 +334,6 @@ export function HomePage({ petId }: Props) {
     setActiveTab(tab); closeMenu();
   };
 
-  // Determine pet mood override when sleeping
   const effectiveMood = sleeping ? "sleepy" as const : (isStroking ? "happy" as const : pet.mood);
 
   return (
@@ -357,7 +355,6 @@ export function HomePage({ petId }: Props) {
         <div style={{ position: "absolute", bottom: "8%", left: "8%", width: "46%", paddingBottom: "46%", borderRadius: "50%", background: "radial-gradient(circle,rgba(167,243,208,0.18) 0%,transparent 70%)" }} />
       </div>
 
-      {/* Sleep overlay — covers the whole scene */}
       <SleepOverlay />
 
       {/* Pet zone */}
@@ -374,7 +371,6 @@ export function HomePage({ petId }: Props) {
             transition: "opacity 0.6s ease",
           }}
         >
-          {/* Left: name pill */}
           <div style={{
             display: "flex", alignItems: "center", gap: 7,
             ...G.heavy, borderRadius: 999, height: PILL_H, padding: "0 12px 0 7px",
@@ -413,7 +409,6 @@ export function HomePage({ petId }: Props) {
 
           <div style={{ flex: 1 }} />
 
-          {/* Right: stats + coins */}
           <div style={{
             display: "flex", flexDirection: "column", alignItems: "flex-end", flexShrink: 0, gap: 4,
           }}>
@@ -429,8 +424,7 @@ export function HomePage({ petId }: Props) {
             <div style={{
               display: "flex", alignItems: "center", gap: 3,
               background: "rgba(255,255,255,0.55)",
-              backdropFilter: "blur(20px)",
-              WebkitBackdropFilter: "blur(20px)",
+              backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
               border: "1px solid rgba(255,255,255,0.70)",
               boxShadow: "0 2px 10px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.9)",
               borderRadius: 999, padding: "4px 10px", minWidth: 52, justifyContent: "center",
@@ -449,10 +443,7 @@ export function HomePage({ petId }: Props) {
         }}>
           <div style={{ position: "relative" }}>
             <FloatAnim show={floatShow} text={floatText} />
-
-            {/* Zzz bubbles floating from pet */}
             <SleepZzz />
-
             <DraggablePet
               constraintsRef={petZoneRef} isStroking={isStroking}
               onHeartAt={spawnHeart} petDomRef={petDomRef}
@@ -529,7 +520,7 @@ export function HomePage({ petId }: Props) {
         onTab={handleTab} onClose={handleClose}
         petRef={petDomRef} onStroking={handleStroking} isStroking={isStroking}
         navRowRef={navRowRef}
-        onGameOpen={() => setGameOpen(true)}  // ← ADD THIS
+        onGameOpen={handleGameOpen}
       />
 
       {/* Home indicator */}
@@ -540,7 +531,6 @@ export function HomePage({ petId }: Props) {
       }} />
 
       {/* Hearts */}
-      
       {hearts.map(h => (
         <div key={h.id}
           style={{
@@ -554,7 +544,9 @@ export function HomePage({ petId }: Props) {
           } as React.CSSProperties}
         >🩷</div>
       ))}
-        {gameOpen && (
+
+      {/* ── Game overlay ── */}
+      {gameOpen && (
         <div style={{
           position: "absolute",
           inset: 0,
@@ -566,6 +558,6 @@ export function HomePage({ petId }: Props) {
           <BlockBlastGame onBack={() => setGameOpen(false)} />
         </div>
       )}
-    </div>  // ← this closing div for the root container was missing
+    </div>
   );
 }

@@ -104,7 +104,10 @@ function MenuContent({ cat, pet, sleepVal, onGameOpen }: {
       return (
         <div style={{ display: "flex", flexDirection: "column", gap: 16, alignItems: "center" }}>
           <button
-            onClick={onGameOpen}
+            onClick={(e) => {
+              e.stopPropagation();
+              onGameOpen();
+            }}
             style={{
               width: "100%", maxWidth: 320, padding: "20px", borderRadius: 22,
               background: "linear-gradient(135deg, rgba(124,92,252,0.12), rgba(244,114,182,0.12))",
@@ -315,6 +318,10 @@ export function MenuPanel({ menuH, pet, sleepVal, onGameOpen }: Props) {
     const dx = cx - touchStart.current.x;
     const dy = cy - touchStart.current.y;
     touchStart.current = null;
+
+    // Only process swipe if distance is significant
+    if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return; // tap — ignore
+
     if (dy > 40 && Math.abs(dy) > Math.abs(dx) * 1.3) { closeMenu(); return; }
     if (Math.abs(dx) < 35 || Math.abs(dx) < Math.abs(dy) * 0.7) return;
     const idx = MENU_ORDER.indexOf(openMenu as MenuCategory);
