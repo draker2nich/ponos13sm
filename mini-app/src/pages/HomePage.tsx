@@ -554,7 +554,7 @@ export function HomePage({ petId }: Props) {
           } as React.CSSProperties}
         >🩷</div>
       ))}
-      {gameOpen && (
+        {gameOpen && (
         <div style={{
           position: "absolute",
           inset: 0,
@@ -566,5 +566,6 @@ export function HomePage({ petId }: Props) {
           <BlockBlastGame onBack={() => setGameOpen(false)} />
         </div>
       )}
+    </div>  // ← this closing div for the root container was missing
   );
 }
