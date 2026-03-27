@@ -529,6 +529,7 @@ export function HomePage({ petId }: Props) {
         onTab={handleTab} onClose={handleClose}
         petRef={petDomRef} onStroking={handleStroking} isStroking={isStroking}
         navRowRef={navRowRef}
+        onGameOpen={() => setGameOpen(true)}  // ← ADD THIS
       />
 
       {/* Home indicator */}
@@ -553,7 +554,17 @@ export function HomePage({ petId }: Props) {
           } as React.CSSProperties}
         >🩷</div>
       ))}
-      {gameOpen && <BlockBlastGame onBack={() => setGameOpen(false)} />}
-    </div>
+      {gameOpen && (
+        <div style={{
+          position: "absolute",
+          inset: 0,
+          zIndex: 999,
+          background: "linear-gradient(150deg,#eef2ff 0%,#fce7f3 45%,#ecfdf5 100%)",
+          display: "flex",
+          flexDirection: "column",
+        }}>
+          <BlockBlastGame onBack={() => setGameOpen(false)} />
+        </div>
+      )}
   );
 }
