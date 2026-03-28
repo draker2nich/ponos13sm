@@ -42,32 +42,25 @@ export default function App() {
 
     const init = async () => {
       try {
-        // 1. Если пришли по инвайту — принять его
         if (invToken) {
           try {
             const res = await acceptInvite(invToken);
             setPetId(res.pet_id);
             return;
-          } catch {
-            // инвайт невалидный — идём дальше
-          }
+          } catch { /* инвайт невалидный */ }
         }
 
-        // 2. Если pet_id явно передан в URL — используем его
         if (urlPetId && Number(urlPetId) > 0) {
           setPetId(Number(urlPetId));
           return;
         }
 
-        // 3. Ищем существующих питомцев пользователя
-        //    (срабатывает при повторном /start без параметров)
         const myPets = await getMyPets();
         if (myPets.length > 0) {
           setPetId(myPets[0].id);
           return;
         }
 
-        // 4. Питомца нет — показываем создание
         setPetId(null);
       } catch {
         setError("Что-то пошло не так. Попробуй перезапустить.");
@@ -79,8 +72,12 @@ export default function App() {
     init();
   }, []);
 
+  const handlePetDeleted = () => {
+    setPetId(null);
+  };
+
   if (!ready) return <Loader />;
   if (error)  return <ErrorScreen message={error} />;
   if (!petId) return <CreatePetPage onCreated={setPetId} />;
-  return <HomePage petId={petId} />;
+  return <HomePage petId={petId} onPetDeleted={handlePetDeleted} />;
 }

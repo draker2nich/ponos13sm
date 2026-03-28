@@ -25,6 +25,7 @@ export interface Pet {
   age_days: number;
   streak: number;
   mood: PetMood;
+  is_sleeping: boolean;
   owners: Owner[];
   cooldowns: CooldownInfo[];
   updated_at: string;
@@ -32,7 +33,7 @@ export interface Pet {
 
 export interface FeedEntry {
   user_id: number;
-  user_name: string | null; // ДОБАВЛЕНО: имя пользователя
+  user_name: string | null;
   action: ActionType;
   hunger_delta: number;
   happiness_delta: number;

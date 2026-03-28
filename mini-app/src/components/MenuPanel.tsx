@@ -3,6 +3,9 @@ import { useRef, useCallback, useState, useEffect } from "react";
 import { useMenuStore, MENU_ORDER, type MenuCategory } from "../store/useMenuStore";
 import { useCoinStore } from "../store/useCoinStore";
 import { useSleepStore } from "../store/useSleepStore";
+import { usePetStore } from "../store/usePetStore";
+import { useToastStore } from "../store/useToastStore";
+import { buyItem, toggleSleep, deletePet } from "../api/shop";
 import { NOTAP } from "./NavCarousel";
 import type { Pet } from "../api/types";
 
@@ -20,6 +23,15 @@ const dangerBtn: React.CSSProperties = {
   ...actionBtn,
   background: "linear-gradient(135deg,#f87171,#ef4444)",
 };
+
+function haptic(type: "light" | "medium" | "error" | "success") {
+  try {
+    const hf = (window as any).Telegram?.WebApp?.HapticFeedback;
+    if (type === "error") hf?.notificationOccurred?.("error");
+    else if (type === "success") hf?.notificationOccurred?.("success");
+    else hf?.impactOccurred?.(type);
+  } catch { /* noop */ }
+}
 
 function StatRow({ label, value, color }: { label: string; value: number; color: string }) {
   const v = Math.max(0, Math.min(100, value));
@@ -54,11 +66,12 @@ const WASH_ITEMS: { emoji: string; cost: number; clean: number }[] = [
   { emoji: "🧴", cost: 5, clean: 15 }, { emoji: "🧽", cost: 3, clean: 10 }, { emoji: "🧼", cost: 4, clean: 12 },
 ];
 
-function ShopTile({ emoji, cost, effectIcon, effectVal, afford }: {
+function ShopTile({ emoji, cost, effectIcon, effectVal, afford, onClick }: {
   emoji: string; cost: number; effectIcon: string; effectVal: number; afford: boolean;
+  onClick: () => void;
 }) {
   return (
-    <button disabled={!afford} style={{
+    <button disabled={!afford} onClick={afford ? onClick : undefined} style={{
       aspectRatio: "1", borderRadius: 16,
       border: afford ? "1px solid rgba(255,255,255,0.75)" : "1px dashed rgba(0,0,0,0.10)",
       background: afford ? "rgba(255,255,255,0.55)" : "rgba(255,255,255,0.30)",
@@ -84,18 +97,75 @@ function ShopTile({ emoji, cost, effectIcon, effectVal, afford }: {
   );
 }
 
-function MenuContent({ cat, pet, sleepVal, onGameOpen }: {
+function MenuContent({ cat, pet, sleepVal, onGameOpen, onPetDeleted }: {
   cat: MenuCategory; pet: Pet; sleepVal: number; onGameOpen: () => void;
+  onPetDeleted: () => void;
 }) {
   const coins = useCoinStore(s => s.coins);
-  const { sleeping, toggle } = useSleepStore();
+  const setCoins = useCoinStore(s => s.setCoins);
+  const { sleeping, setSleeping } = useSleepStore();
+  const setPet = usePetStore(s => s.setPet);
+  const toast = useToastStore(s => s.show);
+  const [busy, setBusy] = useState(false);
+
+  const handleBuy = async (itemType: "food" | "wash", itemId: number, emoji: string) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const res = await buyItem(pet.id, itemType, itemId);
+      setCoins(res.coins);
+      setPet(res.pet);
+      toast(`${emoji} Применено!`, "success");
+      haptic("success");
+    } catch (e: any) {
+      const msg = e.response?.data?.detail || "Ошибка покупки";
+      toast(typeof msg === "string" ? msg : "Ошибка покупки", "error");
+      haptic("error");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleSleep = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const res = await toggleSleep(pet.id);
+      setSleeping(res.is_sleeping);
+      setPet(res.pet);
+      toast(res.is_sleeping ? "🌙 Спокойной ночи!" : "☀️ Доброе утро!", "info");
+      haptic("light");
+    } catch {
+      toast("Ошибка", "error");
+      haptic("error");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    const confirmed = window.confirm("Удалить питомца? Это действие нельзя отменить!");
+    if (!confirmed) return;
+    setBusy(true);
+    try {
+      await deletePet(pet.id);
+      toast("Питомец удалён", "info");
+      onPetDeleted();
+    } catch {
+      toast("Не удалось удалить", "error");
+      haptic("error");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   switch (cat) {
     case "feed":
       return (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
           {FOODS.map((f, i) => (
-            <ShopTile key={i} emoji={f.emoji} cost={f.cost} effectIcon="🍎" effectVal={f.sat} afford={coins >= f.cost} />
+            <ShopTile key={i} emoji={f.emoji} cost={f.cost} effectIcon="🍎" effectVal={f.sat}
+              afford={coins >= f.cost} onClick={() => handleBuy("food", i, f.emoji)} />
           ))}
         </div>
       );
@@ -103,20 +173,15 @@ function MenuContent({ cat, pet, sleepVal, onGameOpen }: {
     case "play":
       return (
         <div style={{ display: "flex", flexDirection: "column", gap: 16, alignItems: "center" }}>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onGameOpen();
-            }}
-            style={{
-              width: "100%", maxWidth: 320, padding: "20px", borderRadius: 22,
-              background: "linear-gradient(135deg, rgba(124,92,252,0.12), rgba(244,114,182,0.12))",
-              border: "1px solid rgba(255,255,255,0.65)",
-              boxShadow: "0 4px 20px rgba(124,92,252,0.10)",
-              cursor: "pointer", fontFamily: "inherit", outline: "none",
-              display: "flex", alignItems: "center", gap: 16,
-              transition: "transform 0.12s ease", ...NOTAP,
-            }}
+          <button onClick={onGameOpen} style={{
+            width: "100%", maxWidth: 320, padding: "20px", borderRadius: 22,
+            background: "linear-gradient(135deg, rgba(124,92,252,0.12), rgba(244,114,182,0.12))",
+            border: "1px solid rgba(255,255,255,0.65)",
+            boxShadow: "0 4px 20px rgba(124,92,252,0.10)",
+            cursor: "pointer", fontFamily: "inherit", outline: "none",
+            display: "flex", alignItems: "center", gap: 16,
+            transition: "transform 0.12s ease", ...NOTAP,
+          }}
             onPointerDown={e => { (e.currentTarget as HTMLElement).style.transform = "scale(0.97)"; }}
             onPointerUp={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
             onPointerLeave={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
@@ -167,7 +232,8 @@ function MenuContent({ cat, pet, sleepVal, onGameOpen }: {
       return (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
           {WASH_ITEMS.map((w, i) => (
-            <ShopTile key={i} emoji={w.emoji} cost={w.cost} effectIcon="🛁" effectVal={w.clean} afford={coins >= w.cost} />
+            <ShopTile key={i} emoji={w.emoji} cost={w.cost} effectIcon="🛁" effectVal={w.clean}
+              afford={coins >= w.cost} onClick={() => handleBuy("wash", i, w.emoji)} />
           ))}
         </div>
       );
@@ -175,13 +241,13 @@ function MenuContent({ cat, pet, sleepVal, onGameOpen }: {
     case "sleep":
       return (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", minHeight: 180 }}>
-          <button onClick={toggle} style={{
+          <button onClick={handleSleep} disabled={busy} style={{
             width: "100%", height: "100%", minHeight: 180, maxWidth: 400,
             borderRadius: 24, border: "none",
             background: sleeping
               ? "linear-gradient(135deg, rgba(255,240,180,0.25), rgba(255,250,220,0.15))"
               : "linear-gradient(135deg, #2d2654, #1a1440 40%, #0f0d2a)",
-            cursor: "pointer", display: "flex", flexDirection: "column",
+            cursor: busy ? "wait" : "pointer", display: "flex", flexDirection: "column",
             alignItems: "center", justifyContent: "center", gap: 12,
             fontFamily: "inherit", outline: "none", transition: "all 0.4s ease",
             boxShadow: sleeping
@@ -189,7 +255,7 @@ function MenuContent({ cat, pet, sleepVal, onGameOpen }: {
               : "0 8px 40px rgba(30,20,60,0.35), inset 0 1px 0 rgba(255,255,255,0.06)",
             position: "relative", overflow: "hidden", ...NOTAP,
           }}
-            onPointerDown={e => { (e.currentTarget as HTMLElement).style.transform = "scale(0.97)"; }}
+            onPointerDown={e => { if (!busy) (e.currentTarget as HTMLElement).style.transform = "scale(0.97)"; }}
             onPointerUp={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
             onPointerLeave={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
           >
@@ -271,7 +337,7 @@ function MenuContent({ cat, pet, sleepVal, onGameOpen }: {
             <StatRow label="Здоровье 🛁" value={pet.health} color="#60a5fa" />
           </div>
           <div style={{ display: "flex", justifyContent: "center", marginTop: 4 }}>
-            <button style={dangerBtn}>Сбросить питомца 🗑</button>
+            <button onClick={handleDelete} disabled={busy} style={dangerBtn}>Сбросить питомца 🗑</button>
           </div>
         </div>
       );
@@ -288,9 +354,10 @@ interface Props {
   pet: Pet;
   sleepVal: number;
   onGameOpen?: () => void;
+  onPetDeleted?: () => void;
 }
 
-export function MenuPanel({ menuH, pet, sleepVal, onGameOpen }: Props) {
+export function MenuPanel({ menuH, pet, sleepVal, onGameOpen, onPetDeleted }: Props) {
   const { openMenu, setMenu, closeMenu } = useMenuStore();
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const [slideDir, setSlideDir] = useState(0);
@@ -318,10 +385,6 @@ export function MenuPanel({ menuH, pet, sleepVal, onGameOpen }: Props) {
     const dx = cx - touchStart.current.x;
     const dy = cy - touchStart.current.y;
     touchStart.current = null;
-
-    // Only process swipe if distance is significant
-    if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return; // tap — ignore
-
     if (dy > 40 && Math.abs(dy) > Math.abs(dx) * 1.3) { closeMenu(); return; }
     if (Math.abs(dx) < 35 || Math.abs(dx) < Math.abs(dy) * 0.7) return;
     const idx = MENU_ORDER.indexOf(openMenu as MenuCategory);
@@ -359,6 +422,7 @@ export function MenuPanel({ menuH, pet, sleepVal, onGameOpen }: Props) {
               pet={pet}
               sleepVal={sleepVal}
               onGameOpen={() => onGameOpen?.()}
+              onPetDeleted={() => onPetDeleted?.()}
             />
           </div>
         </div>

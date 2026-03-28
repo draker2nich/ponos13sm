@@ -1,13 +1,16 @@
 # api/routers/pets.py
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, Field
 
 from api.auth import get_current_user
 from core.database import get_db
 from core.pet_logic import utcnow
-from models import ActionCooldown, ActionType, Pet, PetOwnership, PetType, User
+from models import (
+    ActionCooldown, ActionType, Invite, Pet, PetAction,
+    PetOwnership, PetType, User,
+)
 
 router = APIRouter(prefix="/pets", tags=["pets"])
 
@@ -36,6 +39,7 @@ class PetResponse(BaseModel):
     age_days: int
     streak: int
     mood: str
+    is_sleeping: bool
     owners: list[dict]
     cooldowns: list[CooldownInfo]
     updated_at: str
@@ -107,6 +111,7 @@ async def _build_response(pet: Pet, user: User, db: AsyncSession) -> PetResponse
         age_days=pet.age_days,
         streak=pet.streak,
         mood=pet.mood.value,
+        is_sleeping=pet.is_sleeping,
         owners=owners,
         cooldowns=cooldowns,
         updated_at=pet.updated_at.isoformat(),
@@ -120,7 +125,6 @@ async def get_my_pets(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Вернуть всех питомцев текущего пользователя."""
     ownerships = (await db.scalars(
         select(PetOwnership).where(PetOwnership.user_id == user.id)
     )).all()
@@ -170,3 +174,33 @@ async def get_pet(
     pet = await _get_pet_or_404(pet_id, db)
     await _assert_owner(pet, user, db)
     return await _build_response(pet, user, db)
+
+
+@router.delete("/{pet_id}")
+async def delete_pet(
+    pet_id: int,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    pet = await _get_pet_or_404(pet_id, db)
+
+    # Только создатель может удалить
+    ownership = await db.scalar(
+        select(PetOwnership).where(
+            PetOwnership.pet_id == pet.id,
+            PetOwnership.user_id == user.id,
+            PetOwnership.is_creator == True,
+        )
+    )
+    if not ownership:
+        raise HTTPException(status_code=403, detail="Only the creator can delete this pet")
+
+    # Удаляем все связанные данные
+    await db.execute(delete(ActionCooldown).where(ActionCooldown.pet_id == pet_id))
+    await db.execute(delete(PetAction).where(PetAction.pet_id == pet_id))
+    await db.execute(delete(Invite).where(Invite.pet_id == pet_id))
+    await db.execute(delete(PetOwnership).where(PetOwnership.pet_id == pet_id))
+    await db.delete(pet)
+    await db.commit()
+
+    return {"ok": True}

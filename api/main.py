@@ -9,7 +9,7 @@ from fastapi.responses import FileResponse
 
 from core.config import settings
 from core.database import init_db
-from api.routers import pets, actions, invites, users
+from api.routers import pets, actions, invites, users, shop, sleep
 
 
 @asynccontextmanager
@@ -40,6 +40,8 @@ app.include_router(pets.router)
 app.include_router(actions.router)
 app.include_router(invites.router)
 app.include_router(users.router)
+app.include_router(shop.router)
+app.include_router(sleep.router)
 
 
 @app.get("/health")
@@ -59,8 +61,6 @@ if DIST.exists():
         app.mount("/sprites", StaticFiles(directory=DIST / "sprites"), name="sprites")
 
 
-# ─── Определяем: это Telegram WebApp или обычный браузер ──────────────────────
-
 def _is_webapp_request(request: Request) -> bool:
     params = set(request.query_params.keys())
     tg_markers = {"tgWebAppStartParam", "tgWebAppData", "tgWebAppVersion",
@@ -71,8 +71,6 @@ def _is_webapp_request(request: Request) -> bool:
         return True
     return False
 
-
-# ─── Роутинг: лендинг vs SPA ─────────────────────────────────────────────────
 
 @app.get("/")
 async def root(request: Request):

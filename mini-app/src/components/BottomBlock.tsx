@@ -1,5 +1,4 @@
 // mini-app/src/components/BottomBlock.tsx
-// Rewritten: CSS transitions instead of spring height animation
 import { useMenuStore, type MenuCategory } from "../store/useMenuStore";
 import { Carousel, CarouselBtn, NOTAP, NAV_PAD, BTN_W, PILL_INNER_W, type TabId } from "./NavCarousel";
 import { MenuPanel } from "./MenuPanel";
@@ -44,6 +43,7 @@ interface Props {
   isStroking: boolean;
   navRowRef?: React.RefObject<HTMLDivElement | null>;
   onGameOpen?: () => void;
+  onPetDeleted?: () => void;
 }
 
 export function BottomBlock({
@@ -54,6 +54,7 @@ export function BottomBlock({
   petRef, onStroking, isStroking,
   navRowRef,
   onGameOpen,
+  onPetDeleted,
 }: Props) {
   const { openMenu } = useMenuStore();
   const menuIsOpen = openMenu !== null;
@@ -65,7 +66,6 @@ export function BottomBlock({
       display: "flex", flexDirection: "column", width: "100%",
       ...NOTAP,
     }}>
-      {/* ── Outer shell ── */}
       <div style={{
         width: "100vw",
         marginLeft: "calc(-50vw + 50%)",
@@ -81,7 +81,6 @@ export function BottomBlock({
         transition: "background 0.2s ease, border-radius 0.2s ease",
       }}>
 
-        {/* ── Nav row ── */}
         <div
           ref={navRowRef as React.RefObject<HTMLDivElement>}
           style={{
@@ -92,7 +91,6 @@ export function BottomBlock({
             transition: "padding 0.2s ease",
           }}
         >
-          {/* ── Pill ── */}
           <div style={{
             background: menuIsOpen ? "rgba(255,255,255,0.10)" : GLASS_BG,
             ...(!menuIsOpen ? {
@@ -123,7 +121,6 @@ export function BottomBlock({
             </Carousel>
           </div>
 
-          {/* ── Side glove / chevron ── */}
           <div style={{
             width: GLOVE_SZ,
             height: WIDGET_H,
@@ -167,14 +164,13 @@ export function BottomBlock({
           </div>
         </div>
 
-        {/* ── Menu content ── */}
         <div style={{
           maxHeight: menuIsOpen ? "50dvh" : "0px",
           overflow: "hidden",
           transition: "max-height 0.28s cubic-bezier(0.32, 0.72, 0, 1)",
           willChange: menuIsOpen ? "max-height" : "auto",
         }}>
-          <MenuPanel menuH="50dvh" pet={pet} sleepVal={sleepVal} onGameOpen={onGameOpen} />
+          <MenuPanel menuH="50dvh" pet={pet} sleepVal={sleepVal} onGameOpen={onGameOpen} onPetDeleted={onPetDeleted} />
         </div>
 
         {!menuIsOpen && (
