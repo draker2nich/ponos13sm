@@ -2,7 +2,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from sqlalchemy import select
+from sqlalchemy import select, update as sa_update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,7 +20,7 @@ def utcnow() -> datetime:
 # ─── Mood ─────────────────────────────────────────────────────────────────────
 
 def calc_mood(pet: Pet) -> PetMood:
-    hour = datetime.utcnow().hour
+    hour = utcnow().hour
     if 0 <= hour < 7:
         return PetMood.SLEEPY
     if pet.hunger < 20:
@@ -124,8 +124,10 @@ async def perform_action(
         pet.experience = 0
         pet.level += 1
 
-    # Монеты: +1 за каждое действие
-    user.coins += 1
+    # Монеты: +1 за каждое действие (атомарный SQL-инкремент, без race condition)
+    await db.execute(
+        sa_update(User).where(User.id == user.id).values(coins=User.coins + 1)
+    )
 
     # Логируем действие
     log = PetAction(
@@ -151,6 +153,7 @@ async def perform_action(
 
     await db.commit()
     await db.refresh(pet)
+    await db.refresh(user)
 
     return {"ok": True, "deltas": d, "coins": user.coins}
 

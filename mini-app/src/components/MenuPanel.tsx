@@ -6,6 +6,7 @@ import { useSleepStore } from "../store/useSleepStore";
 import { usePetStore } from "../store/usePetStore";
 import { useToastStore } from "../store/useToastStore";
 import { buyItem, toggleSleep, deletePet } from "../api/shop";
+import { getMe } from "../api/users";
 import { NOTAP } from "./NavCarousel";
 import type { Pet } from "../api/types";
 
@@ -107,10 +108,20 @@ function MenuContent({ cat, pet, sleepVal, onGameOpen, onPetDeleted }: {
   const setPet = usePetStore(s => s.setPet);
   const toast = useToastStore(s => s.show);
   const [busy, setBusy] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+
+  // Загрузить текущего юзера для проверки is_creator
+  useEffect(() => {
+    getMe().then(me => setCurrentUserId(me.id)).catch(() => {});
+  }, []);
 
   const handleBuy = async (itemType: "food" | "wash", itemId: number, emoji: string) => {
     if (busy) return;
     setBusy(true);
+    // Оптимистичное списание
+    const prevCoins = coins;
+    const item = itemType === "food" ? FOODS[itemId] : WASH_ITEMS[itemId];
+    if (item) setCoins(coins - item.cost);
     try {
       const res = await buyItem(pet.id, itemType, itemId);
       setCoins(res.coins);
@@ -118,6 +129,8 @@ function MenuContent({ cat, pet, sleepVal, onGameOpen, onPetDeleted }: {
       toast(`${emoji} Применено!`, "success");
       haptic("success");
     } catch (e: any) {
+      // Откат
+      setCoins(prevCoins);
       const msg = e.response?.data?.detail || "Ошибка покупки";
       toast(typeof msg === "string" ? msg : "Ошибка покупки", "error");
       haptic("error");
@@ -158,6 +171,9 @@ function MenuContent({ cat, pet, sleepVal, onGameOpen, onPetDeleted }: {
       setBusy(false);
     }
   };
+
+  const isCreator = currentUserId !== null &&
+    pet.owners.some(o => o.user_id === currentUserId && o.is_creator);
 
   switch (cat) {
     case "feed":
@@ -336,9 +352,11 @@ function MenuContent({ cat, pet, sleepVal, onGameOpen, onPetDeleted }: {
             <StatRow label="Счастье 🎾" value={pet.happiness} color="#34d399" />
             <StatRow label="Здоровье 🛁" value={pet.health} color="#60a5fa" />
           </div>
-          <div style={{ display: "flex", justifyContent: "center", marginTop: 4 }}>
-            <button onClick={handleDelete} disabled={busy} style={dangerBtn}>Сбросить питомца 🗑</button>
-          </div>
+          {isCreator && (
+            <div style={{ display: "flex", justifyContent: "center", marginTop: 4 }}>
+              <button onClick={handleDelete} disabled={busy} style={dangerBtn}>Сбросить питомца 🗑</button>
+            </div>
+          )}
         </div>
       );
 

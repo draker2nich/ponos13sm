@@ -5,7 +5,7 @@ from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 
 from core.config import settings
 from core.database import init_db
@@ -42,6 +42,9 @@ app.include_router(invites.router)
 app.include_router(users.router)
 app.include_router(shop.router)
 app.include_router(sleep.router)
+
+# Все API-префиксы — для SPA fallback фильтрации
+API_PREFIXES = ("pets", "invites", "users", "health")
 
 
 @app.get("/health")
@@ -86,8 +89,9 @@ async def root(request: Request):
 
 @app.get("/{full_path:path}")
 async def spa_fallback(request: Request, full_path: str):
-    if full_path.startswith(("pets", "invites", "users", "health")):
-        return {"detail": "Not found"}
+    # Любой путь, начинающийся с API-префикса — вернуть JSON 404
+    if full_path.startswith(API_PREFIXES):
+        return JSONResponse({"detail": "Not found"}, status_code=404)
     if DIST.exists() and (DIST / "index.html").exists():
         return FileResponse(DIST / "index.html")
-    return {"detail": "Not found"}
+    return JSONResponse({"detail": "Not found"}, status_code=404)

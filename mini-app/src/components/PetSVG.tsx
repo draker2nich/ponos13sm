@@ -1,5 +1,6 @@
 // mini-app/src/components/PetSVG.tsx
 // Pure CSS animations — no framer-motion overhead
+import { useState } from "react";
 import type { PetMood, PetType } from "../api/types";
 
 const MOOD_ANIM: Record<PetMood, string> = {
@@ -18,6 +19,10 @@ const GLOW: Record<PetMood, string> = {
   sleepy:  "rgba(197,184,216,0.25)",
 };
 
+const PET_EMOJI: Record<PetType, string> = {
+  cat: "🐱", dog: "🐶", bunny: "🐰", bear: "🐻",
+};
+
 interface Props {
   mood: PetMood;
   petType: PetType;
@@ -27,6 +32,7 @@ interface Props {
 }
 
 export function PetSVG({ mood, petType, evolution = 1, size = 160, isReacting = false }: Props) {
+  const [imgError, setImgError] = useState(false);
   const glow = isReacting ? "rgba(255,215,0,0.35)" : GLOW[mood];
   const dim = typeof size === "number" ? `${size}px` : size;
   const anim = isReacting ? "pet-react" : MOOD_ANIM[mood];
@@ -43,11 +49,23 @@ export function PetSVG({ mood, petType, evolution = 1, size = 160, isReacting = 
         willChange: "transform",
       }}
     >
-      <img
-        src={`/sprites/${petType}.svg`}
-        style={{ width: "100%", height: "100%", display: "block", objectFit: "contain" }}
-        draggable={false}
-      />
+      {imgError ? (
+        <div style={{
+          width: "100%", height: "100%",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: `calc(${dim} * 0.5)`, lineHeight: 1,
+          userSelect: "none",
+        }}>
+          {PET_EMOJI[petType]}
+        </div>
+      ) : (
+        <img
+          src={`/sprites/${petType}.svg`}
+          style={{ width: "100%", height: "100%", display: "block", objectFit: "contain" }}
+          draggable={false}
+          onError={() => setImgError(true)}
+        />
+      )}
       {evolution >= 5 && (
         <div style={{
           position: "absolute", top: "-8%", left: "50%",

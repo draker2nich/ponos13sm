@@ -188,17 +188,17 @@ export function BlockBlastGame({ onBack }: { onBack: () => void }) {
   const boardRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Check game over
+  // Check game over — НЕ проверяем если все фигуры used (ждём рефилл)
   useEffect(() => {
-    if (!anyPieceFits(board, pieces) && pieces.every(p => p.used || !anyPieceFits(board, [p]))) {
-      const unused = pieces.filter(p => !p.used);
-      if (unused.length > 0 && !anyPieceFits(board, unused)) {
-        setGameOver(true);
-        haptic("error");
-        if (score > bestScore) {
-          setBestScore(score);
-          addCoinsFromGame(0, score);
-        }
+    if (pieces.every(p => p.used)) return;
+
+    const unused = pieces.filter(p => !p.used);
+    if (unused.length > 0 && !anyPieceFits(board, unused)) {
+      setGameOver(true);
+      haptic("error");
+      if (score > bestScore) {
+        setBestScore(score);
+        addCoinsFromGame(0, score);
       }
     }
   }, [board, pieces, score, bestScore, addCoinsFromGame]);

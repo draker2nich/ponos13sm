@@ -1,5 +1,6 @@
 # api/routers/shop.py
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import update as sa_update
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 
@@ -76,8 +77,15 @@ async def buy_item(
     if user.coins < item["cost"]:
         raise HTTPException(status_code=400, detail="Not enough coins")
 
-    # Списать монеты
-    user.coins -= item["cost"]
+    # Списать монеты атомарно через SQL
+    cost = item["cost"]
+    result = await db.execute(
+        sa_update(User)
+        .where(User.id == user.id, User.coins >= cost)
+        .values(coins=User.coins - cost)
+    )
+    if result.rowcount == 0:
+        raise HTTPException(status_code=400, detail="Not enough coins")
 
     # Применить эффект
     hunger_delta = 0.0
@@ -99,12 +107,13 @@ async def buy_item(
 
     pet.updated_at = utcnow()
 
-    # Логируем как действие
+    # Логируем как действие — food=FEED, wash=WASH
+    action_type = ActionType.FEED if body.item_type == "food" else ActionType.WASH
     log = PetAction(
         pet_id=pet.id,
         user_id=user.id,
         user_name=user.first_name or user.username,
-        action_type=ActionType.FEED if body.item_type == "food" else ActionType.PET,
+        action_type=action_type,
         hunger_delta=hunger_delta,
         happiness_delta=happiness_delta,
         health_delta=health_delta,
@@ -113,6 +122,7 @@ async def buy_item(
 
     await db.commit()
     await db.refresh(pet)
+    await db.refresh(user)
 
     return {
         "ok": True,

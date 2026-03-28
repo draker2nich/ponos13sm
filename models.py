@@ -35,6 +35,7 @@ class ActionType(enum.Enum):
     FEED = "feed"
     PLAY = "play"
     PET  = "pet"
+    WASH = "wash"
 
 class InviteStatus(enum.Enum):
     PENDING  = "pending"
@@ -53,6 +54,7 @@ class User(Base):
     is_premium      = Column(Boolean, default=False)
     coins           = Column(Integer, default=0)
     game_best_score = Column(Integer, default=0)
+    last_coin_claim = Column(DateTime, nullable=True)
     created_at      = Column(DateTime, default=_utcnow)
     last_seen_at    = Column(DateTime, default=_utcnow)
 
