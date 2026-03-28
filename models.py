@@ -47,12 +47,14 @@ class InviteStatus(enum.Enum):
 class User(Base):
     __tablename__ = "users"
 
-    id           = Column(BigInteger, primary_key=True)
-    username     = Column(String(64), nullable=True)
-    first_name   = Column(String(128), nullable=True)
-    is_premium   = Column(Boolean, default=False)
-    created_at   = Column(DateTime, default=_utcnow)
-    last_seen_at = Column(DateTime, default=_utcnow)
+    id              = Column(BigInteger, primary_key=True)
+    username        = Column(String(64), nullable=True)
+    first_name      = Column(String(128), nullable=True)
+    is_premium      = Column(Boolean, default=False)
+    coins           = Column(Integer, default=0)
+    game_best_score = Column(Integer, default=0)
+    created_at      = Column(DateTime, default=_utcnow)
+    last_seen_at    = Column(DateTime, default=_utcnow)
 
     ownerships = relationship("PetOwnership", back_populates="user")
     actions    = relationship("PetAction", back_populates="user")
@@ -79,6 +81,7 @@ class Pet(Base):
     last_streak_date = Column(DateTime, nullable=True)
 
     mood             = Column(Enum(PetMood), default=PetMood.HAPPY)
+    is_sleeping      = Column(Boolean, default=False)
 
     created_at       = Column(DateTime, default=_utcnow)
     updated_at       = Column(DateTime, default=_utcnow, onupdate=_utcnow)
@@ -120,7 +123,6 @@ class PetAction(Base):
     id           = Column(Integer, primary_key=True, autoincrement=True)
     pet_id       = Column(Integer, ForeignKey("pets.id"), nullable=False)
     user_id      = Column(BigInteger, ForeignKey("users.id"), nullable=False)
-    # Сохраняем имя пользователя для отображения в ленте без JOIN
     user_name    = Column(String(128), nullable=True)
     action_type  = Column(Enum(ActionType), nullable=False)
     performed_at = Column(DateTime, default=_utcnow)

@@ -1,5 +1,4 @@
 // mini-app/src/pages/HomePage.tsx
-// Perf rewrite: CSS animations everywhere, framer-motion only for drag
 import { useEffect, useCallback, useState, useRef, useMemo } from "react";
 import { motion, useMotionValue, useSpring } from "framer-motion";
 import { usePetStore } from "../store/usePetStore";
@@ -119,13 +118,11 @@ function SleepZzz() {
   return (
     <div style={{
       position: "absolute", top: "-10%", right: "-20%",
-      zIndex: 18, pointerEvents: "none",
-      width: 80, height: 120,
+      zIndex: 18, pointerEvents: "none", width: 80, height: 120,
     }}>
       {[0, 1, 2].map(i => (
         <span key={i} style={{
-          position: "absolute",
-          left: `${i * 22}%`, bottom: 0,
+          position: "absolute", left: `${i * 22}%`, bottom: 0,
           fontSize: 16 + i * 8, fontWeight: 900, fontStyle: "italic",
           color: `rgba(200,190,255,${0.4 + i * 0.15})`,
           textShadow: `0 0 8px rgba(180,170,240,${0.2 + i * 0.1})`,
@@ -216,10 +213,8 @@ function DraggablePet({ children, constraintsRef, isStroking, onHeartAt, petDomR
       dragMomentum={false}
       style={{
         cursor: anchored || sleeping ? "default" : "grab",
-        touchAction: "none",
-        display: "inline-block",
-        x: springX, y: springY,
-        willChange: "transform",
+        touchAction: "none", display: "inline-block",
+        x: springX, y: springY, willChange: "transform",
         ...NOTAP,
       }}
     >
@@ -234,6 +229,7 @@ export function HomePage({ petId }: Props) {
   const { pet, fetchPet, performAction, loading } = usePetStore();
   const { openMenu, setMenu, closeMenu } = useMenuStore();
   const coins = useCoinStore(s => s.coins);
+  const fetchCoins = useCoinStore(s => s.fetchCoins);
   const sleeping = useSleepStore(s => s.sleeping);
 
   const [activeTab, setActiveTab] = useState<TabId | null>(null);
@@ -245,6 +241,10 @@ export function HomePage({ petId }: Props) {
 
   const [gameOpen, setGameOpen] = useState(false);
 
+  // Petting debounce: track stroking duration
+  const strokeStart = useRef<number | null>(null);
+  const petTriggered = useRef(false);
+
   const petZoneRef = useRef<HTMLDivElement>(null);
   const petDomRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLElement>(null);
@@ -254,7 +254,7 @@ export function HomePage({ petId }: Props) {
   const menuIsOpen = openMenu !== null;
 
   const refresh = useCallback(() => fetchPet(petId), [petId, fetchPet]);
-  useEffect(() => { refresh(); }, [petId]);
+  useEffect(() => { refresh(); fetchCoins(); }, [petId]);
   useEffect(() => { const id = setInterval(refresh, 60_000); return () => clearInterval(id); }, [refresh]);
   useEffect(() => {
     const h = () => { if (!document.hidden) refresh(); };
@@ -267,7 +267,49 @@ export function HomePage({ petId }: Props) {
     if (openMenu === null) setActiveTab(null);
   }, [openMenu]);
 
-  const handleStroking = useCallback((v: boolean) => setIsStroking(v), []);
+  // Petting → pet action after 2s of stroking
+  const handleStroking = useCallback((v: boolean) => {
+    setIsStroking(v);
+    if (v && !strokeStart.current) {
+      strokeStart.current = Date.now();
+      petTriggered.current = false;
+    }
+    if (v && strokeStart.current && !petTriggered.current) {
+      const elapsed = Date.now() - strokeStart.current;
+      if (elapsed >= 2000) {
+        petTriggered.current = true;
+        performAction("pet");
+        showFloat("+15 🤍");
+        try {
+          (window as any).Telegram?.WebApp?.HapticFeedback?.impactOccurred?.("medium");
+        } catch { /* noop */ }
+      }
+    }
+    if (!v) {
+      strokeStart.current = null;
+      petTriggered.current = false;
+    }
+  }, [performAction]);
+
+  // Keep checking while stroking
+  useEffect(() => {
+    if (!isStroking) return;
+    const id = setInterval(() => {
+      if (strokeStart.current && !petTriggered.current) {
+        const elapsed = Date.now() - strokeStart.current;
+        if (elapsed >= 2000) {
+          petTriggered.current = true;
+          performAction("pet");
+          showFloat("+15 🤍");
+          try {
+            (window as any).Telegram?.WebApp?.HapticFeedback?.impactOccurred?.("medium");
+          } catch { /* noop */ }
+        }
+      }
+    }, 200);
+    return () => clearInterval(id);
+  }, [isStroking, performAction]);
+
   const spawnHeart = useCallback((hx: number, hy: number) => {
     const id = nextHeart.current++;
     const angle = Math.random() * Math.PI * 2;
@@ -289,13 +331,6 @@ export function HomePage({ petId }: Props) {
     const sleepVal = pet.mood === "sleepy" ? 100 : 55;
     return { evo, xpPct, partner, pMins, pOnline, sleepVal };
   }, [pet]);
-
-  // ── Game open handler — close menu first ──
-  const handleGameOpen = useCallback(() => {
-    closeMenu();
-    // Small delay so menu closes before game overlay mounts
-    setTimeout(() => setGameOpen(true), 50);
-  }, [closeMenu]);
 
   if (loading && !pet) return (
     <div style={{
@@ -320,6 +355,9 @@ export function HomePage({ petId }: Props) {
     if (isCd(action)) return;
     await performAction(action);
     showFloat(msg);
+    try {
+      (window as any).Telegram?.WebApp?.HapticFeedback?.impactOccurred?.("medium");
+    } catch { /* noop */ }
   };
   const handleClose = () => closeMenu();
   const handleTab = (tab: TabId) => {
@@ -357,18 +395,15 @@ export function HomePage({ petId }: Props) {
 
       <SleepOverlay />
 
-      {/* Pet zone */}
       <div ref={petZoneRef} style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative", zIndex: 5, overflow: "hidden", minHeight: 0 }}>
 
-        {/* Header */}
         <header
           ref={headerRef}
           style={{
             padding: "clamp(12px,3.5vw,20px) clamp(12px,4vw,18px) 6px",
             zIndex: 20, position: "relative",
             display: "flex", alignItems: "flex-start", gap: 8, flexShrink: 0,
-            opacity: sleeping ? 0.3 : 1,
-            transition: "opacity 0.6s ease",
+            opacity: sleeping ? 0.3 : 1, transition: "opacity 0.6s ease",
           }}
         >
           <div style={{
@@ -409,9 +444,7 @@ export function HomePage({ petId }: Props) {
 
           <div style={{ flex: 1 }} />
 
-          <div style={{
-            display: "flex", flexDirection: "column", alignItems: "flex-end", flexShrink: 0, gap: 4,
-          }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", flexShrink: 0, gap: 4 }}>
             <div style={{
               ...G.heavy, borderRadius: 999, height: PILL_H, padding: "0 10px",
               display: "flex", gap: 4, alignItems: "center",
@@ -435,7 +468,6 @@ export function HomePage({ petId }: Props) {
           </div>
         </header>
 
-        {/* Pet centered */}
         <div style={{
           flex: 1, display: "flex", flexDirection: "column",
           alignItems: "center", justifyContent: "center",
@@ -444,6 +476,7 @@ export function HomePage({ petId }: Props) {
           <div style={{ position: "relative" }}>
             <FloatAnim show={floatShow} text={floatText} />
             <SleepZzz />
+
             <DraggablePet
               constraintsRef={petZoneRef} isStroking={isStroking}
               onHeartAt={spawnHeart} petDomRef={petDomRef}
@@ -459,20 +492,17 @@ export function HomePage({ petId }: Props) {
                 <div style={{
                   width: "clamp(44px,12vw,68px)", height: 6,
                   background: sleeping ? "rgba(0,0,0,0.15)" : "rgba(0,0,0,0.07)",
-                  filter: "blur(5px)",
-                  borderRadius: "50%", marginTop: -2, pointerEvents: "none",
+                  filter: "blur(5px)", borderRadius: "50%", marginTop: -2, pointerEvents: "none",
                   transition: "background 0.6s ease",
                 }} />
               </div>
             </DraggablePet>
           </div>
 
-          {/* Partner badge */}
           <div style={{
             position: "absolute", bottom: 10, left: 0, right: 0,
             display: "flex", justifyContent: "center", zIndex: 20, pointerEvents: "none",
-            opacity: menuIsOpen || sleeping ? 0 : 1,
-            transition: "opacity 0.15s ease",
+            opacity: menuIsOpen || sleeping ? 0 : 1, transition: "opacity 0.15s ease",
           }}>
             <div style={{ pointerEvents: menuIsOpen || sleeping ? "none" : "auto" }}>
               {partner ? (
@@ -513,24 +543,21 @@ export function HomePage({ petId }: Props) {
         </div>
       </div>
 
-      {/* Bottom block */}
       <BottomBlock
         pet={pet} evo={evo} sleepVal={sleepVal}
         activeTab={activeTab} isCd={isCd} getCd={getCd}
         onTab={handleTab} onClose={handleClose}
         petRef={petDomRef} onStroking={handleStroking} isStroking={isStroking}
         navRowRef={navRowRef}
-        onGameOpen={handleGameOpen}
+        onGameOpen={() => setGameOpen(true)}
       />
 
-      {/* Home indicator */}
       <div style={{
         position: "absolute", bottom: "clamp(5px,1.5vw,8px)", left: "50%", transform: "translateX(-50%)",
         width: 100, height: 4, background: "rgba(0,0,0,0.10)", borderRadius: 4,
         zIndex: 20, pointerEvents: "none",
       }} />
 
-      {/* Hearts */}
       {hearts.map(h => (
         <div key={h.id}
           style={{
@@ -545,15 +572,11 @@ export function HomePage({ petId }: Props) {
         >🩷</div>
       ))}
 
-      {/* ── Game overlay ── */}
       {gameOpen && (
         <div style={{
-          position: "absolute",
-          inset: 0,
-          zIndex: 999,
+          position: "absolute", inset: 0, zIndex: 999,
           background: "linear-gradient(150deg,#eef2ff 0%,#fce7f3 45%,#ecfdf5 100%)",
-          display: "flex",
-          flexDirection: "column",
+          display: "flex", flexDirection: "column",
         }}>
           <BlockBlastGame onBack={() => setGameOpen(false)} />
         </div>

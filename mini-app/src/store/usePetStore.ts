@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { Pet, FeedEntry, ActionType } from "../api/types";
 import { getPet, doAction, getFeed } from "../api/pets";
+import { useCoinStore } from "./useCoinStore";
 
 // Оптимистичные дельты для мгновенного UI-отклика
 const ACTION_DELTAS: Record<ActionType, { hunger: number; happiness: number; health: number }> = {
@@ -23,6 +24,7 @@ interface PetStore {
   feed: FeedEntry[];
   loading: boolean;
   error: string | null;
+  actionInFlight: boolean;
   fetchPet: (id: number) => Promise<void>;
   performAction: (action: ActionType) => Promise<void>;
   fetchFeed: () => Promise<void>;
@@ -34,6 +36,7 @@ export const usePetStore = create<PetStore>((set, get) => ({
   feed: [],
   loading: false,
   error: null,
+  actionInFlight: false,
 
   fetchPet: async (id) => {
     set({ loading: true, error: null });
@@ -45,10 +48,11 @@ export const usePetStore = create<PetStore>((set, get) => ({
     }
   },
 
-  // ИСПРАВЛЕНО: оптимистичное обновление + откат при ошибке
   performAction: async (action) => {
-    const { pet } = get();
-    if (!pet) return;
+    const { pet, actionInFlight } = get();
+    if (!pet || actionInFlight) return;
+
+    set({ actionInFlight: true });
 
     const prevPet = pet;
     const optimisticPet = applyDelta(pet, ACTION_DELTAS[action]);
@@ -60,6 +64,10 @@ export const usePetStore = create<PetStore>((set, get) => ({
       const res = await doAction(pet.id, action);
       // Синхронизируем с реальными данными сервера
       set({ pet: res.pet });
+      // Синхронизируем монеты из ответа
+      if (res.coins !== undefined) {
+        useCoinStore.getState().setCoins(res.coins);
+      }
       // Обновляем ленту после действия
       const feed = await getFeed(pet.id);
       set({ feed });
@@ -68,7 +76,6 @@ export const usePetStore = create<PetStore>((set, get) => ({
       const available_at = err.response?.data?.detail?.available_at;
 
       if (available_at) {
-        // Кулдаун — обновляем только cooldowns, откатываем статы
         set({
           pet: {
             ...prevPet,
@@ -78,9 +85,10 @@ export const usePetStore = create<PetStore>((set, get) => ({
           },
         });
       } else {
-        // Другая ошибка — полный откат
         set({ pet: prevPet });
       }
+    } finally {
+      set({ actionInFlight: false });
     }
   },
 
@@ -91,7 +99,7 @@ export const usePetStore = create<PetStore>((set, get) => ({
       const feed = await getFeed(pet.id);
       set({ feed });
     } catch {
-      // не критично, лента просто не обновится
+      // не критично
     }
   },
 

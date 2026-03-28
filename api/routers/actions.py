@@ -18,7 +18,7 @@ class ActionRequest(BaseModel):
 
 class ActionFeedEntry(BaseModel):
     user_id: int
-    user_name: str | None  # ИСПРАВЛЕНО: добавлено имя пользователя
+    user_name: str | None
     action: str
     hunger_delta: float
     happiness_delta: float
@@ -50,6 +50,7 @@ async def do_action(
     return {
         "ok": True,
         "deltas": result["deltas"],
+        "coins": result.get("coins"),
         "pet": await _build_response(pet, user, db),
     }
 
@@ -74,7 +75,7 @@ async def get_action_feed(
     return [
         ActionFeedEntry(
             user_id=r.user_id,
-            user_name=r.user_name,  # берём из сохранённого поля, без JOIN
+            user_name=r.user_name,
             action=r.action_type.value,
             hunger_delta=r.hunger_delta,
             happiness_delta=r.happiness_delta,

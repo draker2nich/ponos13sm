@@ -35,9 +35,12 @@ def calc_mood(pet: Pet) -> PetMood:
 # ─── Decay ────────────────────────────────────────────────────────────────────
 
 def apply_decay(pet: Pet, hours_passed: float) -> None:
-    pet.hunger    = max(0.0, pet.hunger    - settings.hunger_decay_per_hour    * hours_passed)
-    pet.happiness = max(0.0, pet.happiness - settings.happiness_decay_per_hour * hours_passed)
-    pet.health    = max(0.0, pet.health    - settings.health_decay_per_hour    * hours_passed)
+    # Если питомец спит — decay замедляется в 4 раза
+    multiplier = 0.25 if pet.is_sleeping else 1.0
+
+    pet.hunger    = max(0.0, pet.hunger    - settings.hunger_decay_per_hour    * hours_passed * multiplier)
+    pet.happiness = max(0.0, pet.happiness - settings.happiness_decay_per_hour * hours_passed * multiplier)
+    pet.health    = max(0.0, pet.health    - settings.health_decay_per_hour    * hours_passed * multiplier)
     pet.mood      = calc_mood(pet)
     pet.updated_at = utcnow()
 
@@ -78,16 +81,9 @@ async def get_cooldown(
 async def perform_action(
     db: AsyncSession, pet: Pet, user: User, action: ActionType
 ) -> dict:
-    """
-    Выполнить действие пользователя с питомцем.
-    ИСПРАВЛЕНО: используем upsert (INSERT ON CONFLICT DO UPDATE) для
-    атомарного обновления кулдауна — защита от race condition.
-    """
     cfg = ACTION_CONFIG[action]
     available_at = utcnow() + timedelta(hours=cfg["cooldown_hours"])
 
-    # Атомарный upsert кулдауна: если запись уже есть и available_at в будущем — возвращаем ошибку
-    # Сначала пробуем вставить новый кулдаун только если старый истёк
     stmt = (
         pg_insert(ActionCooldown)
         .values(
@@ -98,14 +94,12 @@ async def perform_action(
         )
         .on_conflict_do_update(
             index_elements=["user_id", "pet_id", "action_type"],
-            # Обновляем только если кулдаун уже прошёл
             set_={"available_at": available_at},
             where=(ActionCooldown.available_at <= utcnow()),
         )
     )
     result = await db.execute(stmt)
 
-    # Если rowcount == 0 — кулдаун ещё активен (conflict, но условие WHERE не выполнилось)
     if result.rowcount == 0:
         current = await db.scalar(
             select(ActionCooldown).where(
@@ -130,7 +124,10 @@ async def perform_action(
         pet.experience = 0
         pet.level += 1
 
-    # Логируем действие (сохраняем имя для ленты без доп. JOIN)
+    # Монеты: +1 за каждое действие
+    user.coins += 1
+
+    # Логируем действие
     log = PetAction(
         pet_id=pet.id,
         user_id=user.id,
@@ -155,7 +152,7 @@ async def perform_action(
     await db.commit()
     await db.refresh(pet)
 
-    return {"ok": True, "deltas": d}
+    return {"ok": True, "deltas": d, "coins": user.coins}
 
 
 # ─── Streak ───────────────────────────────────────────────────────────────────
