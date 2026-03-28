@@ -8,7 +8,7 @@ export interface BuyResponse {
   pet: Pet;
 }
 
-export const buyItem = (petId: number, itemType: "food" | "wash", itemId: number) =>
+export const buyItem = (petId: number, itemType: "food" | "wash" | "energy", itemId: number) =>
   api.post<BuyResponse>(`/pets/${petId}/buy`, { item_type: itemType, item_id: itemId }).then(r => r.data);
 
 export interface SleepResponse {
