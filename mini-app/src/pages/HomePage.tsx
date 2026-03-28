@@ -66,6 +66,8 @@ function StatusRing({ value, icon }: { value: number; icon: React.ReactNode }) {
   );
 }
 
+const ENERGY_ICON = <svg viewBox="0 0 24 24" fill="currentColor" width="100%" height="100%"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>;
+
 function FloatAnim({ show, text }: { show: boolean; text: string }) {
   if (!show) return null;
   return (
@@ -233,7 +235,6 @@ export function HomePage({ petId, onPetDeleted }: Props) {
   useEffect(() => { const id = setInterval(refresh, 60_000); return () => clearInterval(id); }, [refresh]);
   useEffect(() => { const h = () => { if (!document.hidden) refresh(); }; document.addEventListener("visibilitychange", h); return () => document.removeEventListener("visibilitychange", h); }, [refresh]);
 
-  // Sync sleep state from server
   useEffect(() => { if (pet) setSleeping(pet.is_sleeping); }, [pet?.is_sleeping]);
 
   useEffect(() => {
@@ -306,14 +307,26 @@ export function HomePage({ petId, onPetDeleted }: Props) {
     if (MENU_TABS.has(tab)) {
       if (activeTab === tab && menuIsOpen) { handleClose(); return; }
       setActiveTab(tab); setMenu(tab as MenuCategory);
-      if (tab === "feed") doAction("feed", "+30 🍎");
-      if (tab === "play") doAction("play", "+25 🎾");
+      // feed and play now open menu panels (no free action)
+      if (tab === "feed") {
+        // just open menu, buying food is through shop tiles
+      }
+      if (tab === "play") {
+        // just open menu, game start is through the button
+      }
       return;
     }
     setActiveTab(tab); closeMenu();
   };
 
   const effectiveMood = sleeping ? "sleepy" as const : (isStroking ? "happy" as const : pet.mood);
+
+  const handleGameClose = () => {
+    setGameOpen(false);
+    // Refresh pet to get updated energy/stats
+    refresh();
+    fetchCoins();
+  };
 
   return (
     <div ref={containerRef} style={{
@@ -365,7 +378,7 @@ export function HomePage({ petId, onPetDeleted }: Props) {
             <div style={{ ...G.heavy, borderRadius: 999, height: PILL_H, padding: "0 10px", display: "flex", gap: 4, alignItems: "center" }}>
               <StatusRing value={pet.hunger} icon={IC.food} />
               <StatusRing value={pet.happiness} icon={IC.game} />
-              <StatusRing value={sleepVal} icon={IC.moon} />
+              <StatusRing value={pet.energy} icon={ENERGY_ICON} />
               <StatusRing value={pet.health} icon={IC.wash} />
             </div>
             <div style={{
@@ -437,7 +450,7 @@ export function HomePage({ petId, onPetDeleted }: Props) {
 
       {gameOpen && (
         <div style={{ position: "absolute", inset: 0, zIndex: 999, background: "linear-gradient(150deg,#eef2ff 0%,#fce7f3 45%,#ecfdf5 100%)", display: "flex", flexDirection: "column" }}>
-          <BlockBlastGame onBack={() => setGameOpen(false)} />
+          <BlockBlastGame onBack={handleGameClose} />
         </div>
       )}
     </div>

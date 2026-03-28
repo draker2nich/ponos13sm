@@ -24,19 +24,27 @@ class Settings(BaseSettings):
     # Mini App
     mini_app_url: str = "http://localhost:5173"
 
-    # Pet mechanics
+    # Pet mechanics — decay per hour
     hunger_decay_per_hour: float = 8.0
     happiness_decay_per_hour: float = 5.0
     health_decay_per_hour: float = 2.0
+    energy_decay_per_hour: float = 3.0          # passive energy drain
+    energy_regen_sleep_per_hour: float = 25.0   # energy restored while sleeping per hour
 
+    # Cooldowns (still used for free pet/glove action)
     feed_cooldown_hours: int = 4
     play_cooldown_hours: int = 4
     pet_cooldown_hours: int = 2
 
+    # Free action deltas (only PET/glove is truly free now)
     feed_hunger_restore: float = 30.0
     play_happiness_restore: float = 25.0
     pet_happiness_restore: float = 15.0
     pet_health_restore: float = 10.0
+
+    # Game energy
+    game_energy_cost: float = 8.0        # energy spent per game session
+    game_min_energy: float = 15.0        # can't start game below this
 
     invite_ttl_hours: int = 72
 
@@ -45,9 +53,7 @@ class Settings(BaseSettings):
     @property
     def db_url(self) -> str:
         if self.database_url:
-            # Heroku даёт postgres://..., asyncpg нужен postgresql+asyncpg://
             return re.sub(r"^postgres://", "postgresql+asyncpg://", self.database_url)
-        # Локальная разработка — как раньше
         return (
             f"postgresql+asyncpg://{self.db_user}:{self.db_password}"
             f"@{self.db_host}:{self.db_port}/{self.db_name}"

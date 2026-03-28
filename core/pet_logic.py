@@ -21,13 +21,17 @@ def utcnow() -> datetime:
 
 def calc_mood(pet: Pet) -> PetMood:
     hour = utcnow().hour
+    if pet.is_sleeping:
+        return PetMood.SLEEPY
     if 0 <= hour < 7:
         return PetMood.SLEEPY
     if pet.hunger < 20:
         return PetMood.HUNGRY
+    if pet.energy < 20:
+        return PetMood.SLEEPY
     if pet.happiness < 30 or pet.health < 30:
         return PetMood.SAD
-    if pet.hunger >= 70 and pet.happiness >= 70:
+    if pet.hunger >= 70 and pet.happiness >= 70 and pet.energy >= 50:
         return PetMood.HAPPY
     return PetMood.CONTENT
 
@@ -35,13 +39,55 @@ def calc_mood(pet: Pet) -> PetMood:
 # ─── Decay ────────────────────────────────────────────────────────────────────
 
 def apply_decay(pet: Pet, hours_passed: float) -> None:
-    # Если питомец спит — decay замедляется в 4 раза
-    multiplier = 0.25 if pet.is_sleeping else 1.0
+    if pet.is_sleeping:
+        # Sleeping: slow decay, energy REGENERATES
+        multiplier = 0.25
+        pet.energy = min(100.0, pet.energy + settings.energy_regen_sleep_per_hour * hours_passed)
+    else:
+        multiplier = 1.0
+        pet.energy = max(0.0, pet.energy - settings.energy_decay_per_hour * hours_passed * multiplier)
 
     pet.hunger    = max(0.0, pet.hunger    - settings.hunger_decay_per_hour    * hours_passed * multiplier)
     pet.happiness = max(0.0, pet.happiness - settings.happiness_decay_per_hour * hours_passed * multiplier)
     pet.health    = max(0.0, pet.health    - settings.health_decay_per_hour    * hours_passed * multiplier)
     pet.mood      = calc_mood(pet)
+    pet.updated_at = utcnow()
+
+
+# ─── Coin modifier based on pet stats ────────────────────────────────────────
+
+def coin_multiplier(pet: Pet) -> float:
+    """Returns a multiplier 0.0–1.0 that reduces coin earnings when stats are low."""
+    mult = 1.0
+    if pet.hunger < 20:
+        mult *= 0.5
+    if pet.happiness < 20:
+        mult *= 0.75
+    return mult
+
+
+def xp_multiplier(pet: Pet) -> float:
+    """Returns XP multiplier — reduced when happiness is low."""
+    if pet.happiness < 20:
+        return 0.5
+    return 1.0
+
+
+# ─── Game energy check ───────────────────────────────────────────────────────
+
+def can_play_game(pet: Pet) -> bool:
+    """Check if pet has enough energy to start a game."""
+    return pet.energy >= settings.game_min_energy and not pet.is_sleeping
+
+
+def spend_game_energy(pet: Pet) -> None:
+    """Deduct energy for playing a game session."""
+    pet.energy = max(0.0, pet.energy - settings.game_energy_cost)
+    # Playing boosts happiness slightly
+    pet.happiness = min(100.0, pet.happiness + 3.0)
+    # But drains hunger a bit
+    pet.hunger = max(0.0, pet.hunger - 2.0)
+    pet.mood = calc_mood(pet)
     pet.updated_at = utcnow()
 
 
@@ -118,16 +164,19 @@ async def perform_action(
     pet.mood      = calc_mood(pet)
     pet.updated_at = utcnow()
 
-    # Опыт и уровень
-    pet.experience += 10
+    # Опыт и уровень (с XP modifier)
+    xp_gain = int(10 * xp_multiplier(pet))
+    pet.experience += xp_gain
     if pet.experience >= pet.level * 100:
         pet.experience = 0
         pet.level += 1
 
-    # Монеты: +1 за каждое действие (атомарный SQL-инкремент, без race condition)
-    await db.execute(
-        sa_update(User).where(User.id == user.id).values(coins=User.coins + 1)
-    )
+    # Монеты: +1 за каждое действие (с coin modifier)
+    coin_gain = 1 if coin_multiplier(pet) >= 0.5 else 0
+    if coin_gain > 0:
+        await db.execute(
+            sa_update(User).where(User.id == user.id).values(coins=User.coins + coin_gain)
+        )
 
     # Логируем действие
     log = PetAction(

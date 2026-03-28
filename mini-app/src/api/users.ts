@@ -14,8 +14,18 @@ export interface AddCoinsResponse {
   game_best_score: number;
 }
 
+export interface GameStartResponse {
+  ok: boolean;
+  energy: number;
+  coin_multiplier: number;
+  message?: string | null;
+}
+
 export const getMe = () =>
   api.get<UserMe>("/users/me").then((r) => r.data);
 
 export const addCoins = (amount: number, game_score?: number) =>
   api.post<AddCoinsResponse>("/users/me/coins", { amount, game_score }).then((r) => r.data);
+
+export const gameStart = (petId: number) =>
+  api.post<GameStartResponse>("/users/me/game-start", { pet_id: petId }).then((r) => r.data);

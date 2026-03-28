@@ -74,6 +74,7 @@ class Pet(Base):
     hunger           = Column(Float, default=100.0)
     happiness        = Column(Float, default=100.0)
     health           = Column(Float, default=100.0)
+    energy           = Column(Float, default=100.0)
 
     level            = Column(Integer, default=1)
     experience       = Column(Integer, default=0)

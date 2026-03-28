@@ -34,6 +34,7 @@ class PetResponse(BaseModel):
     hunger: float
     happiness: float
     health: float
+    energy: float
     level: int
     experience: int
     age_days: int
@@ -106,6 +107,7 @@ async def _build_response(pet: Pet, user: User, db: AsyncSession) -> PetResponse
         hunger=pet.hunger,
         happiness=pet.happiness,
         health=pet.health,
+        energy=pet.energy,
         level=pet.level,
         experience=pet.experience,
         age_days=pet.age_days,
@@ -184,7 +186,6 @@ async def delete_pet(
 ):
     pet = await _get_pet_or_404(pet_id, db)
 
-    # Только создатель может удалить
     ownership = await db.scalar(
         select(PetOwnership).where(
             PetOwnership.pet_id == pet.id,
@@ -195,7 +196,6 @@ async def delete_pet(
     if not ownership:
         raise HTTPException(status_code=403, detail="Only the creator can delete this pet")
 
-    # Удаляем все связанные данные
     await db.execute(delete(ActionCooldown).where(ActionCooldown.pet_id == pet_id))
     await db.execute(delete(PetAction).where(PetAction.pet_id == pet_id))
     await db.execute(delete(Invite).where(Invite.pet_id == pet_id))

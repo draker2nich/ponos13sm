@@ -36,7 +36,6 @@ async def decay_all_pets() -> None:
         for pet in pets:
             apply_decay(pet, hours_passed=1.0)
         await db.commit()
-        # ИСПРАВЛЕНО: log внутри async with, пока pets ещё в скоупе
         log.info(f"Decay applied to {len(pets)} pets")
 
 
@@ -59,6 +58,32 @@ async def notify_hunger() -> None:
                 f"{emoji} <b>{pet.name}</b> очень голоден!\n"
                 f"Голод: {pet.hunger:.0f}/100\n\n"
                 f"Покорми питомца, пока ему не стало хуже 🥺"
+            )
+
+            for o in owners:
+                await _send(o.user_id, text, reply_markup=open_app_keyboard(pet.id))
+
+
+# ─── Task: уведомление о низкой энергии (каждые 3 часа) ───────────────────────
+
+@scheduler.scheduled_job("interval", hours=3, id="notify_low_energy")
+async def notify_low_energy() -> None:
+    from bot.keyboards import open_app_keyboard
+
+    async with AsyncSessionLocal() as db:
+        pets = (await db.scalars(
+            select(Pet).where(Pet.energy < 20, Pet.is_sleeping == False)
+        )).all()
+
+        for pet in pets:
+            owners = (await db.scalars(
+                select(PetOwnership).where(PetOwnership.pet_id == pet.id)
+            )).all()
+
+            text = (
+                f"⚡ <b>{pet.name}</b> устал!\n"
+                f"Энергия: {pet.energy:.0f}/100\n\n"
+                f"Уложи спать или дай энергетик 🧃"
             )
 
             for o in owners:
@@ -122,7 +147,6 @@ async def update_all_streaks() -> None:
         pets = (await db.scalars(select(Pet))).all()
         for pet in pets:
             await update_streak(db, pet)
-        # ИСПРАВЛЕНО: log внутри async with
         log.info(f"Streaks updated for {len(pets)} pets")
 
 
@@ -135,7 +159,6 @@ async def age_all_pets() -> None:
         for pet in pets:
             pet.age_days += 1
         await db.commit()
-        # ИСПРАВЛЕНО: log внутри async with
         log.info(f"Aged {len(pets)} pets")
 
 

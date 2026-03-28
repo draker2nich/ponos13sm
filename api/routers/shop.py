@@ -45,9 +45,17 @@ WASH_ITEMS = {
     2: {"emoji": "🧼", "cost": 4,  "health": 12},
 }
 
+ENERGY_ITEMS = {
+    0: {"emoji": "☕", "cost": 3,  "energy": 12},
+    1: {"emoji": "🧃", "cost": 4,  "energy": 15},
+    2: {"emoji": "🍫", "cost": 5,  "energy": 18},
+    3: {"emoji": "⚡", "cost": 8,  "energy": 30},
+    4: {"emoji": "🥤", "cost": 6,  "energy": 22},
+}
+
 
 class BuyRequest(BaseModel):
-    item_type: str   # "food" | "wash"
+    item_type: str   # "food" | "wash" | "energy"
     item_id: int
 
 
@@ -66,6 +74,8 @@ async def buy_item(
         catalog = FOOD_ITEMS
     elif body.item_type == "wash":
         catalog = WASH_ITEMS
+    elif body.item_type == "energy":
+        catalog = ENERGY_ITEMS
     else:
         raise HTTPException(status_code=400, detail="Unknown item_type")
 
@@ -95,20 +105,27 @@ async def buy_item(
     if body.item_type == "food":
         hunger_delta = float(item["hunger"])
         pet.hunger = min(100.0, pet.hunger + hunger_delta)
-        # Немного счастья от еды
         happiness_delta = 2.0
         pet.happiness = min(100.0, pet.happiness + happiness_delta)
     elif body.item_type == "wash":
         health_delta = float(item["health"])
         pet.health = min(100.0, pet.health + health_delta)
-        # Немного счастья от мытья
         happiness_delta = 3.0
+        pet.happiness = min(100.0, pet.happiness + happiness_delta)
+    elif body.item_type == "energy":
+        energy_gain = float(item["energy"])
+        pet.energy = min(100.0, pet.energy + energy_gain)
+        happiness_delta = 1.0
         pet.happiness = min(100.0, pet.happiness + happiness_delta)
 
     pet.updated_at = utcnow()
 
-    # Логируем как действие — food=FEED, wash=WASH
-    action_type = ActionType.FEED if body.item_type == "food" else ActionType.WASH
+    # Логируем как действие
+    action_type = (
+        ActionType.FEED if body.item_type == "food"
+        else ActionType.WASH if body.item_type == "wash"
+        else ActionType.PLAY  # energy items logged as PLAY
+    )
     log = PetAction(
         pet_id=pet.id,
         user_id=user.id,
