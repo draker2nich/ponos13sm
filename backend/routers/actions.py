@@ -1,16 +1,16 @@
 from datetime import timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from pydantic import BaseModel
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.auth import get_current_user
+from backend.bot.notifications import ACTION_VERBS, partner_activity_text, tell_partners
 from backend.db import get_db
 from backend.deps import get_owned_pet
-from backend.game import ACTIONS, perform_action
-from backend.models import ActionType, Pet, PetAction, User
-from backend.schemas import PetOut, UtcDatetime, pet_out
+from backend.game import ACTIONS, OnCooldown, perform_action
+from backend.models import ActionType, Pet, User
+from backend.schemas import FeedEntry, PetOut, pet_out, recent_activity
 
 router = APIRouter(prefix="/pets/{pet_id}", tags=["actions"])
 
@@ -21,22 +21,14 @@ class ActionIn(BaseModel):
 
 class ActionOut(BaseModel):
     coins: int
+    streak_reward: int
     pet: PetOut
-
-
-class FeedEntry(BaseModel):
-    user_id: int
-    user_name: str | None
-    action: str
-    hunger_delta: float
-    happiness_delta: float
-    health_delta: float
-    performed_at: UtcDatetime
 
 
 @router.post("/actions", response_model=ActionOut)
 async def do_action(
     body: ActionIn,
+    background: BackgroundTasks,
     pet: Pet = Depends(get_owned_pet),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -44,16 +36,19 @@ async def do_action(
     if body.action not in ACTIONS:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Use the shop for this action")
 
-    blocked_until = await perform_action(db, pet, user, body.action)
-    if blocked_until:
+    try:
+        activity = await perform_action(db, pet, user, body.action)
+    except OnCooldown as e:
         raise HTTPException(
             status.HTTP_429_TOO_MANY_REQUESTS,
-            {
-                "message": "Action on cooldown",
-                "available_at": blocked_until.replace(tzinfo=timezone.utc).isoformat(),
-            },
-        )
-    return ActionOut(coins=user.coins, pet=await pet_out(db, pet, user))
+            {"message": "Action on cooldown", "available_at": e.available_at.replace(tzinfo=timezone.utc).isoformat()},
+        ) from e
+
+    text = partner_activity_text(
+        pet.name, user.display_name or "Партнёр", ACTION_VERBS[body.action], pet.streak, activity.streak_reward
+    )
+    background.add_task(tell_partners, activity.notify, text, pet.id)
+    return ActionOut(coins=user.coins, streak_reward=activity.streak_reward, pet=await pet_out(db, pet, user))
 
 
 @router.get("/feed", response_model=list[FeedEntry])
@@ -62,18 +57,4 @@ async def action_feed(
     pet: Pet = Depends(get_owned_pet),
     db: AsyncSession = Depends(get_db),
 ):
-    rows = await db.scalars(
-        select(PetAction).where(PetAction.pet_id == pet.id).order_by(PetAction.performed_at.desc()).limit(limit)
-    )
-    return [
-        FeedEntry(
-            user_id=r.user_id,
-            user_name=r.user_name,
-            action=r.action_type.value,
-            hunger_delta=r.hunger_delta,
-            happiness_delta=r.happiness_delta,
-            health_delta=r.health_delta,
-            performed_at=r.performed_at,
-        )
-        for r in rows
-    ]
+    return await recent_activity(db, pet.id, limit)

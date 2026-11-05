@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Coins } from "lucide-react";
 import { api, ApiError, type CatalogItem, type ItemKind, type Pet } from "../../api";
 import { useCatalog } from "../../hooks/useCatalog";
+import { celebrateStreak } from "../../lib/activity";
 import { haptic } from "../../lib/telegram";
 import { useCoinStore } from "../../store/useCoinStore";
 import { usePetStore } from "../../store/usePetStore";
@@ -42,6 +43,7 @@ function ItemGrid({ pet, kind }: { pet: Pet; kind: ItemKind }) {
       setCoins(res.coins);
       setPet(res.pet);
       haptic("success");
+      celebrateStreak(res.pet.streak, res.streak_reward);
     } catch (e) {
       setCoins(coins);
       haptic("error");

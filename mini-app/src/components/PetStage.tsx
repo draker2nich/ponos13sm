@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type RefObject } from "react";
 import { motion, useMotionValue, useSpring } from "framer-motion";
 import { Heart, UserPlus } from "lucide-react";
 import type { Pet } from "../api";
+import { describe, lastPartnerAction } from "../lib/activity";
 import { timeAgo } from "../lib/format";
 import { PetSprite } from "./PetSprite";
 import "./PetStage.css";
@@ -49,6 +50,7 @@ export function PetStage({ pet, menuOpen, stroking, burst, petRef, onInvite }: P
 
   const mood = pet.is_sleeping ? "sleepy" : stroking ? "happy" : pet.mood;
   const partner = pet.owners.find((o) => !o.is_me);
+  const partnerDid = lastPartnerAction(pet);
 
   return (
     <div className="stage" ref={stageRef}>
@@ -78,7 +80,9 @@ export function PetStage({ pet, menuOpen, stroking, burst, petRef, onInvite }: P
         {partner ? (
           <span className="chip">
             <span className={`chip__dot${isOnline(partner.last_active_at) ? " chip__dot--on" : ""}`} />
-            {partner.name ?? "Партнёр"} · {timeAgo(partner.last_active_at) ?? "ещё не заходил"}
+            {partnerDid
+              ? `${describe(partnerDid, pet)} · ${timeAgo(partnerDid.performed_at)}`
+              : `${partner.name ?? "Партнёр"} · ${timeAgo(partner.last_active_at) ?? "ещё не заходил"}`}
           </span>
         ) : (
           <button className="chip chip--action" onClick={onInvite}>

@@ -5,6 +5,7 @@ from sqlalchemy import (
     BigInteger,
     Boolean,
     Column,
+    Date,
     DateTime,
     Enum,
     Float,
@@ -65,6 +66,9 @@ class User(Base):
     coins = Column(Integer, default=0)
     game_best_score = Column(Integer, default=0)
     last_coin_claim = Column(DateTime)
+    # Coins earned in mini games today (UTC), capped per day
+    game_coins_day = Column(Date)
+    game_coins_today = Column(Integer, nullable=False, default=0, server_default="0")
     created_at = Column(DateTime, default=utcnow)
     last_seen_at = Column(DateTime, default=utcnow)
 
@@ -117,6 +121,8 @@ class PetOwnership(Base):
     is_creator = Column(Boolean, default=False)
     joined_at = Column(DateTime, default=utcnow)
     last_active_at = Column(DateTime, default=utcnow)
+    # Last time this owner got a Telegram message about the partner's activity
+    last_notified_at = Column(DateTime)
 
     pet = relationship("Pet", back_populates="ownerships")
     user = relationship("User", back_populates="ownerships")

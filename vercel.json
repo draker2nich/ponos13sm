@@ -7,7 +7,7 @@
   "functions": {
     "api/index.py": {
       "maxDuration": 30,
-      "excludeFiles": "{mini-app/**,public/**,migrations/**,.venv/**}"
+      "excludeFiles": "{mini-app/**,public/**,migrations/**,tests/**,.github/**,.venv/**}"
     }
   },
   "rewrites": [

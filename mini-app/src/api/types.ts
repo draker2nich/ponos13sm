@@ -16,6 +16,18 @@ export interface Cooldown {
   available_at: string | null;
 }
 
+export type ActivityAction = ActionType | "wash";
+
+export interface FeedEntry {
+  user_id: number;
+  user_name: string | null;
+  action: ActivityAction;
+  hunger_delta: number;
+  happiness_delta: number;
+  health_delta: number;
+  performed_at: string;
+}
+
 export interface Pet {
   id: number;
   name: string;
@@ -31,6 +43,7 @@ export interface Pet {
   is_sleeping: boolean;
   owners: Owner[];
   cooldowns: Cooldown[];
+  recent: FeedEntry[];
   updated_at: string;
 }
 

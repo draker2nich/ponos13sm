@@ -12,6 +12,8 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 MAX_COINS_PER_CLAIM = 10
 CLAIM_INTERVAL = timedelta(seconds=3)
+# The client reports game coins itself, so cap what a day of playing can earn
+GAME_COINS_PER_DAY = 60
 
 
 class MeOut(BaseModel):
@@ -31,6 +33,8 @@ class CoinsIn(BaseModel):
 class CoinsOut(BaseModel):
     coins: int
     game_best_score: int
+    accepted: int  # how many of the requested coins were credited
+    left_today: int
 
 
 @router.get("/me", response_model=MeOut)
@@ -52,11 +56,22 @@ async def claim_game_coins(body: CoinsIn, user: User = Depends(get_current_user)
     if body.amount and user.last_coin_claim and now - user.last_coin_claim < CLAIM_INTERVAL:
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Too fast")
 
-    if body.amount:
-        user.coins += body.amount
+    today = now.date()
+    if user.game_coins_day != today:
+        user.game_coins_day, user.game_coins_today = today, 0
+
+    accepted = min(body.amount, GAME_COINS_PER_DAY - user.game_coins_today)
+    if accepted:
+        user.coins += accepted
+        user.game_coins_today += accepted
         user.last_coin_claim = now
     if body.game_score is not None and body.game_score > user.game_best_score:
         user.game_best_score = body.game_score
 
     await db.commit()
-    return CoinsOut(coins=user.coins, game_best_score=user.game_best_score)
+    return CoinsOut(
+        coins=user.coins,
+        game_best_score=user.game_best_score,
+        accepted=accepted,
+        left_today=GAME_COINS_PER_DAY - user.game_coins_today,
+    )

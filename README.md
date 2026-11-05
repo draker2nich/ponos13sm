@@ -69,6 +69,15 @@ Telegram opens mini apps only over HTTPS. To try it inside Telegram, run a tunne
 After testing the bot locally, set the webhook again (see deployment guide), otherwise the
 production bot stays silent.
 
+## Tests
+
+```bash
+docker compose up -d
+TEST_DATABASE_URL=postgresql://postgres:secret@localhost:5432/postgres pytest
+```
+
+GitHub Actions runs the same tests and the frontend build on every push (`.github/workflows/ci.yml`).
+
 ## Migrations
 
 ```bash

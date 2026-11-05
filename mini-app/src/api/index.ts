@@ -12,11 +12,14 @@ export const api = {
   toggleSleep: (id: number) => request<Pet>("POST", `/pets/${id}/sleep`),
 
   act: (id: number, action: ActionType) =>
-    request<{ coins: number; pet: Pet }>("POST", `/pets/${id}/actions`, { action }),
+    request<{ coins: number; streak_reward: number; pet: Pet }>("POST", `/pets/${id}/actions`, { action }),
 
   catalog: () => request<Catalog>("GET", "/catalog"),
   buy: (id: number, item_type: ItemKind, item_id: number) =>
-    request<{ coins: number; item_emoji: string; pet: Pet }>("POST", `/pets/${id}/buy`, { item_type, item_id }),
+    request<{ coins: number; item_emoji: string; streak_reward: number; pet: Pet }>("POST", `/pets/${id}/buy`, {
+      item_type,
+      item_id,
+    }),
 
   createInvite: (pet_id: number) =>
     request<{ token: string; link: string; expires_at: string }>("POST", "/invites", { pet_id }),
@@ -24,5 +27,9 @@ export const api = {
 
   me: () => request<Me>("GET", "/users/me"),
   claimCoins: (amount: number, game_score?: number) =>
-    request<{ coins: number; game_best_score: number }>("POST", "/users/me/coins", { amount, game_score }),
+    request<{ coins: number; game_best_score: number; accepted: number; left_today: number }>(
+      "POST",
+      "/users/me/coins",
+      { amount, game_score },
+    ),
 };

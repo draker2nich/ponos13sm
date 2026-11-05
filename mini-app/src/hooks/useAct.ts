@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import type { ActionType } from "../api";
+import { celebrateStreak } from "../lib/activity";
 import { formatDuration, secondsUntil } from "../lib/format";
 import { haptic } from "../lib/telegram";
 import { useFxStore } from "../store/useFxStore";
@@ -23,6 +24,7 @@ export function useAct() {
       if (res.ok) {
         fire(GAIN[action]);
         haptic("medium");
+        celebrateStreak(usePetStore.getState().pet?.streak ?? 0, res.streakReward);
       } else if (res.availableAt) {
         toast(`Можно снова через ${formatDuration(secondsUntil(res.availableAt))}`);
         haptic("error");

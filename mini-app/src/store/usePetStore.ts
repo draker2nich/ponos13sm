@@ -10,7 +10,7 @@ const OPTIMISTIC: Record<ActionType, Pick<Pet, "hunger" | "happiness" | "health"
   pet: { hunger: 0, happiness: 15, health: 10 },
 };
 
-export type ActionResult = { ok: true } | { ok: false; availableAt: string | null };
+export type ActionResult = { ok: true; streakReward: number } | { ok: false; availableAt: string | null };
 
 interface PetStore {
   pet: Pet | null;
@@ -59,7 +59,7 @@ export const usePetStore = create<PetStore>((set, get) => ({
       const res = await api.act(pet.id, action);
       set({ pet: res.pet });
       useCoinStore.getState().setCoins(res.coins);
-      return { ok: true };
+      return { ok: true, streakReward: res.streak_reward };
     } catch (e) {
       const availableAt = e instanceof ApiError ? e.availableAt : null;
       set({

@@ -7,9 +7,10 @@ from aiogram import Bot
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.bot import bot_session
 from backend.bot.keyboards import open_app_keyboard
 from backend.game import current_streak, sync_pet
-from backend.models import Pet, PetOwnership, User, utcnow
+from backend.models import ActionType, Pet, PetOwnership, User, utcnow
 
 log = logging.getLogger(__name__)
 
@@ -71,3 +72,29 @@ async def notify_streak_at_risk(db: AsyncSession, bot: Bot) -> int:
             text = f"<b>{partner}</b> сегодня ещё не заходил. Напомни про <b>{name}</b>, чтобы сохранить стрик {streak} дн."
             sent += await _send(bot, own.user_id, text, pet.id)
     return sent
+
+
+# ─── Partner activity ────────────────────────────────────────────────────────
+
+ACTION_VERBS = {
+    ActionType.FEED: "покормил(а)",
+    ActionType.PLAY: "поиграл(а)",
+    ActionType.PET: "погладил(а)",
+}
+PURCHASE_VERBS = {"food": "угостил(а)", "wash": "искупал(а)"}
+
+
+def partner_activity_text(pet_name: str, actor: str, verb: str, streak: int = 0, reward: int = 0) -> str:
+    text = f"<b>{escape(pet_name)}</b> · {escape(actor)} {verb}"
+    if reward:
+        text += f"\n\nСтрик {streak} дн. — вам обоим +{reward} монет"
+    return text
+
+
+async def tell_partners(user_ids: list[int], text: str, pet_id: int) -> None:
+    """Runs after the response is sent (FastAPI background task)."""
+    if not user_ids:
+        return
+    async with bot_session() as bot:
+        for user_id in user_ids:
+            await _send(bot, user_id, text, pet_id)

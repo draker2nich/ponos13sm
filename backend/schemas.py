@@ -6,7 +6,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.game import age_days, current_streak
-from backend.models import ActionCooldown, ActionType, Pet, PetOwnership, User, utcnow
+from backend.models import ActionCooldown, ActionType, Pet, PetAction, PetOwnership, User, utcnow
+
+RECENT_ACTIVITY = 10
 
 # DB timestamps are naive UTC; send them with an explicit offset so browsers don't read them as local time
 UtcDatetime = Annotated[datetime, PlainSerializer(lambda d: d.replace(tzinfo=timezone.utc).isoformat())]
@@ -25,6 +27,35 @@ class CooldownOut(BaseModel):
     available_at: UtcDatetime | None
 
 
+class FeedEntry(BaseModel):
+    user_id: int
+    user_name: str | None
+    action: str
+    hunger_delta: float
+    happiness_delta: float
+    health_delta: float
+    performed_at: UtcDatetime
+
+    @classmethod
+    def of(cls, row: PetAction) -> "FeedEntry":
+        return cls(
+            user_id=row.user_id,
+            user_name=row.user_name,
+            action=row.action_type.value,
+            hunger_delta=row.hunger_delta,
+            happiness_delta=row.happiness_delta,
+            health_delta=row.health_delta,
+            performed_at=row.performed_at,
+        )
+
+
+async def recent_activity(db: AsyncSession, pet_id: int, limit: int = RECENT_ACTIVITY) -> list[FeedEntry]:
+    rows = await db.scalars(
+        select(PetAction).where(PetAction.pet_id == pet_id).order_by(PetAction.performed_at.desc()).limit(limit)
+    )
+    return [FeedEntry.of(r) for r in rows]
+
+
 class PetOut(BaseModel):
     id: int
     name: str
@@ -40,6 +71,7 @@ class PetOut(BaseModel):
     is_sleeping: bool
     owners: list[OwnerOut]
     cooldowns: list[CooldownOut]
+    recent: list[FeedEntry]
     updated_at: UtcDatetime
 
 
@@ -92,5 +124,6 @@ async def pet_out(db: AsyncSession, pet: Pet, me: User) -> PetOut:
             for action in ActionType
             if action is not ActionType.WASH
         ],
+        recent=await recent_activity(db, pet.id),
         updated_at=pet.updated_at,
     )

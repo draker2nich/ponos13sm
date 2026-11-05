@@ -5,7 +5,7 @@ to date with `sync_pet`, using the time elapsed since `pet.decayed_at`. This kee
 backend stateless, which is what a serverless deployment needs.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 
 from sqlalchemy import select, update
@@ -17,6 +17,12 @@ from backend.models import ActionCooldown, ActionType, Pet, PetAction, PetMood, 
 
 XP_PER_ACTION = 10
 COINS_PER_ACTION = 1
+
+# Coins each owner gets when the shared streak reaches these days
+STREAK_REWARDS = {3: 5, 7: 15, 14: 30, 30: 60, 60: 100, 100: 200}
+
+NOTIFY_EVERY = timedelta(hours=3)
+PARTNER_IN_APP = timedelta(minutes=15)
 
 
 @dataclass(frozen=True)
@@ -127,21 +133,46 @@ def age_days(pet: Pet, now: datetime | None = None) -> int:
 
 # ─── Activity ────────────────────────────────────────────────────────────────
 
-async def register_activity(db: AsyncSession, pet: Pet, user: User, now: datetime) -> None:
-    """Mark the owner active today and extend the streak once both owners have been in."""
+@dataclass
+class Activity:
+    """What else happened when someone looked after the pet."""
+
+    streak_reward: int = 0  # coins each owner got for reaching a streak milestone
+    notify: list[int] = field(default_factory=list)  # partners to tell about it in Telegram
+
+
+async def register_activity(db: AsyncSession, pet: Pet, user: User, now: datetime) -> Activity:
+    """Mark the owner active, extend the shared streak and pick partners to notify."""
     owners = (await db.scalars(select(PetOwnership).where(PetOwnership.pet_id == pet.id))).all()
+    activity = Activity()
+
     for owner in owners:
         if owner.user_id == user.id:
             owner.last_active_at = now
+        elif _should_notify(owner, now):
+            owner.last_notified_at = now
+            activity.notify.append(owner.user_id)
 
     today = now.date()
     both_active = len(owners) >= 2 and all(o.last_active_at and o.last_active_at.date() == today for o in owners)
     already_counted = pet.last_streak_date and pet.last_streak_date.date() == today
-    if not both_active or already_counted:
-        return
+    if both_active and not already_counted:
+        pet.streak = current_streak(pet, today) + 1
+        pet.last_streak_date = now
+        activity.streak_reward = STREAK_REWARDS.get(pet.streak, 0)
+        if activity.streak_reward:
+            owner_ids = [o.user_id for o in owners]
+            await db.execute(
+                update(User).where(User.id.in_(owner_ids)).values(coins=User.coins + activity.streak_reward)
+            )
+    return activity
 
-    pet.streak = current_streak(pet, today) + 1
-    pet.last_streak_date = now
+
+def _should_notify(partner: PetOwnership, now: datetime) -> bool:
+    """Ping the partner at most every few hours, and not while they're in the app themselves."""
+    recently_notified = partner.last_notified_at and now - partner.last_notified_at < NOTIFY_EVERY
+    in_app_now = partner.last_active_at and now - partner.last_active_at < PARTNER_IN_APP
+    return not recently_notified and not in_app_now
 
 
 def _log(pet: Pet, user: User, action: ActionType, deltas: Deltas) -> PetAction:
@@ -179,13 +210,22 @@ async def claim_cooldown(db: AsyncSession, user: User, pet: Pet, action: ActionT
     )
 
 
-async def perform_action(db: AsyncSession, pet: Pet, user: User, action: ActionType) -> datetime | None:
-    """Feed / play / pet. Returns `available_at` when the action is on cooldown, otherwise None."""
+class OnCooldown(Exception):
+    def __init__(self, available_at: datetime):
+        self.available_at = available_at
+
+
+class NotEnoughCoins(Exception):
+    pass
+
+
+async def perform_action(db: AsyncSession, pet: Pet, user: User, action: ActionType) -> Activity:
+    """Feed / play / pet. Raises OnCooldown if the action isn't available yet."""
     now = utcnow()
     blocked_until = await claim_cooldown(db, user, pet, action, now)
     if blocked_until:
         await db.commit()  # keep the decay applied while loading the pet
-        return blocked_until
+        raise OnCooldown(blocked_until)
 
     deltas = ACTIONS[action].deltas
     _apply(pet, deltas, now)
@@ -197,25 +237,25 @@ async def perform_action(db: AsyncSession, pet: Pet, user: User, action: ActionT
 
     await db.execute(update(User).where(User.id == user.id).values(coins=User.coins + COINS_PER_ACTION))
     db.add(_log(pet, user, action, deltas))
-    await register_activity(db, pet, user, now)
+    activity = await register_activity(db, pet, user, now)
     await db.commit()
     await db.refresh(user)
-    return None
+    return activity
 
 
-async def buy_item(db: AsyncSession, pet: Pet, user: User, kind: str, item: ShopItem) -> bool:
-    """Spend coins on an item and apply it to the pet. Returns False if the user can't afford it."""
+async def buy_item(db: AsyncSession, pet: Pet, user: User, kind: str, item: ShopItem) -> Activity:
+    """Spend coins on an item and apply it to the pet. Raises NotEnoughCoins."""
     paid = await db.execute(
         update(User).where(User.id == user.id, User.coins >= item.cost).values(coins=User.coins - item.cost)
     )
     if not paid.rowcount:
         await db.commit()
-        return False
+        raise NotEnoughCoins
 
     now = utcnow()
     _apply(pet, item.deltas, now)
     db.add(_log(pet, user, PURCHASE_ACTION[kind], item.deltas))
-    await register_activity(db, pet, user, now)
+    activity = await register_activity(db, pet, user, now)
     await db.commit()
     await db.refresh(user)
-    return True
+    return activity

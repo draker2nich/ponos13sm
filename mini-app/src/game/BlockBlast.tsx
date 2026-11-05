@@ -37,6 +37,8 @@ interface Drag {
 export function BlockBlast({ onClose }: { onClose: () => void }) {
   const storedBest = useCoinStore((s) => s.bestScore);
   const claim = useCoinStore((s) => s.claimFromGame);
+  const coinsLeft = useCoinStore((s) => s.gameCoinsLeft);
+  const capped = coinsLeft === 0;
   const deposit = useCoinBank();
 
   const [board, setBoard] = useState(emptyBoard);
@@ -95,7 +97,7 @@ export function BlockBlast({ onClose }: { onClose: () => void }) {
 
         lines.current += cleared;
         const coins = Math.floor(lines.current / LINES_PER_COIN);
-        if (coins) {
+        if (coins && !capped) {
           lines.current %= LINES_PER_COIN;
           deposit(coins);
           setCoinPop(coins);
@@ -108,7 +110,7 @@ export function BlockBlast({ onClose }: { onClose: () => void }) {
       setScore((s) => s + scoreFor(cellCount(piece.shape), cleared, nextCombo));
       setPieces((ps) => ps.map((p, i) => (i === d.index ? { ...p, used: true } : p)));
     },
-    [board, combo, pieces, deposit],
+    [board, combo, pieces, deposit, capped],
   );
 
   // Track the pointer on window while dragging so it works across the whole screen
@@ -209,7 +211,11 @@ export function BlockBlast({ onClose }: { onClose: () => void }) {
         ))}
       </div>
 
-      <p className="bb__hint">Собирай линии: каждые {LINES_PER_COIN} линии — монета</p>
+      <p className="bb__hint">
+        {capped
+          ? "Монеты из игр на сегодня собраны, дальше — на рекорд"
+          : `Собирай линии: каждые ${LINES_PER_COIN} линии — монета`}
+      </p>
 
       {drag && dragged && (
         <div className="bb__floating" style={{ left: drag.x, top: drag.y - LIFT_PX }}>
