@@ -1,16 +1,19 @@
 export type PetMood = "happy" | "content" | "sad" | "hungry" | "sleepy";
 export type PetType = "cat" | "dog" | "bunny" | "bear";
 export type ActionType = "feed" | "play" | "pet";
-
-export interface CooldownInfo {
-  action: ActionType;
-  available_at: string | null;
-}
+export type ItemKind = "food" | "wash";
 
 export interface Owner {
   user_id: number;
+  name: string | null;
   is_creator: boolean;
+  is_me: boolean;
   last_active_at: string | null;
+}
+
+export interface Cooldown {
+  action: ActionType;
+  available_at: string | null;
 }
 
 export interface Pet {
@@ -27,22 +30,26 @@ export interface Pet {
   mood: PetMood;
   is_sleeping: boolean;
   owners: Owner[];
-  cooldowns: CooldownInfo[];
+  cooldowns: Cooldown[];
   updated_at: string;
 }
 
-export interface FeedEntry {
-  user_id: number;
-  user_name: string | null;
-  action: ActionType;
-  hunger_delta: number;
-  happiness_delta: number;
-  health_delta: number;
-  performed_at: string;
+export interface CatalogItem {
+  id: number;
+  emoji: string;
+  cost: number;
+  hunger: number;
+  happiness: number;
+  health: number;
 }
 
-export interface InviteResponse {
-  token: string;
-  link: string;
-  expires_at: string;
+export type Catalog = Record<ItemKind, CatalogItem[]>;
+
+export interface Me {
+  id: number;
+  username: string | null;
+  first_name: string | null;
+  coins: number;
+  game_best_score: number;
+  is_premium: boolean;
 }

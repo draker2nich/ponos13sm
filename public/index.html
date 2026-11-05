@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pet Together — питомец, которого растят вдвоём</title>
+  <meta name="description" content="Виртуальный питомец в Telegram, за которым вы ухаживаете вместе с другом: кормите, играете и держите общий стрик." />
+  <meta name="theme-color" content="#f6f1e8" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f6f1e8;
+      --floor: #ede4d6;
+      --surface: #fffdf9;
+      --raised: #f1ebe1;
+      --line: rgba(31, 27, 22, 0.08);
+      --text: #1f1b16;
+      --text-2: #5e554a;
+      --text-3: #756c60;
+      --accent: #b84a33;
+      --accent-hover: #a5412c;
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font: 400 16px/1.5 "Figtree", system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    img { display: block; }
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+    /* ─── Nav ─────────────────────────────────────────────── */
+    .nav { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+    .logo { display: flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 600; }
+    .logo img { width: 24px; height: 24px; }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      height: 44px; padding: 0 20px; border-radius: 22px;
+      font-size: 15px; font-weight: 500;
+      transition: background-color 150ms var(--ease), transform 150ms var(--ease);
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn--primary { background: var(--accent); color: #fff; }
+    .btn--primary:hover { background: var(--accent-hover); }
+    .btn--quiet { color: var(--text-2); padding: 0 12px; }
+    .btn--quiet:hover { color: var(--text); }
+    .btn--small { height: 36px; padding: 0 16px; border-radius: 18px; font-size: 14px; }
+
+    /* ─── Hero ────────────────────────────────────────────── */
+    .hero {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center;
+      min-height: calc(100vh - 64px); max-height: 840px; padding: 32px 0 64px;
+    }
+    .hero h1 { font-size: 56px; line-height: 1.04; font-weight: 500; letter-spacing: -0.02em; }
+    .hero p { margin-top: 20px; max-width: 32rem; font-size: 19px; line-height: 1.55; color: var(--text-2); }
+    .hero__actions { margin-top: 32px; display: flex; gap: 8px; flex-wrap: wrap; }
+
+    /* The product itself: a phone-sized preview of the room with the pet */
+    .preview {
+      position: relative; justify-self: center; width: 320px; height: 560px;
+      border-radius: 36px; overflow: hidden;
+      background: linear-gradient(180deg, var(--bg) 0%, var(--bg) 40%, var(--floor) 100%);
+      border: 1px solid var(--line);
+      box-shadow: 0 24px 48px rgba(31, 27, 22, 0.1), 0 2px 6px rgba(31, 27, 22, 0.05);
+    }
+    .preview__top { position: absolute; top: 16px; left: 16px; right: 16px; display: flex; justify-content: space-between; align-items: flex-start; }
+    .card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 1px 2px rgba(31, 27, 22, 0.06); }
+    .preview__id { padding: 8px 12px; display: grid; gap: 4px; font-size: 12px; color: var(--text-3); }
+    .preview__id b { font-size: 15px; font-weight: 600; color: var(--text); }
+    .preview__streak { display: flex; align-items: center; gap: 4px; color: var(--accent); font-weight: 500; font-size: 13px; }
+    .preview__streak svg { width: 14px; height: 14px; }
+    .dots { display: inline-flex; gap: 3px; margin-left: 4px; }
+    .dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+    .rings { display: flex; gap: 4px; padding: 4px; border-radius: 24px; }
+    .ring { position: relative; width: 34px; height: 34px; display: grid; place-items: center; color: var(--text-3); }
+    .ring svg:first-child { position: absolute; inset: 0; transform: rotate(-90deg); }
+    .ring svg:last-child { width: 15px; height: 15px; }
+    .preview__pet { position: absolute; left: 50%; top: 46%; transform: translate(-50%, -50%); display: grid; justify-items: center; }
+    .preview__pet img { width: 168px; height: 168px; }
+    .shadow { width: 108px; height: 12px; margin-top: -8px; border-radius: 50%; background: radial-gradient(closest-side, rgba(31, 27, 22, 0.16), transparent); }
+    .preview__chip {
+      position: absolute; bottom: 104px; left: 50%; transform: translateX(-50%);
+      display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-radius: 15px;
+      font-size: 13px; color: var(--text-2); white-space: nowrap;
+    }
+    .preview__chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #3f8f5a; }
+    .preview__dock { position: absolute; bottom: 24px; left: 0; right: 0; display: flex; justify-content: center; gap: 8px; }
+    .preview__tabs { display: flex; align-items: center; gap: 4px; height: 60px; padding: 0 8px; border-radius: 30px; box-shadow: 0 8px 24px rgba(31, 27, 22, 0.08); }
+    .preview__tabs span { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%; color: var(--text-3); }
+    .preview__tabs span:first-child { background: var(--accent); color: #fff; }
+    .preview__glove { width: 60px; height: 60px; display: grid; place-items: center; border-radius: 30px; box-shadow: 0 8px 24px rgba(31, 27, 22, 0.08); }
+    .preview__glove img { width: 40px; height: 40px; }
+
+    /* ─── Pets ────────────────────────────────────────────── */
+    .pets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 32px 0 96px; }
+    .pet { display: grid; justify-items: center; gap: 4px; color: var(--text-2); font-size: 15px; }
+    .pet img { width: 120px; height: 120px; }
+
+    /* ─── Sections ────────────────────────────────────────── */
+    section h2 { font-size: 32px; line-height: 1.15; font-weight: 500; letter-spacing: -0.01em; }
+    .lead { margin-top: 12px; color: var(--text-2); max-width: 36rem; }
+
+    .features { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 40px; }
+    .feature { padding: 24px; display: grid; align-content: start; gap: 8px; }
+    .feature svg { color: var(--accent); margin-bottom: 8px; }
+    .feature h3 { font-size: 17px; font-weight: 600; }
+    .feature p { font-size: 15px; color: var(--text-2); }
+
+    .steps { margin-top: 40px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; counter-reset: step; }
+    .step { padding: 20px 24px 0 0; border-top: 1px solid var(--text); display: grid; align-content: start; gap: 6px; counter-increment: step; }
+    .step::before { content: counter(step); font-size: 13px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+    .step b { font-weight: 600; }
+    .step span { color: var(--text-2); font-size: 15px; }
+
+    .block { padding: 96px 0; }
+    .block--floor { background: var(--floor); }
+
+    .cta { display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+
+    footer { padding: 32px 0 48px; color: var(--text-3); font-size: 14px; }
+
+    @media (max-width: 860px) {
+      .hero { grid-template-columns: 1fr; min-height: 0; max-height: none; gap: 40px; padding: 24px 0 48px; }
+      .hero h1 { font-size: 40px; }
+      .hero p { font-size: 17px; }
+      .features { grid-template-columns: 1fr 1fr; }
+      .steps { grid-template-columns: 1fr; }
+      .pets { grid-template-columns: repeat(2, 1fr); padding-bottom: 64px; }
+      .block { padding: 64px 0; }
+    }
+    @media (max-width: 520px) {
+      .features { grid-template-columns: 1fr; }
+      .preview { width: 100%; max-width: 320px; height: 520px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <nav class="nav">
+      <a href="/" class="logo"><img src="/favicon.svg" alt="" />Pet Together</a>
+      <a href="https://t.me/ponos13sm_bot" class="btn btn--primary btn--small">Открыть бота</a>
+    </nav>
+
+    <section class="hero">
+      <div>
+        <h1>Питомец, которого растят вдвоём</h1>
+        <p>Виртуальный питомец в Telegram. Кормите, играйте и гладьте его вместе с другом, и заходите оба каждый день, чтобы не потерять общий стрик.</p>
+        <div class="hero__actions">
+          <a href="https://t.me/ponos13sm_bot" class="btn btn--primary">Завести питомца</a>
+          <a href="#how" class="btn btn--quiet">Как это работает</a>
+        </div>
+      </div>
+
+      <div class="preview" aria-label="Так выглядит приложение">
+        <div class="preview__top">
+          <div class="card preview__id">
+            <b>Тёма</b>
+            <span>Ур. 4</span>
+            <span class="preview__streak">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
+              12 <span class="dots"><i></i><i></i></span>
+            </span>
+          </div>
+          <div class="card rings">
+            <span class="ring"><svg width="34" height="34" viewBox="0 0 34 34"><circle cx="17" cy="17" r="14" fill="none" stroke="#f1ebe1" stroke-width="2.5"/><circle cx="17" cy="17" r="14" fill="none" stroke="#9a9084" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="62 88"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg></span>
+            <span class="ring"><svg width="34" height="34" viewBox="0 0 34 34"><circle cx="17" cy="17" r="14" fill="none" stroke="#f1ebe1" stroke-width="2.5"/><circle cx="17" cy="17" r="14" fill="none" stroke="#9a9084" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="80 88"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" x2="9.01" y1="9" y2="9"/><line x1="15" x2="15.01" y1="9" y2="9"/></svg></span>
+            <span class="ring"><svg width="34" height="34" viewBox="0 0 34 34"><circle cx="17" cy="17" r="14" fill="none" stroke="#f1ebe1" stroke-width="2.5"/><circle cx="17" cy="17" r="14" fill="none" stroke="#9a9084" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="74 88"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/><path d="M3.22 12H9.5l.5-1 2 4.5 2-7 1.5 3.5h5.27"/></svg></span>
+          </div>
+        </div>
+
+        <div class="preview__pet">
+          <img src="/app/sprites/bear.webp" alt="Медвежонок в приложении" width="168" height="168" />
+          <div class="shadow"></div>
+        </div>
+
+        <div class="card preview__chip">Аня · 12 мин назад</div>
+
+        <div class="preview__dock">
+          <div class="card preview__tabs">
+            <span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg></span>
+            <span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="6" x2="10" y1="11" y2="11"/><line x1="8" x2="8" y1="9" y2="13"/><line x1="15" x2="15.01" y1="12" y2="12"/><line x1="18" x2="18.01" y1="10" y2="10"/><path d="M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z"/></svg></span>
+            <span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></span>
+          </div>
+          <div class="card preview__glove"><img src="/app/sprites/glove.webp" alt="" width="40" height="40" /></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="pets">
+      <div class="pet"><img src="/app/sprites/cat.webp" alt="" width="120" height="120" loading="lazy" />Кот</div>
+      <div class="pet"><img src="/app/sprites/dog.webp" alt="" width="120" height="120" loading="lazy" />Собака</div>
+      <div class="pet"><img src="/app/sprites/bunny.webp" alt="" width="120" height="120" loading="lazy" />Кролик</div>
+      <div class="pet"><img src="/app/sprites/bear.webp" alt="" width="120" height="120" loading="lazy" />Медведь</div>
+    </div>
+  </div>
+
+  <section class="block block--floor">
+    <div class="wrap">
+      <h2>Забота на двоих</h2>
+      <p class="lead">У питомца два хозяина: ты и друг, которого ты позовёшь по ссылке. Всё, что делает один, видит второй.</p>
+      <div class="features">
+        <div class="card feature">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <h3>Вдвоём</h3>
+          <p>Пригласи друга по ссылке и ухаживайте за питомцем вместе: кормите, играйте, гладьте.</p>
+        </div>
+        <div class="card feature">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
+          <h3>Общий стрик</h3>
+          <p>Заходите оба каждый день, и стрик растёт. Пропустили день — начинаете сначала.</p>
+        </div>
+        <div class="card feature">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/><path d="M3.22 12H9.5l.5-1 2 4.5 2-7 1.5 3.5h5.27"/></svg>
+          <h3>Живой питомец</h3>
+          <p>Сытость, настроение и здоровье меняются со временем. Бот напомнит, если питомец проголодался.</p>
+        </div>
+        <div class="card feature">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+          <h3>Растёт с вами</h3>
+          <p>Каждое действие даёт опыт и монеты. Питомец набирает уровни, а монеты уходят на угощения.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="how">
+    <div class="wrap">
+      <h2>Как начать</h2>
+      <div class="steps">
+        <div class="step"><b>Открой бота</b><span>@ponos13sm_bot в Telegram</span></div>
+        <div class="step"><b>Заведи питомца</b><span>Выбери, кто это будет, и придумай имя</span></div>
+        <div class="step"><b>Позови друга</b><span>Отправь ссылку из вкладки «Вдвоём» и растите питомца вместе</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block block--floor">
+    <div class="wrap cta">
+      <h2>Питомец уже ждёт имени</h2>
+      <a href="https://t.me/ponos13sm_bot" class="btn btn--primary">Завести питомца</a>
+    </div>
+  </section>
+
+  <footer class="wrap">Pet Together · tubric.tech</footer>
+</body>
+</html>

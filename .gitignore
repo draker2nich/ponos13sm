@@ -1,4 +1,20 @@
+# Secrets
 .env
-*__pycache__/
-*node_modules
-mini-app/dist
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Node / build output (public/app is produced by `npm run build` in mini-app)
+node_modules/
+public/app/
+
+# Tooling
+.vercel/
+.idea/
+.vscode/
+.DS_Store

@@ -1,36 +1,32 @@
-import axios from "axios";
+import { initData } from "../lib/telegram";
 
-const tg = window.Telegram?.WebApp;
+const BASE = `${import.meta.env.VITE_API_URL ?? ""}/api`;
 
-// Пустой baseURL = запросы идут на тот же домен где открыт фронт.
-// На Heroku фронт и API на одном домене (demon-and-android.me),
-// поэтому /pets/... будет резолвиться в https://demon-and-android.me/pets/...
-const BASE_URL = "";
-
-export const api = axios.create({
-  baseURL: BASE_URL,
-  headers: { "Content-Type": "application/json" },
-});
-
-api.interceptors.request.use((cfg) => {
-  const initData = tg?.initData ?? "";
-  if (initData) {
-    cfg.headers.Authorization = `Bearer ${initData}`;
-  } else {
-    console.warn("[API] initData is empty — auth will fail in production");
+export class ApiError extends Error {
+  constructor(
+    readonly status: number,
+    readonly detail: unknown,
+  ) {
+    super(typeof detail === "string" ? detail : `HTTP ${status}`);
   }
-  return cfg;
-});
 
-api.interceptors.response.use(
-  (res) => res,
-  (err) => {
-    console.error(
-      "[API] error:",
-      err.config?.url,
-      err.response?.status,
-      err.response?.data,
-    );
-    return Promise.reject(err);
-  },
-);
+  /** For 429 cooldown responses: when the action unlocks */
+  get availableAt(): string | null {
+    const d = this.detail as { available_at?: string } | null;
+    return d?.available_at ?? null;
+  }
+}
+
+export async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+  const res = await fetch(BASE + path, {
+    method,
+    headers: {
+      Authorization: `Bearer ${initData()}`,
+      ...(body !== undefined && { "Content-Type": "application/json" }),
+    },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  const data = res.status === 204 ? null : await res.json().catch(() => null);
+  if (!res.ok) throw new ApiError(res.status, data?.detail ?? null);
+  return data as T;
+}

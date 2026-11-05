@@ -1,83 +1,67 @@
-// mini-app/src/App.tsx
-import { useEffect, useState } from "react";
-import { HomePage } from "./pages/HomePage";
+import { useCallback, useEffect, useState } from "react";
+import { api, type Pet } from "./api";
+import { Toasts } from "./components/Toasts";
+import { initTelegram, startParam } from "./lib/telegram";
 import { CreatePetPage } from "./pages/CreatePetPage";
-import { acceptInvite, getMyPets } from "./api/pets";
-import "./index.css";
+import { HomePage } from "./pages/HomePage";
+import { usePetStore } from "./store/usePetStore";
+import { toast } from "./store/useToastStore";
 
-const tg = window.Telegram?.WebApp;
+type Screen = { kind: "loading" } | { kind: "error" } | { kind: "create" } | { kind: "home"; petId: number };
 
-function Loader() {
-  return (
-    <div className="splash">
-      <div className="splash-paw">🐾</div>
-      <div className="splash-text">Загрузка...</div>
-    </div>
-  );
+/** Invite token from the bot button (?invite=) or a t.me/<bot>/app?startapp=inv_ link */
+function inviteToken(params: URLSearchParams): string | null {
+  const start = startParam();
+  return params.get("invite") ?? (start.startsWith("inv_") ? start.slice(4) : null);
 }
 
-function ErrorScreen({ message }: { message: string }) {
-  return (
-    <div className="splash">
-      <div className="splash-paw">😔</div>
-      <div className="splash-text">{message}</div>
-    </div>
-  );
+async function resolveStartPet(): Promise<number | null> {
+  const params = new URLSearchParams(window.location.search);
+
+  const token = inviteToken(params);
+  if (token) {
+    try {
+      return (await api.acceptInvite(token)).pet_id;
+    } catch {
+      toast("Приглашение уже использовано или устарело", "error");
+    }
+  }
+
+  const pets = await api.myPets();
+  const wanted = Number(params.get("pet_id"));
+  return (pets.find((p) => p.id === wanted) ?? pets[0])?.id ?? null;
 }
 
-export default function App() {
-  const [petId, setPetId] = useState<number | null>(null);
-  const [ready, setReady] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export function App() {
+  const [screen, setScreen] = useState<Screen>({ kind: "loading" });
+  const setPet = usePetStore((s) => s.setPet);
 
   useEffect(() => {
-    tg?.ready();
-    tg?.expand();
-    tg?.setHeaderColor?.("#06060f");
-
-    const params     = new URLSearchParams(window.location.search);
-    const urlPetId   = params.get("pet_id");
-    const startParam = tg?.initDataUnsafe?.start_param ?? "";
-    const invToken   = startParam.startsWith("inv_") ? startParam.slice(4) : null;
-
-    const init = async () => {
-      try {
-        if (invToken) {
-          try {
-            const res = await acceptInvite(invToken);
-            setPetId(res.pet_id);
-            return;
-          } catch { /* инвайт невалидный */ }
-        }
-
-        if (urlPetId && Number(urlPetId) > 0) {
-          setPetId(Number(urlPetId));
-          return;
-        }
-
-        const myPets = await getMyPets();
-        if (myPets.length > 0) {
-          setPetId(myPets[0].id);
-          return;
-        }
-
-        setPetId(null);
-      } catch {
-        setError("Что-то пошло не так. Попробуй перезапустить.");
-      } finally {
-        setReady(true);
-      }
-    };
-
-    init();
+    initTelegram("#f6f1e8");
+    resolveStartPet().then(
+      (petId) => setScreen(petId ? { kind: "home", petId } : { kind: "create" }),
+      () => setScreen({ kind: "error" }),
+    );
   }, []);
 
-  const handlePetDeleted = () => {
-    setPetId(null);
-  };
+  const onCreated = useCallback(
+    (pet: Pet) => {
+      setPet(pet);
+      setScreen({ kind: "home", petId: pet.id });
+    },
+    [setPet],
+  );
+  const onPetGone = useCallback(() => setScreen({ kind: "create" }), []);
 
-  if (!ready) return <Loader />;
-  if (error)  return <ErrorScreen message={error} />;
-  if (!petId) return <CreatePetPage onCreated={setPetId} />;
-  return <HomePage petId={petId} onPetDeleted={handlePetDeleted} />;
+  return (
+    <>
+      <Toasts />
+      {screen.kind === "loading" && <div className="splash">Загрузка</div>}
+      {screen.kind === "error" && (
+        <div className="splash">Не получилось связаться с сервером. Закрой и открой приложение ещё раз</div>
+      )}
+      {screen.kind === "create" && <CreatePetPage onCreated={onCreated} />}
+      {screen.kind === "home" && <HomePage petId={screen.petId} onPetGone={onPetGone} />}
+    </>
+  );
 }

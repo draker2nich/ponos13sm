@@ -1,55 +1,34 @@
-// mini-app/src/store/useCoinStore.ts
 import { create } from "zustand";
-import { getMe, addCoins as apiAddCoins } from "../api/users";
+import { api } from "../api";
 
 interface CoinStore {
   coins: number;
-  gameBestScore: number;
-  loaded: boolean;
-
-  /** Загрузить баланс с сервера */
-  fetchCoins: () => Promise<void>;
-
-  /** Установить монеты локально (из ответа action) */
-  setCoins: (n: number) => void;
-
-  /** Начислить монеты через API (из игры) */
-  addCoinsFromGame: (amount: number, gameScore?: number) => Promise<void>;
-
-  /** Потратить монеты локально (оптимистично) */
-  spendCoins: (n: number) => boolean;
+  bestScore: number;
+  load: () => Promise<void>;
+  setCoins: (coins: number) => void;
+  /** Coins and score earned in the mini game; optimistic, rolled back on failure */
+  claimFromGame: (amount: number, score?: number) => Promise<void>;
 }
 
 export const useCoinStore = create<CoinStore>((set, get) => ({
   coins: 0,
-  gameBestScore: 0,
-  loaded: false,
+  bestScore: 0,
 
-  fetchCoins: async () => {
-    try {
-      const me = await getMe();
-      set({ coins: me.coins, gameBestScore: me.game_best_score, loaded: true });
-    } catch {
-      // не критично
-    }
+  load: async () => {
+    const me = await api.me().catch(() => null);
+    if (me) set({ coins: me.coins, bestScore: me.game_best_score });
   },
 
-  setCoins: (n) => set({ coins: n }),
+  setCoins: (coins) => set({ coins }),
 
-  addCoinsFromGame: async (amount, gameScore) => {
+  claimFromGame: async (amount, score) => {
     const prev = get().coins;
     set({ coins: prev + amount });
     try {
-      const res = await apiAddCoins(amount, gameScore);
-      set({ coins: res.coins, gameBestScore: res.game_best_score });
+      const res = await api.claimCoins(amount, score);
+      set({ coins: res.coins, bestScore: res.game_best_score });
     } catch {
       set({ coins: prev });
     }
-  },
-
-  spendCoins: (n) => {
-    if (get().coins < n) return false;
-    set({ coins: get().coins - n });
-    return true;
   },
 }));

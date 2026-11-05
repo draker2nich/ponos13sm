@@ -1,107 +1,75 @@
 import { create } from "zustand";
-import type { Pet, FeedEntry, ActionType } from "../api/types";
-import { getPet, doAction, getFeed } from "../api/pets";
+import { api, ApiError, type ActionType, type Pet } from "../api";
+import { clampPercent } from "../lib/format";
 import { useCoinStore } from "./useCoinStore";
 
-// Оптимистичные дельты для мгновенного UI-отклика
-const ACTION_DELTAS: Record<ActionType, { hunger: number; happiness: number; health: number }> = {
-  feed: { hunger: 30,  happiness: 5,  health: 0  },
-  play: { hunger: -5,  happiness: 25, health: 5  },
-  pet:  { hunger: 0,   happiness: 15, health: 10 },
+// Mirrors backend/game.py ACTIONS so the UI reacts before the server answers
+const OPTIMISTIC: Record<ActionType, Pick<Pet, "hunger" | "happiness" | "health">> = {
+  feed: { hunger: 30, happiness: 5, health: 0 },
+  play: { hunger: -5, happiness: 25, health: 5 },
+  pet: { hunger: 0, happiness: 15, health: 10 },
 };
 
-function applyDelta(pet: Pet, d: typeof ACTION_DELTAS[ActionType]): Pet {
-  return {
-    ...pet,
-    hunger:    Math.max(0, Math.min(100, pet.hunger    + d.hunger)),
-    happiness: Math.max(0, Math.min(100, pet.happiness + d.happiness)),
-    health:    Math.max(0, Math.min(100, pet.health    + d.health)),
-  };
-}
+export type ActionResult = { ok: true } | { ok: false; availableAt: string | null };
 
 interface PetStore {
   pet: Pet | null;
-  feed: FeedEntry[];
   loading: boolean;
-  error: string | null;
-  actionInFlight: boolean;
-  fetchPet: (id: number) => Promise<void>;
-  performAction: (action: ActionType) => Promise<void>;
-  fetchFeed: () => Promise<void>;
+  busy: boolean;
+  load: (id: number) => Promise<void>;
   setPet: (pet: Pet) => void;
+  act: (action: ActionType) => Promise<ActionResult>;
 }
+
+export const cooldownOf = (pet: Pet, action: ActionType) =>
+  pet.cooldowns.find((c) => c.action === action)?.available_at ?? null;
 
 export const usePetStore = create<PetStore>((set, get) => ({
   pet: null,
-  feed: [],
   loading: false,
-  error: null,
-  actionInFlight: false,
+  busy: false,
 
-  fetchPet: async (id) => {
-    set({ loading: true, error: null });
+  load: async (id) => {
+    set({ loading: true });
     try {
-      const pet = await getPet(id);
-      set({ pet, loading: false });
-    } catch (e: unknown) {
-      set({ error: String(e), loading: false });
-    }
-  },
-
-  performAction: async (action) => {
-    const { pet, actionInFlight } = get();
-    if (!pet || actionInFlight) return;
-
-    set({ actionInFlight: true });
-
-    const prevPet = pet;
-    const optimisticPet = applyDelta(pet, ACTION_DELTAS[action]);
-
-    // Мгновенно обновляем UI
-    set({ pet: optimisticPet });
-
-    try {
-      const res = await doAction(pet.id, action);
-      // Синхронизируем с реальными данными сервера
-      set({ pet: res.pet });
-      // Синхронизируем монеты из ответа
-      if (res.coins !== undefined) {
-        useCoinStore.getState().setCoins(res.coins);
-      }
-      // Обновляем ленту после действия
-      const feed = await getFeed(pet.id);
-      set({ feed });
-    } catch (e: unknown) {
-      const err = e as { response?: { data?: { detail?: { available_at?: string } } } };
-      const available_at = err.response?.data?.detail?.available_at;
-
-      if (available_at) {
-        set({
-          pet: {
-            ...prevPet,
-            cooldowns: prevPet.cooldowns.map((c) =>
-              c.action === action ? { ...c, available_at } : c
-            ),
-          },
-        });
-      } else {
-        set({ pet: prevPet });
-      }
+      set({ pet: await api.pet(id) });
     } finally {
-      set({ actionInFlight: false });
-    }
-  },
-
-  fetchFeed: async () => {
-    const { pet } = get();
-    if (!pet) return;
-    try {
-      const feed = await getFeed(pet.id);
-      set({ feed });
-    } catch {
-      // не критично
+      set({ loading: false });
     }
   },
 
   setPet: (pet) => set({ pet }),
+
+  act: async (action) => {
+    const { pet, busy } = get();
+    if (!pet || busy) return { ok: false, availableAt: null };
+
+    const d = OPTIMISTIC[action];
+    set({
+      busy: true,
+      pet: {
+        ...pet,
+        hunger: clampPercent(pet.hunger + d.hunger),
+        happiness: clampPercent(pet.happiness + d.happiness),
+        health: clampPercent(pet.health + d.health),
+      },
+    });
+
+    try {
+      const res = await api.act(pet.id, action);
+      set({ pet: res.pet });
+      useCoinStore.getState().setCoins(res.coins);
+      return { ok: true };
+    } catch (e) {
+      const availableAt = e instanceof ApiError ? e.availableAt : null;
+      set({
+        pet: availableAt
+          ? { ...pet, cooldowns: pet.cooldowns.map((c) => (c.action === action ? { ...c, available_at: availableAt } : c)) }
+          : pet,
+      });
+      return { ok: false, availableAt };
+    } finally {
+      set({ busy: false });
+    }
+  },
 }));

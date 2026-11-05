@@ -1,0 +1,4 @@
+# Local development and database migrations
+-r requirements.txt
+alembic==1.14.0
+uvicorn==0.34.0

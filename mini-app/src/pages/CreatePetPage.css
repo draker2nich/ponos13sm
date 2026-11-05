@@ -1,0 +1,89 @@
+.create {
+  max-width: 420px;
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: 32px 24px calc(32px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 24px;
+  background: linear-gradient(180deg, var(--bg) 0%, var(--bg) 40%, var(--floor) 100%);
+  animation: fade-rise var(--slow) var(--ease);
+}
+
+.create__intro {
+  display: grid;
+  gap: 8px;
+  text-align: center;
+}
+
+.create__intro h1 {
+  font-size: 28px;
+  font-weight: 500;
+  line-height: 1.15;
+}
+
+.create__intro p {
+  color: var(--text-2);
+}
+
+.create__preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.create__shadow {
+  width: 110px;
+  height: 12px;
+  margin-top: -8px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(31, 27, 22, 0.16), transparent);
+}
+
+.create__types {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  padding: 4px;
+  border-radius: 14px;
+  background: var(--raised);
+}
+
+.create__types button {
+  height: 36px;
+  border-radius: 10px;
+  font-size: 14px;
+  color: var(--text-2);
+  transition:
+    background-color var(--fast) var(--ease),
+    color var(--fast) var(--ease);
+}
+
+.create__types button.is-active {
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 500;
+  box-shadow: var(--shadow-sm);
+}
+
+.create__input {
+  height: 48px;
+  padding: 0 16px;
+  border-radius: 12px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  font: inherit;
+  font-size: 16px; /* 16px stops iOS from zooming into the field */
+  color: var(--text);
+  outline: none;
+  transition: border-color var(--fast) var(--ease);
+}
+
+.create__input:focus {
+  border-color: var(--accent);
+}
+
+.create__input::placeholder {
+  color: var(--text-3);
+}

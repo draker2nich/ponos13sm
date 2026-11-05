@@ -1,0 +1,166 @@
+.stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stage__pet {
+  touch-action: none;
+  cursor: grab;
+}
+
+.stage__body {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* The pet stands on the floor of the room */
+.stage__shadow {
+  width: 64%;
+  height: 12px;
+  margin-top: -8px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(31, 27, 22, 0.16), transparent);
+}
+
+.stage__burst {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  z-index: 2;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: var(--text);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: burst 0.9s var(--ease) forwards;
+}
+
+@keyframes burst {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  20% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -24px);
+  }
+}
+
+.stage__heart {
+  position: fixed;
+  z-index: 40;
+  margin: -9px 0 0 -9px;
+  color: #d9707f;
+  fill: #e48c98;
+  pointer-events: none;
+  animation: heart 0.8s var(--ease) forwards;
+}
+
+@keyframes heart {
+  from {
+    opacity: 1;
+    transform: translate(0, 0) scale(0.6);
+  }
+  to {
+    opacity: 0;
+    transform: translate(var(--dx), var(--dy)) scale(1);
+  }
+}
+
+.stage__partner {
+  position: absolute;
+  bottom: 12px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  transition: opacity var(--fast) var(--ease);
+}
+
+.stage__partner.is-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.chip--action {
+  color: var(--text);
+  font-weight: 500;
+  border-style: dashed;
+  border-color: var(--line-strong);
+}
+
+.chip__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-3);
+  opacity: 0.4;
+}
+
+.chip__dot--on {
+  background: var(--ok);
+  opacity: 1;
+}
+
+/* ─── Sleep ───────────────────────────────────────────────────────────── */
+
+.zzz {
+  position: absolute;
+  top: 0;
+  right: -8%;
+  width: 64px;
+  height: 96px;
+  pointer-events: none;
+}
+
+.zzz span {
+  position: absolute;
+  bottom: 0;
+  font-weight: 600;
+  color: #b9b4d6;
+  animation: zzz 2.6s ease-in-out infinite;
+}
+
+.zzz span:nth-child(1) { left: 0; font-size: 14px; }
+.zzz span:nth-child(2) { left: 18px; font-size: 18px; animation-delay: 0.8s; }
+.zzz span:nth-child(3) { left: 36px; font-size: 24px; animation-delay: 1.6s; }
+
+@keyframes zzz {
+  0% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-56px);
+  }
+}

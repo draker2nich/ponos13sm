@@ -1,0 +1,38 @@
+/* A warm room: wall fading into the floor the pet stands on */
+.home {
+  position: relative;
+  max-width: 480px;
+  height: 100dvh;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--bg) 0%, var(--bg) 40%, var(--floor) 100%);
+}
+
+.home__night {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  background: radial-gradient(120% 80% at 50% 45%, rgba(18, 20, 28, 0.78), rgba(10, 11, 16, 0.94));
+  opacity: 0;
+  transition: opacity 0.8s var(--ease);
+}
+
+.home--night .home__night {
+  opacity: 1;
+}
+
+.home--night .hdr {
+  opacity: 0.35;
+}
+
+/* While asleep the pet sits above the dimmed room */
+.home--night .stage {
+  z-index: 6;
+}
+
+.home--night .stage .sprite {
+  filter: brightness(0.75) saturate(0.8);
+}

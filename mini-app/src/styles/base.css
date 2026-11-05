@@ -1,0 +1,188 @@
+/*
+  Direction: a pet you raise together, living in a warm room.
+  Quiet paper-and-plush chrome, one terracotta accent, the pet is the bright thing.
+*/
+:root {
+  --bg: #f6f1e8;
+  --floor: #ede4d6;
+  --surface: #fffdf9;
+  --raised: #f1ebe1;
+  --line: rgba(31, 27, 22, 0.08);
+  --line-strong: rgba(31, 27, 22, 0.14);
+
+  --text: #1f1b16;
+  --text-2: #5e554a;
+  --text-3: #756c60;
+
+  --accent: #b84a33;
+  --accent-soft: rgba(184, 74, 51, 0.1);
+  --danger: #c4372f;
+  --ok: #3f8f5a;
+  --coin: #a87412;
+
+  --night: #12141c;
+  --night-text: #e6e3f0;
+
+  --radius-control: 10px;
+  --radius-card: 16px;
+  --radius-panel: 24px;
+
+  --shadow-sm: 0 1px 2px rgba(31, 27, 22, 0.06);
+  --shadow-float: 0 8px 24px rgba(31, 27, 22, 0.08);
+
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --fast: 150ms;
+  --medium: 220ms;
+  --slow: 400ms;
+
+  --font: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  overscroll-behavior: none;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 400 15px/1.4 var(--font);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overflow: hidden;
+}
+
+#root {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+input {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: default;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+img {
+  display: block;
+  -webkit-user-drag: none;
+}
+
+::-webkit-scrollbar {
+  display: none;
+}
+
+* {
+  scrollbar-width: none;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── Buttons ─────────────────────────────────────────────────────────── */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 20px;
+  border-radius: 22px;
+  font-size: 15px;
+  font-weight: 500;
+  transition:
+    background-color var(--fast) var(--ease),
+    transform var(--fast) var(--ease),
+    opacity var(--fast) var(--ease);
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+}
+
+.btn--primary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.btn--secondary {
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+}
+
+.btn--danger {
+  background: transparent;
+  color: var(--danger);
+  border: 1px solid rgba(196, 55, 47, 0.3);
+}
+
+.btn--block {
+  width: 100%;
+}
+
+/* ─── Splash ──────────────────────────────────────────────────────────── */
+
+.splash {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--text-3);
+  font-size: 14px;
+  text-align: center;
+  padding: 24px;
+}
+
+/* ─── Shared keyframes ────────────────────────────────────────────────── */
+
+@keyframes fade-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
