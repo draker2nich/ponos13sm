@@ -2,12 +2,12 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "installCommand": "npm ci --prefix mini-app",
-  "buildCommand": "npm run build --prefix mini-app",
+  "buildCommand": "bash scripts/vercel-build.sh",
   "outputDirectory": "public",
   "functions": {
     "api/index.py": {
       "maxDuration": 30,
-      "excludeFiles": "{mini-app/**,public/**,migrations/**,tests/**,.github/**,.venv/**}"
+      "excludeFiles": "{mini-app/**,public/**,migrations/**,tests/**,scripts/**,.github/**,.venv/**}"
     }
   },
   "rewrites": [

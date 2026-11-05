@@ -60,7 +60,7 @@ export function MenuSheet({ tab, pet, onOpenGame, onDeleted }: Props) {
         <h2 className="sheet__title">{TAB_META[tab].title}</h2>
         {tab === "feed" && <FeedMenu pet={pet} />}
         {tab === "play" && <PlayMenu pet={pet} onOpenGame={onOpenGame} />}
-        {tab === "shop" && <ShopMenu />}
+        {tab === "shop" && <ShopMenu pet={pet} />}
         {tab === "wash" && <WashMenu pet={pet} />}
         {tab === "sleep" && <SleepMenu pet={pet} />}
         {tab === "partner" && <PartnerMenu pet={pet} />}

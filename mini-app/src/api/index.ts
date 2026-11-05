@@ -21,6 +21,8 @@ export const api = {
       item_id,
     }),
 
+  buyStreakFreeze: (id: number) => request<{ coins: number; pet: Pet }>("POST", `/pets/${id}/streak-freeze`),
+
   createInvite: (pet_id: number) =>
     request<{ token: string; link: string; expires_at: string }>("POST", "/invites", { pet_id }),
   acceptInvite: (token: string) => request<{ pet_id: number }>("POST", `/invites/${token}/accept`),

@@ -181,3 +181,45 @@ async def test_cron_requires_secret(http, telegram):
     assert (await http.get("/api/cron/hunger")).status_code == 401
     r = await http.get("/api/cron/hunger", headers={"Authorization": "Bearer cron-secret"})
     assert r.json() == {"sent": 0}
+
+
+async def test_streak_freeze_covers_a_missed_day(anna: Client, boris: Client, sql):
+    pid = await make_pair(anna, boris)
+    await sql("UPDATE users SET coins = 100")
+
+    catalog = (await anna.req("GET", "/catalog")).json()
+    cost, limit = catalog["streak_freeze"]["cost"], catalog["streak_freeze"]["max"]
+    for _ in range(limit):
+        assert (await anna.req("POST", f"/pets/{pid}/streak-freeze")).status_code == 200
+    r = await anna.req("POST", f"/pets/{pid}/streak-freeze")
+    assert r.status_code == 409
+    assert (await anna.req("GET", "/users/me")).json()["coins"] == 100 - limit * cost
+
+    # Streak of 5, last counted three days ago: two missed days, two freezes
+    await sql("UPDATE pets SET streak = 5, last_streak_date = (now() at time zone 'utc') - interval '3 days'")
+    await sql("UPDATE pet_ownerships SET last_active_at = (now() at time zone 'utc') - interval '3 days'")
+    pet = (await anna.req("GET", f"/pets/{pid}")).json()
+    assert pet["streak"] == 5 and pet["streak_freezes"] == 2
+
+    await anna.req("POST", f"/pets/{pid}/actions", {"action": "feed"})
+    pet = (await boris.req("POST", f"/pets/{pid}/actions", {"action": "feed"})).json()["pet"]
+    assert pet["streak"] == 6 and pet["streak_freezes"] == 0
+
+
+async def test_streak_resets_when_freezes_run_out(anna: Client, boris: Client, sql):
+    pid = await make_pair(anna, boris)
+    await sql("UPDATE pets SET streak = 5, streak_freezes = 1, last_streak_date = (now() at time zone 'utc') - interval '3 days'")
+    assert (await anna.req("GET", f"/pets/{pid}")).json()["streak"] == 0
+
+    await sql("UPDATE pet_ownerships SET last_active_at = (now() at time zone 'utc') - interval '3 days'")
+    await anna.req("POST", f"/pets/{pid}/actions", {"action": "feed"})
+    pet = (await boris.req("POST", f"/pets/{pid}/actions", {"action": "feed"})).json()["pet"]
+    assert pet["streak"] == 1 and pet["streak_freezes"] == 1
+
+
+async def test_admin_stats(anna: Client, boris: Client, http):
+    await make_pair(anna, boris)
+    assert (await http.get("/api/admin/stats")).status_code == 401
+    stats = (await http.get("/api/admin/stats", headers={"Authorization": "Bearer cron-secret"})).json()
+    assert stats["users"] == 2 and stats["pets"] == 1 and stats["pairs"] == 1
+    assert stats["streaks"]["0"] == 1

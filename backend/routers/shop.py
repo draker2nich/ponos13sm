@@ -8,7 +8,16 @@ from backend.auth import get_current_user
 from backend.bot.notifications import PURCHASE_VERBS, partner_activity_text, tell_partners
 from backend.db import get_db
 from backend.deps import get_owned_pet
-from backend.game import CATALOG, NotEnoughCoins, buy_item, find_item
+from backend.game import (
+    CATALOG,
+    MAX_STREAK_FREEZES,
+    STREAK_FREEZE_COST,
+    FreezeLimit,
+    NotEnoughCoins,
+    buy_item,
+    buy_streak_freeze,
+    find_item,
+)
 from backend.models import Pet, User
 from backend.schemas import PetOut, pet_out
 
@@ -26,6 +35,17 @@ class CatalogItem(BaseModel):
     health: float
 
 
+class StreakFreezeInfo(BaseModel):
+    cost: int
+    max: int
+
+
+class CatalogOut(BaseModel):
+    food: list[CatalogItem]
+    wash: list[CatalogItem]
+    streak_freeze: StreakFreezeInfo
+
+
 class BuyIn(BaseModel):
     item_type: ItemKind
     item_id: int
@@ -38,15 +58,37 @@ class BuyOut(BaseModel):
     pet: PetOut
 
 
-@router.get("/catalog", response_model=dict[ItemKind, list[CatalogItem]])
+class FreezeOut(BaseModel):
+    coins: int
+    pet: PetOut
+
+
+def _items(kind: str) -> list[CatalogItem]:
+    return [CatalogItem(id=i.id, emoji=i.emoji, cost=i.cost, **vars(i.deltas)) for i in CATALOG[kind]]
+
+
+@router.get("/catalog", response_model=CatalogOut)
 async def catalog():
-    return {
-        kind: [
-            CatalogItem(id=i.id, emoji=i.emoji, cost=i.cost, **vars(i.deltas))
-            for i in items
-        ]
-        for kind, items in CATALOG.items()
-    }
+    return CatalogOut(
+        food=_items("food"),
+        wash=_items("wash"),
+        streak_freeze=StreakFreezeInfo(cost=STREAK_FREEZE_COST, max=MAX_STREAK_FREEZES),
+    )
+
+
+@router.post("/pets/{pet_id}/streak-freeze", response_model=FreezeOut)
+async def buy_freeze(
+    pet: Pet = Depends(get_owned_pet),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        await buy_streak_freeze(db, pet, user)
+    except FreezeLimit as e:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Freeze limit reached") from e
+    except NotEnoughCoins as e:
+        raise HTTPException(status.HTTP_402_PAYMENT_REQUIRED, "Not enough coins") from e
+    return FreezeOut(coins=user.coins, pet=await pet_out(db, pet, user))
 
 
 @router.post("/pets/{pet_id}/buy", response_model=BuyOut)

@@ -1,11 +1,11 @@
 from fastapi import APIRouter, FastAPI
 
-from backend.routers import actions, cron, invites, pets, shop, telegram, users
+from backend.routers import actions, admin, cron, invites, pets, shop, telegram, users
 
 app = FastAPI(title="Pet Together API", docs_url="/api/docs", openapi_url="/api/openapi.json")
 
 api = APIRouter(prefix="/api")
-for module in (pets, actions, shop, invites, users, telegram, cron):
+for module in (pets, actions, shop, invites, users, telegram, cron, admin):
     api.include_router(module.router)
 
 

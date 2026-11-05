@@ -164,3 +164,17 @@
     transform: translateY(-56px);
   }
 }
+
+/* Tap reaction: a short hop */
+.stage__hop {
+  animation: hop 0.42s var(--ease);
+}
+
+@keyframes hop {
+  30% {
+    transform: translateY(-14px) scale(1.02, 0.98);
+  }
+  60% {
+    transform: translateY(0) scale(1.04, 0.95);
+  }
+}

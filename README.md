@@ -69,6 +69,14 @@ Telegram opens mini apps only over HTTPS. To try it inside Telegram, run a tunne
 After testing the bot locally, set the webhook again (see deployment guide), otherwise the
 production bot stays silent.
 
+## Stats
+
+```bash
+curl -H "Authorization: Bearer $CRON_SECRET" https://tubric.tech/api/admin/stats
+```
+
+Users, new and active users, pets, pairs, actions in the last 24 hours and the streak distribution.
+
 ## Tests
 
 ```bash
@@ -79,6 +87,13 @@ TEST_DATABASE_URL=postgresql://postgres:secret@localhost:5432/postgres pytest
 GitHub Actions runs the same tests and the frontend build on every push (`.github/workflows/ci.yml`).
 
 ## Migrations
+
+Production deploys apply migrations automatically: `scripts/vercel-build.sh` runs `alembic upgrade head`
+before building the frontend when `VERCEL_ENV=production`. If a migration fails, the build fails and the
+previous deployment stays live. Migrations should stay additive (new nullable columns or with defaults), so
+the code that is still live keeps working while the new build is in progress.
+
+By hand:
 
 ```bash
 alembic upgrade head                           # new database

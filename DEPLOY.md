@@ -64,6 +64,9 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
    alembic upgrade head
    ```
 
+   Дальше миграции применяются сами при каждом production-деплое (`scripts/vercel-build.sh`),
+   вручную это нужно только для первой настройки.
+
    Если переносите старую базу с Heroku: сначала `pg_dump` → `pg_restore` в Neon, затем
    `alembic stamp 0001 && alembic upgrade head` (ревизия 0001 совпадает со старой схемой).
 

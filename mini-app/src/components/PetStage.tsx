@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { motion, useMotionValue, useSpring } from "framer-motion";
 import { Heart, UserPlus } from "lucide-react";
 import type { Pet } from "../api";
 import { describe, lastPartnerAction } from "../lib/activity";
 import { timeAgo } from "../lib/format";
+import { haptic } from "../lib/telegram";
 import { PetSprite } from "./PetSprite";
 import "./PetStage.css";
 
@@ -38,7 +39,17 @@ export function PetStage({ pet, menuOpen, stroking, burst, petRef, onInvite }: P
   const y = useMotionValue(0);
   const springX = useSpring(x, SPRING);
   const springY = useSpring(y, SPRING);
-  const hearts = useHearts(stroking && !menuOpen, petRef);
+  const { hearts, spawn } = useHearts(stroking && !menuOpen, petRef);
+  const [boing, setBoing] = useState(0);
+  const dragged = useRef(false);
+
+  // A tap (not a drag) makes the pet hop
+  const onTap = () => {
+    if (pet.is_sleeping || dragged.current) return;
+    setBoing((n) => n + 1);
+    spawn();
+    haptic("light");
+  };
 
   // While the sheet is open the pet returns to the middle of the space that's left
   useEffect(() => {
@@ -60,6 +71,9 @@ export function PetStage({ pet, menuOpen, stroking, burst, petRef, onInvite }: P
         dragConstraints={stageRef}
         dragElastic={0.08}
         dragMomentum={false}
+        onTap={onTap}
+        onDragStart={() => (dragged.current = true)}
+        onPointerDown={() => (dragged.current = false)}
         style={{ x: springX, y: springY }}
         animate={{ scale: menuOpen ? 0.8 : 1 }}
         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
@@ -71,7 +85,9 @@ export function PetStage({ pet, menuOpen, stroking, burst, petRef, onInvite }: P
             </span>
           )}
           {pet.is_sleeping && <Zzz />}
-          <PetSprite type={pet.pet_type} mood={mood} level={pet.level} reacting={stroking} size="clamp(132px, 40vw, 184px)" />
+          <div key={boing} className={boing ? "stage__hop" : undefined}>
+            <PetSprite type={pet.pet_type} mood={mood} level={pet.level} reacting={stroking} size="clamp(132px, 40vw, 184px)" />
+          </div>
           <div className="stage__shadow" />
         </div>
       </motion.div>
@@ -120,25 +136,28 @@ function Zzz() {
 function useHearts(active: boolean, petRef: RefObject<HTMLDivElement>) {
   const [hearts, setHearts] = useState<HeartFx[]>([]);
 
+  const spawn = useCallback(() => {
+    const r = petRef.current?.getBoundingClientRect();
+    if (!r) return;
+    const a = Math.random() * Math.PI * 2;
+    const heart = {
+      id: ++heartId,
+      x: r.left + r.width / 2 + Math.cos(a) * r.width * 0.3,
+      y: r.top + r.height * 0.45 + Math.sin(a) * r.height * 0.25,
+      dx: Math.cos(a) * 32,
+      dy: -24 - Math.random() * 24,
+    };
+    setHearts((hs) => [...hs.slice(-6), heart]);
+    window.setTimeout(() => setHearts((hs) => hs.filter((h) => h !== heart)), 800);
+  }, [petRef]);
+
   useEffect(() => {
     if (!active) return;
-    let id = 0;
-    const timer = window.setInterval(() => {
-      const r = petRef.current?.getBoundingClientRect();
-      if (!r) return;
-      const a = Math.random() * Math.PI * 2;
-      const heart = {
-        id: ++id,
-        x: r.left + r.width / 2 + Math.cos(a) * r.width * 0.3,
-        y: r.top + r.height * 0.45 + Math.sin(a) * r.height * 0.25,
-        dx: Math.cos(a) * 32,
-        dy: -24 - Math.random() * 24,
-      };
-      setHearts((hs) => [...hs.slice(-6), heart]);
-      window.setTimeout(() => setHearts((hs) => hs.filter((h) => h !== heart)), 800);
-    }, HEART_EVERY_MS);
+    const timer = window.setInterval(spawn, HEART_EVERY_MS);
     return () => window.clearInterval(timer);
-  }, [active, petRef]);
+  }, [active, spawn]);
 
-  return hearts;
+  return { hearts, spawn };
 }
+
+let heartId = 0;

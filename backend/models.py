@@ -95,6 +95,8 @@ class Pet(Base):
 
     streak = Column(Integer, default=0)
     last_streak_date = Column(DateTime)
+    # Each one covers a missed day, so the streak survives it
+    streak_freezes = Column(Integer, nullable=False, default=0, server_default="0")
 
     mood = Column(Enum(PetMood), default=PetMood.HAPPY)
     is_sleeping = Column(Boolean, default=False)

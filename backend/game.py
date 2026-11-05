@@ -21,6 +21,9 @@ COINS_PER_ACTION = 1
 # Coins each owner gets when the shared streak reaches these days
 STREAK_REWARDS = {3: 5, 7: 15, 14: 30, 30: 60, 60: 100, 100: 200}
 
+STREAK_FREEZE_COST = 30
+MAX_STREAK_FREEZES = 2
+
 NOTIFY_EVERY = timedelta(hours=3)
 PARTNER_IN_APP = timedelta(minutes=15)
 
@@ -119,10 +122,17 @@ def _apply(pet: Pet, deltas: Deltas, now: datetime) -> None:
     pet.mood = calc_mood(pet, now)
 
 
+def missed_days(pet: Pet, today: date) -> int:
+    """Whole days nobody kept the streak since it was last counted (-1 if counted today)."""
+    if not pet.last_streak_date:
+        return 0
+    return (today - pet.last_streak_date.date()).days - 1
+
+
 def current_streak(pet: Pet, today: date | None = None) -> int:
-    """The streak survives only if both owners showed up yesterday or today."""
+    """The streak survives if both owners showed up yesterday or today, or freezes cover the gap."""
     today = today or utcnow().date()
-    if not pet.last_streak_date or pet.last_streak_date.date() < today - timedelta(days=1):
+    if not pet.last_streak_date or missed_days(pet, today) > pet.streak_freezes:
         return 0
     return pet.streak
 
@@ -157,7 +167,10 @@ async def register_activity(db: AsyncSession, pet: Pet, user: User, now: datetim
     both_active = len(owners) >= 2 and all(o.last_active_at and o.last_active_at.date() == today for o in owners)
     already_counted = pet.last_streak_date and pet.last_streak_date.date() == today
     if both_active and not already_counted:
-        pet.streak = current_streak(pet, today) + 1
+        alive = current_streak(pet, today)
+        if alive and missed_days(pet, today) > 0:
+            pet.streak_freezes -= missed_days(pet, today)
+        pet.streak = alive + 1
         pet.last_streak_date = now
         activity.streak_reward = STREAK_REWARDS.get(pet.streak, 0)
         if activity.streak_reward:
@@ -219,6 +232,27 @@ class NotEnoughCoins(Exception):
     pass
 
 
+class FreezeLimit(Exception):
+    pass
+
+
+async def _pay(db: AsyncSession, user: User, cost: int) -> None:
+    paid = await db.execute(update(User).where(User.id == user.id, User.coins >= cost).values(coins=User.coins - cost))
+    if not paid.rowcount:
+        await db.commit()
+        raise NotEnoughCoins
+
+
+async def buy_streak_freeze(db: AsyncSession, pet: Pet, user: User) -> None:
+    """Raises FreezeLimit or NotEnoughCoins."""
+    if pet.streak_freezes >= MAX_STREAK_FREEZES:
+        raise FreezeLimit
+    await _pay(db, user, STREAK_FREEZE_COST)
+    pet.streak_freezes += 1
+    await db.commit()
+    await db.refresh(user)
+
+
 async def perform_action(db: AsyncSession, pet: Pet, user: User, action: ActionType) -> Activity:
     """Feed / play / pet. Raises OnCooldown if the action isn't available yet."""
     now = utcnow()
@@ -245,13 +279,7 @@ async def perform_action(db: AsyncSession, pet: Pet, user: User, action: ActionT
 
 async def buy_item(db: AsyncSession, pet: Pet, user: User, kind: str, item: ShopItem) -> Activity:
     """Spend coins on an item and apply it to the pet. Raises NotEnoughCoins."""
-    paid = await db.execute(
-        update(User).where(User.id == user.id, User.coins >= item.cost).values(coins=User.coins - item.cost)
-    )
-    if not paid.rowcount:
-        await db.commit()
-        raise NotEnoughCoins
-
+    await _pay(db, user, item.cost)
     now = utcnow()
     _apply(pet, item.deltas, now)
     db.add(_log(pet, user, PURCHASE_ACTION[kind], item.deltas))

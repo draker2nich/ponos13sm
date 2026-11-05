@@ -39,6 +39,7 @@ export interface Pet {
   experience: number;
   age_days: number;
   streak: number;
+  streak_freezes: number;
   mood: PetMood;
   is_sleeping: boolean;
   owners: Owner[];
@@ -56,7 +57,9 @@ export interface CatalogItem {
   health: number;
 }
 
-export type Catalog = Record<ItemKind, CatalogItem[]>;
+export type Catalog = Record<ItemKind, CatalogItem[]> & {
+  streak_freeze: { cost: number; max: number };
+};
 
 export interface Me {
   id: number;

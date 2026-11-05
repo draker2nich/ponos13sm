@@ -55,7 +55,8 @@ async def notify_streak_at_risk(db: AsyncSession, bot: Bot) -> int:
     for pet in (await db.scalars(select(Pet).where(Pet.streak > 0))).all():
         streak = current_streak(pet, today)
         owners = await _owners(db, pet.id)
-        if not streak or len(owners) < 2:
+        # With a freeze in stock a missed day doesn't burn the streak, so no alarm
+        if not streak or len(owners) < 2 or pet.streak_freezes:
             continue
 
         missing = [(o, u) for o, u in owners if not o.last_active_at or o.last_active_at.date() < today]

@@ -1,4 +1,4 @@
-import { Coins, Flame, HeartPulse, Smile, Utensils } from "lucide-react";
+import { Coins, Flame, HeartPulse, Smile, Snowflake, Utensils } from "lucide-react";
 import type { Pet } from "../api";
 import { useCoinStore } from "../store/useCoinStore";
 import { PresenceDots } from "./PresenceDots";
@@ -23,6 +23,12 @@ export function PetHeader({ pet }: { pet: Pet }) {
           <Flame size={14} strokeWidth={1.75} />
           <span className="num">{pet.streak}</span>
           <PresenceDots owners={pet.owners} />
+          {pet.streak_freezes > 0 && (
+            <span className="hdr__freeze num" title="Заморозки стрика">
+              <Snowflake size={12} strokeWidth={1.75} />
+              {pet.streak_freezes}
+            </span>
+          )}
         </div>
       </div>
 

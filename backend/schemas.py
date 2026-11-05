@@ -67,6 +67,7 @@ class PetOut(BaseModel):
     experience: int
     age_days: int
     streak: int
+    streak_freezes: int
     mood: str
     is_sleeping: bool
     owners: list[OwnerOut]
@@ -104,6 +105,7 @@ async def pet_out(db: AsyncSession, pet: Pet, me: User) -> PetOut:
         experience=pet.experience,
         age_days=age_days(pet, now),
         streak=current_streak(pet, now.date()),
+        streak_freezes=pet.streak_freezes,
         mood=pet.mood.value,
         is_sleeping=pet.is_sleeping,
         owners=[
